@@ -1,0 +1,8 @@
+id: aggregate-1794138423702
+name: Libro
+modelId: model-aggregate-1794138423702
+invariants:
+- id: inv-libro-isbn
+  name: IsbnObligatorio
+  conditions:
+  - {id: inv-libro-isbn-c1, expression: "isbn != null && !isbn.isBlank()", custom: false, errorMessage: "El ISBN es obligatorio"}

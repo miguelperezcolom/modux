@@ -1,0 +1,10 @@
+id: qs-crud-aggregate-1794138562900
+name: SocioQueries
+boundedContextId: component-1794138396807
+description: Listado canónico del agregado Socio.
+operations:
+  - id: qs-crud-aggregate-1794138562900-list
+    name: list
+    description: Listado paginado de Socio
+    responseModelId: model-aggregate-1794138562900
+    cardinality: Page

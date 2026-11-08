@@ -27,13 +27,28 @@ public final class ModelFiles {
     private final Project project;
     private final VirtualFile root;
 
+    /** Set once the catalog has been re-read from disk for this editor session. */
+    private volatile boolean fresh;
+
     public ModelFiles(Project project, VirtualFile root) {
         this.project = project;
         this.root = root;
     }
 
+    /**
+     * The VFS is a cache: a file changed outside the IDE (a git pull, an agent, another editor) may
+     * not be in it yet. Loading from that stale copy would be bad enough; the next save would then
+     * write it over the newer file. So the first access of a session syncs the catalog with disk.
+     */
+    private void ensureFresh() {
+        if (fresh) return;
+        fresh = true;
+        VfsUtil.markDirtyAndRefresh(false, true, true, root);
+    }
+
     /** File names directly inside a directory relative to the model root. */
     public List<String> list(String dir) {
+        ensureFresh();
         var directory = resolve(dir);
         if (directory == null || !directory.isDirectory()) return List.of();
         return Arrays.stream(directory.getChildren())
@@ -44,6 +59,7 @@ public final class ModelFiles {
 
     /** Subdirectory names directly inside a directory — the element buckets (§12.3). */
     public List<String> listDirs(String dir) {
+        ensureFresh();
         var directory = resolve(dir);
         if (directory == null || !directory.isDirectory()) return List.of();
         return Arrays.stream(directory.getChildren())
@@ -53,12 +69,14 @@ public final class ModelFiles {
     }
 
     public String read(String path) throws IOException {
+        ensureFresh();
         var file = resolve(path);
         if (file == null) throw new IOException("no such file: " + path);
         return VfsUtil.loadText(file);
     }
 
     public boolean exists(String path) {
+        ensureFresh();
         return resolve(path) != null;
     }
 

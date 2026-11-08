@@ -1,0 +1,13 @@
+id: uc-eliminarAggregate-1794138562900
+name: EliminarSocio
+transactional: true
+steps:
+  - id: step-delete
+    name: deleteSocio
+    type: Custom
+    aggregateId: aggregate-1794138562900
+    description: Elimina el agregado Socio
+  - id: step-publish-ev-aggregate-1794138562900Eliminado
+    name: publishSocioEliminado
+    type: PublishDomainEvent
+    domainEventId: ev-aggregate-1794138562900Eliminado

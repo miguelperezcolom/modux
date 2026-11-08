@@ -1,0 +1,7 @@
+id: component-1794145708562
+name: Avisos
+subdomainType: GENERIC
+aggregateIds:
+  - aggregate-1794145711246
+useCaseIds:
+  - usecase-1794145713045

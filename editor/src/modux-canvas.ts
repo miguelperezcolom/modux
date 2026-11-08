@@ -2445,7 +2445,8 @@ export class ModuxCanvas extends LitElement {
         ${this.scene.nodes.length === 0
           ? svg`<text x="50%" y="45%" text-anchor="middle" font-size="15" style="fill: var(--modux-text-faint, #94a3b8)"
                     font-family="ui-sans-serif, system-ui" pointer-events="none">
-                  Lienzo vacío — arrastra elementos de la paleta o crea algo nuevo para empezar
+                  <tspan x="50%">Lienzo vacío</tspan>
+                  <tspan x="50%" dy="1.5em">Arrastra elementos de la paleta para empezar</tspan>
                 </text>`
           : ''}
       </svg>

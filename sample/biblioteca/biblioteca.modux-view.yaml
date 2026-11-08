@@ -1,0 +1,128 @@
+viewId: biblioteca
+memberIds:
+  - component-1794138396807
+  - aggregate-1794138423702
+  - aggregate-1794138562900
+  - external-system-1794139124424
+  - aggregate-1794141968222
+  - usecase-1794141969971
+  - usecase-1794144290555
+  - event-1794144292289
+  - scheduler-1794145393673
+  - usecase-1794145395456
+  - event-1794145397368
+  - component-1794145708562
+  - aggregate-1794145711246
+  - usecase-1794145713045
+  - deployment-1794145779494
+  - deployment-1794145781245
+  - component-1794145708562-main
+geometry:
+  nodes:
+    component-1794138396807:
+      x: 784
+      y: 470.5
+    aggregate-1794138423702:
+      x: 520
+      y: 349
+    aggregate-1794138562900:
+      x: 704
+      y: 349
+    external-system-1794139124424:
+      x: 600
+      y: 528
+    aggregate-1794141968222:
+      x: 900
+      y: 336
+    usecase-1794141969971:
+      x: 708
+      y: 612
+    usecase-1794144290555:
+      x: 900
+      y: 612
+    event-1794144292289:
+      x: 900
+      y: 456
+    scheduler-1794145393673:
+      x: 516
+      y: 612
+    usecase-1794145395456:
+      x: 708
+      y: 612
+    event-1794145397368:
+      x: 1056
+      y: 612
+    component-1794145708562:
+      x: 1392
+      y: 543.5
+    aggregate-1794145711246:
+      x: 1392
+      y: 456
+    usecase-1794145713045:
+      x: 1392
+      y: 636
+    deployment-1794145779494:
+      x: 600
+      y: 852
+    deployment-1794145781245:
+      x: 1032
+      y: 852
+    component-1794145708562-main:
+      x: 1032
+      y: 852
+  edges: {}
+  sizes:
+    component-1794138396807:
+      w: 736
+      h: 403
+    aggregate-1794138423702:
+      w: 160
+      h: 66
+    aggregate-1794138562900:
+      w: 160
+      h: 66
+    external-system-1794139124424:
+      w: 220
+      h: 120
+    aggregate-1794141968222:
+      w: 160
+      h: 66
+    usecase-1794141969971:
+      w: 160
+      h: 62
+    usecase-1794144290555:
+      w: 160
+      h: 62
+    event-1794144292289:
+      w: 200
+      h: 62
+    scheduler-1794145393673:
+      w: 150
+      h: 56
+    usecase-1794145395456:
+      w: 160
+      h: 62
+    event-1794145397368:
+      w: 200
+      h: 62
+    component-1794145708562:
+      w: 312
+      h: 353
+    aggregate-1794145711246:
+      w: 160
+      h: 66
+    usecase-1794145713045:
+      w: 160
+      h: 62
+    deployment-1794145779494:
+      w: 280
+      h: 170
+    deployment-1794145781245:
+      w: 280
+      h: 170
+    component-1794145708562-main:
+      w: 160
+      h: 60
+  fills:
+    usecase-1794141969971: "#ffb4a2"
+    event-1794144292289: "#ffb4a2"

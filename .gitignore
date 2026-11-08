@@ -7,6 +7,7 @@ model-driven-generator/sample/
 # …but hand-authored sample SPECS are (the generated code inside them is not)
 !sample/hla-booking/
 !sample/patterns/
+!sample/biblioteca/
 sample/hla-booking/generated/
 model-driven-generator/src/test/resources/examples/model-driven-store-schema.json
 # local dev store — the model is read from repositories (~/.modux) now

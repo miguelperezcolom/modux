@@ -1,0 +1,8 @@
+id: model-prestamo-retrasado
+name: PrestamoRetrasadoPayload
+fields:
+- {id: f-prr-prestamo, name: prestamoId, basicType: true, type: string}
+- {id: f-prr-libro, name: libroId, basicType: true, type: string}
+- {id: f-prr-socio, name: socioId, basicType: true, type: string}
+- {id: f-prr-vence, name: fechaVencimiento, basicType: true, type: date}
+- {id: f-prr-dias, name: diasRetraso, basicType: true, type: integer}

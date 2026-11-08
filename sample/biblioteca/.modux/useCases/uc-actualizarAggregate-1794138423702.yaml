@@ -1,0 +1,17 @@
+id: uc-actualizarAggregate-1794138423702
+name: ActualizarLibro
+transactional: true
+inputModelId: model-aggregate-1794138423702
+steps:
+  - id: step-read
+    name: readLibro
+    type: ReadAggregate
+    aggregateId: aggregate-1794138423702
+  - id: step-save
+    name: saveLibro
+    type: SaveAggregate
+    aggregateId: aggregate-1794138423702
+  - id: step-publish-ev-aggregate-1794138423702Modificado
+    name: publishLibroModificado
+    type: PublishDomainEvent
+    domainEventId: ev-aggregate-1794138423702Modificado

@@ -14,7 +14,8 @@ public class Default${aggregate.name}Invariants implements ${aggregate.name}Inva
 
     @Override
     public void check(${aggregate.name}Context context) {
-        // TODO: implement the invariants of ${aggregate.name}<#if aggregate.invariants?has_content> (<#list aggregate.invariants as inv>${inv.name}<#sep>, </#list>)</#if>.
-        // Throw an exception to reject an invalid state; read state via context.${aggregate.name?uncap_first}().
+        // The invariants of ${aggregate.name}<#if aggregate.invariants?has_content> (<#list aggregate.invariants as inv>${inv.name}<#sep>, </#list>)</#if> go here.
+        // Reject an invalid state with BusinessRuleException.invalid("why") (answers 400 with that
+        // message); read the state via context.${aggregate.name?uncap_first}().
     }
 }

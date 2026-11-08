@@ -1,0 +1,46 @@
+id: api-crud-aggregate-1794138562900
+name: SocioAPI
+description: CRUD del agregado Socio.
+operations:
+  - id: api-crud-aggregate-1794138562900-create
+    name: CrearSocio
+    httpMethod: POST
+    path: /socio
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-crearAggregate-1794138562900
+    requestModelId: model-aggregate-1794138562900
+    responseModelId: model-aggregate-1794138562900
+  - id: api-crud-aggregate-1794138562900-update
+    name: ActualizarSocio
+    httpMethod: PUT
+    path: /socio/{id}
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-actualizarAggregate-1794138562900
+    requestModelId: model-aggregate-1794138562900
+    responseModelId: model-aggregate-1794138562900
+  - id: api-crud-aggregate-1794138562900-delete
+    name: EliminarSocio
+    httpMethod: DELETE
+    path: /socio/{id}
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-eliminarAggregate-1794138562900
+  - id: api-crud-aggregate-1794138562900-list
+    name: ListarSocio
+    httpMethod: GET
+    path: /socio
+    targetBoundedContextId: component-1794138396807
+    responseModelId: model-aggregate-1794138562900
+    targetQueryServiceId: qs-crud-aggregate-1794138562900
+    targetQueryOperationId: qs-crud-aggregate-1794138562900-list
+implementedByBoundedContextIds:
+  - component-1794138396807
+operationImplementations:
+  - apiOperationId: api-crud-aggregate-1794138562900-create
+    boundedContextId: component-1794138396807
+    useCaseId: uc-crearAggregate-1794138562900
+  - apiOperationId: api-crud-aggregate-1794138562900-update
+    boundedContextId: component-1794138396807
+    useCaseId: uc-actualizarAggregate-1794138562900
+  - apiOperationId: api-crud-aggregate-1794138562900-delete
+    boundedContextId: component-1794138396807
+    useCaseId: uc-eliminarAggregate-1794138562900

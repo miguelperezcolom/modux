@@ -1,0 +1,8 @@
+id: aggregate-1794141968222
+name: Prestamo
+modelId: model-aggregate-1794141968222
+operations:
+  - id: op-emit-event-1794145397368
+    name: emitPrestamoRetrasado
+    emits: PrestamoRetrasado
+    kind: CUSTOM

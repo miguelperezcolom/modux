@@ -1,0 +1,8 @@
+id: model-libro-devuelto
+name: LibroDevueltoPayload
+fields:
+- {id: f-ld-prestamo, name: prestamoId, basicType: true, type: string}
+- {id: f-ld-libro, name: libroId, basicType: true, type: string}
+- {id: f-ld-socio, name: socioId, basicType: true, type: string}
+- {id: f-ld-fecha, name: fechaDevolucion, basicType: true, type: date}
+- {id: f-ld-retraso, name: conRetraso, basicType: true, type: bool}

@@ -1,0 +1,10 @@
+id: qs-crud-aggregate-1794138423702
+name: LibroQueries
+boundedContextId: component-1794138396807
+description: Listado canónico del agregado Libro.
+operations:
+  - id: qs-crud-aggregate-1794138423702-list
+    name: list
+    description: Listado paginado de Libro
+    responseModelId: model-aggregate-1794138423702
+    cardinality: Page

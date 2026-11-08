@@ -1,0 +1,7 @@
+id: flow-prestamoretrasado-registraraviso
+name: RegistrarAviso
+archetype: TRIGGERS
+triggerAggregateId: aggregate-1794141968222
+triggerEvent: PrestamoRetrasado
+targetBoundedContextId: component-1794145708562
+targetUseCaseId: usecase-1794145713045

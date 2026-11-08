@@ -758,6 +758,16 @@ export type ModuxCommand =
       id: string;
       cronExpression: string;
     }
+  | { kind: 'set-use-case-step-intent'; useCaseId: string; stepId: string; intent?: string }
+  | { kind: 'move-use-case-step'; useCaseId: string; stepId: string; delta: number }
+  | {
+      /** What a use case takes and returns, and whether it answers over REST. */
+      kind: 'set-use-case-contract';
+      id: string;
+      inputModelId?: string | null;
+      outputModelId?: string | null;
+      exposedAsRest?: boolean;
+    }
   | {
       /** Change what an element is, within a family (see store/commands/retype.ts); blocked while referenced. */
       kind: 'change-element-type';
@@ -833,6 +843,7 @@ export type ModuxCommand =
       useCaseId: string;
       id: string;
       name: string;
+      intent?: string;
     }
   | {
       kind: 'remove-use-case-step';

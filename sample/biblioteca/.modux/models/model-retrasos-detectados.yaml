@@ -1,0 +1,4 @@
+id: model-retrasos-detectados
+name: RetrasosDetectados
+fields:
+- {id: f-rd-n, name: nuevos, basicType: true, type: integer}

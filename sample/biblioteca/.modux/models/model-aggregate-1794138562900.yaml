@@ -1,0 +1,7 @@
+id: model-aggregate-1794138562900
+name: Socio
+fields:
+- {id: f-socio-carnet, name: carnet, basicType: true, type: string}
+- {id: f-socio-nombre, name: nombre, basicType: true, type: string}
+- {id: f-socio-email, name: email, basicType: true, type: string}
+- {id: f-socio-estado, name: estado, basicType: true, type: string}

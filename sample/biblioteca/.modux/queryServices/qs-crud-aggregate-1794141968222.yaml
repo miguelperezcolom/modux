@@ -1,0 +1,10 @@
+id: qs-crud-aggregate-1794141968222
+name: PrestamoQueries
+boundedContextId: component-1794138396807
+description: Listado canónico del agregado Prestamo.
+operations:
+  - id: qs-crud-aggregate-1794141968222-list
+    name: list
+    description: Listado paginado de Prestamo
+    responseModelId: model-aggregate-1794141968222
+    cardinality: Page

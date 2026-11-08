@@ -1,0 +1,8 @@
+id: biblioteca
+name: Biblioteca
+outputPath: generated
+packageName: es.biblioteca
+headless: true
+serviceIds:
+  - deployment-1794145779494
+  - deployment-1794145781245

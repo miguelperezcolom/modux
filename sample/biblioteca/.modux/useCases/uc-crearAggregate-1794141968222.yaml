@@ -1,0 +1,13 @@
+id: uc-crearAggregate-1794141968222
+name: CrearPrestamo
+transactional: true
+inputModelId: model-aggregate-1794141968222
+steps:
+  - id: step-save
+    name: savePrestamo
+    type: SaveAggregate
+    aggregateId: aggregate-1794141968222
+  - id: step-publish-ev-aggregate-1794141968222Creado
+    name: publishPrestamoCreado
+    type: PublishDomainEvent
+    domainEventId: ev-aggregate-1794141968222Creado

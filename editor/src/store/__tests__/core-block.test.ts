@@ -297,6 +297,42 @@ describe('what things do', () => {
       .toBe('Otro,ReservaCreada');
   });
 
+  it('edits a use case contract and its steps: custom work goes before the publishing', () => {
+    const store = model({
+      models: [{ id: 'm-in', name: 'In' }],
+      domainEvents: [{ id: 'ev', name: 'Hecho' }],
+      useCases: [{ id: 'uc', name: 'Hacer', steps: [] }],
+    });
+    apply(store, { kind: 'add-emission', sourceId: 'uc', targetId: 'ev' } as never);
+    apply(store, { kind: 'add-use-case-step', useCaseId: 'uc', id: 's1', name: 'hacer' } as never);
+    apply(store, { kind: 'set-use-case-step-intent', useCaseId: 'uc', stepId: 's1', intent: 'Hace la cosa' } as never);
+    apply(store, { kind: 'set-use-case-contract', id: 'uc', inputModelId: 'm-in', exposedAsRest: true } as never);
+
+    const uc = store.get('useCases', 'uc')!;
+    expect((uc.steps as Element[]).map((s) => s.type)).toEqual(['Custom', 'PublishDomainEvent']);
+    expect((uc.steps as Element[])[0].intent).toBe('Hace la cosa');
+    expect(uc).toMatchObject({ inputModelId: 'm-in', exposedAsRest: true });
+
+    apply(store, { kind: 'move-use-case-step', useCaseId: 'uc', stepId: 's1', delta: 1 } as never);
+    expect((store.get('useCases', 'uc')!.steps as Element[]).map((s) => s.id)[1]).toBe('s1');
+    expect(() => apply(store, { kind: 'set-use-case-contract', id: 'uc', inputModelId: 'no-existe' } as never)).toThrow(CommandError);
+    apply(store, { kind: 'set-use-case-contract', id: 'uc', inputModelId: null } as never);
+    expect(store.get('useCases', 'uc')!.inputModelId).toBeUndefined();
+    expect(project(store).looseUseCases?.find((u) => u.id === 'uc')).toMatchObject({ exposedAsRest: true });
+  });
+
+  it('describes an element, top-level or nested, and clears it', () => {
+    const store = model();
+    store.put('aggregates', { id: 'agg-reserva', name: 'Reserva', operations: [{ id: 'op-1', name: 'crear' }] });
+    apply(store, { kind: 'set-element-description', type: 'aggregate', id: 'agg-reserva', description: 'Una reserva' } as never);
+    apply(store, { kind: 'set-element-description', type: 'operation', id: 'op-1', description: 'La crea' } as never);
+    expect(store.get('aggregates', 'agg-reserva')?.description).toBe('Una reserva');
+    expect((store.get('aggregates', 'agg-reserva')!.operations as Element[])[0].description).toBe('La crea');
+    expect(project(store).descriptions?.['agg-reserva']).toBe('Una reserva');
+    apply(store, { kind: 'set-element-description', type: 'aggregate', id: 'agg-reserva', description: '  ' } as never);
+    expect(store.get('aggregates', 'agg-reserva')?.description).toBeUndefined();
+  });
+
   it('aims a scheduled trigger with the field the generator reads, on a Spring cron', () => {
     const store = model({ useCases: [{ id: 'uc-detectar', name: 'DetectarRetrasos' }] });
     apply(store, { kind: 'add-scheduled-trigger', id: 'st-1', name: 'Diario' } as never);

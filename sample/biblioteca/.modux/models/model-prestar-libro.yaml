@@ -1,0 +1,5 @@
+id: model-prestar-libro
+name: PrestarLibroInput
+fields:
+- {id: f-pl-libro, name: libroId, basicType: true, type: string}
+- {id: f-pl-socio, name: socioId, basicType: true, type: string}

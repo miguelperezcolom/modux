@@ -1,0 +1,5 @@
+id: deployment-1794145781245
+name: Avisos
+moduleIds:
+  - component-1794145708562-main
+port: 8081

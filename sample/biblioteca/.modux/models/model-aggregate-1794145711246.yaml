@@ -1,0 +1,7 @@
+id: model-aggregate-1794145711246
+name: Aviso
+fields:
+- {id: f-aviso-prestamo, name: prestamoId, basicType: true, type: string}
+- {id: f-aviso-socio, name: socioId, basicType: true, type: string}
+- {id: f-aviso-mensaje, name: mensaje, basicType: true, type: string}
+- {id: f-aviso-fecha, name: fecha, basicType: true, type: date}

@@ -1,0 +1,13 @@
+id: usecase-1794141969971
+name: PrestarLibro
+transactional: true
+inputModelId: model-prestar-libro
+outputModelId: model-prestamo-registrado
+steps:
+  - id: step-prestar
+    name: prestar
+    type: Custom
+    intent: >-
+      Presta el libro al socio: el libro tiene que estar DISPONIBLE y pasa a PRESTADO; el socio
+      tiene que estar ACTIVO y no puede tener más de 3 préstamos ABIERTOS. Crea un préstamo
+      ABIERTO con vencimiento a 14 días.
