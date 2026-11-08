@@ -1,11 +1,10 @@
-# A headless service whose aggregate is consumed over REST: the shape the IDE plugin produces when
+# A service whose aggregates no UI consumes, reached over REST: the shape the IDE plugin produces when
 # an external system is connected to an aggregate (derived CRUD trio + API + lifecycle events).
 projects:
 - id: "biblioteca"
   name: "Biblioteca"
   outputPath: "generated"
   packageName: "es.biblioteca"
-  headless: true
 boundedContexts:
 - id: "bc-prestamos"
   name: "Prestamos"

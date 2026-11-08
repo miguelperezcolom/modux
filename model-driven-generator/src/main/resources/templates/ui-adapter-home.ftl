@@ -33,6 +33,9 @@ import ${project.packageName}.${pg.moduleSlug}.infra.in.ui.pages.${pg.pageSlug}.
 import ${project.packageName}.${pg.moduleSlug}.infra.in.ui.pages.${pg.pageSlug}.${pg.className};
 </#list>
 </#if>
+<#list menuCruds![] as crud>
+import ${project.packageName}.${crud.moduleSlug}.infra.in.ui.pages.${crud.slug}.${crud.name}CrudOrchestrator;
+</#list>
 <#if adapter.menuItems?has_content>
 <#list adapter.menuItems as item>
 <#if item.route?has_content>
@@ -104,6 +107,11 @@ public class Home<#if homePage??> extends ${homePage.className}</#if><#if idp??>
 </#if>
 </#list>
 </#if>
+<#list menuCruds![] as crud>
+    @Menu
+    ${crud.name}CrudOrchestrator ${crud.field};
+
+</#list>
 <#if !(menuPages?? && menuPages?has_content) && !(adapter.menuItems?has_content)>
     // TODO: add menu items
 </#if>

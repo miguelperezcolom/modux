@@ -3479,9 +3479,6 @@
         "gitRepository" : {
           "type" : "string"
         },
-        "headless" : {
-          "type" : "boolean"
-        },
         "iamProvider" : {
           "$ref" : "#/$defs/IamProvider"
         },

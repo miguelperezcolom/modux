@@ -554,6 +554,16 @@ describe('renaming', () => {
     expect(ops.map((o) => o.path)).toEqual(['/linea-pedido', '/linea-pedido/{id}', '/linea-pedido/{id}', '/linea-pedido']);
   });
 
+  it('keeps an app title in step with its name until it has its own', () => {
+    const store = model();
+    apply(store, { kind: 'create-ui-app', id: 'app', name: 'App UI' } as never);
+    apply(store, { kind: 'rename-element', type: 'ui-app', id: 'app', name: 'Backoffice' } as never);
+    expect(store.get('uiAdapters', 'app')).toMatchObject({ name: 'Backoffice', title: 'Backoffice' });
+    store.patch('uiAdapters', 'app', { title: 'Portal interno' });
+    apply(store, { kind: 'rename-element', type: 'ui-app', id: 'app', name: 'Otra' } as never);
+    expect(store.get('uiAdapters', 'app')?.title).toBe('Portal interno');
+  });
+
   it('leaves a companion alone once it has a name of its own', () => {
     const store = model({ models: [{ id: 'model-reserva', name: 'EstadoReserva' }] });
     apply(store, { kind: 'rename-element', type: 'aggregate', id: 'agg-reserva', name: 'Booking' } as never);

@@ -104,6 +104,11 @@ produces and how the stream folds into state — are a [two-zone hook](/manual/g
 [event sourcing design](https://github.com/miguelperezcolom/modux/blob/main/docs/design/event-sourcing.md).
 
 ### UI layer
+
+Only when a UI consumes the aggregate: an app has it in its menu, a page is bound to it, or a UI
+shell federates its service. With no UI consumer the aggregate has no pages and is reached through
+its APIs.
+
 - `infra/in/ui/{Aggregate}CrudAdapter.java`
 - `infra/in/ui/{Aggregate}CrudOrchestrator.java`
 - `infra/in/ui/{Aggregate}ViewModel.java`

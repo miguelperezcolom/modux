@@ -112,7 +112,9 @@ export const RENAME_COMMANDS: Record<string, Handler> = {
       // one step behind the model
       const before = store.get(top.type, id);
       if (before) {
-        store.patch(top.type, id, { [top.field ?? 'name']: command.name });
+        // an app's title starts as its name, and follows it until someone sets one of its own
+        const titleFollows = top.type === 'uiAdapters' && before.title === before.name;
+        store.patch(top.type, id, { [top.field ?? 'name']: command.name, ...(titleFollows ? { title: command.name } : {}) });
         for (const c of COMPANIONS[top.type]?.(store, before) ?? []) {
           if (store.get(c.type, c.id)?.name === before.name) store.patch(c.type, c.id, { name: command.name });
         }

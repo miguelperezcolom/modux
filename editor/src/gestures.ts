@@ -66,6 +66,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'external-call', label: 'Llamada ACL', hint: 'Sistema externo → caso de uso nuestro (entra por ACL)' },
   { id: 'external-crud', label: 'CRUD (API)', hint: 'Sistema externo → agregado: crea la API CRUD y lo cablea como consumidor' },
   { id: 'context-crud', label: 'CRUD (API)', hint: 'Otro contexto → agregado: crea la API CRUD que consumirá' },
+  { id: 'ui-crud', label: 'CRUD (UI)', hint: 'App UI → agregado: lo gestiona con páginas CRUD desde su menú' },
   { id: 'external-uc-call', label: 'Llamada saliente', hint: 'Caso de uso nuestro → operación de un sistema externo' },
   { id: 'agent-tool', label: 'Herramienta IA', hint: 'Agente → caso de uso, operación, MCP, gateway, API o query service' },
   { id: 'agent-delegate', label: 'Delegación IA', hint: 'Agente → agente: le delega trabajo' },
@@ -180,6 +181,10 @@ export function connectionOptions(
         host.command({ kind: 'add-ui-assignment', id: ui, targetId: other });
       });
     }
+  }
+  // app → aggregate: the UI surface of the CRUD (the generator emits its pages because of this)
+  if (appIds.has(sourceId) && isAggregate(targetId)) {
+    offer('ui-crud', () => host.command({ kind: 'add-ui-crud', sourceId, targetId }));
   }
   if (ucIds.has(sourceId) && ucIds.has(targetId) && sourceId !== targetId) {
     offer('uc-call', () => {
