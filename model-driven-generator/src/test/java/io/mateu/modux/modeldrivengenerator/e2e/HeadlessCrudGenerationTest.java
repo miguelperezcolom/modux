@@ -114,6 +114,17 @@ class HeadlessCrudGenerationTest {
         assertTrue(query.contains("lower(CAST(col_isbn AS varchar)) LIKE ? OR lower(CAST(col_titulo AS varchar)) LIKE ?"), query);
     }
 
+    @Test
+    void a_flow_with_no_field_list_carries_the_whole_event_payload() throws Exception {
+        var out = generate();
+        var event = read(out, "PrestamoRetrasado.java");
+        assertTrue(event.contains("String prestamoId") && event.contains("LocalDate fechaVencimiento"), event);
+        var subscription = read(out, "AvisosPrestamoRetrasadoSubscription.java");
+        assertTrue(subscription.contains("import java.time.LocalDate;"), subscription);
+        assertFalse(subscription.contains("TODO"), subscription);
+        assertTrue(read(out, "BibliotecaApplication.java").contains("WRITE_DATES_AS_TIMESTAMPS"), "dates must travel as ISO");
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

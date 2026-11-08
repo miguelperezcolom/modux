@@ -37,13 +37,15 @@ public class FlowExpansionService {
 
     public FlowDerivedModel expandAll() {
         var expansions = repository.findAllOfType(FlowEntity.class).stream()
-                .map(FlowExpansionService::toDomain)
+                .map(e -> withEventPayload(e, repository))
                 .map(flow -> expander.expand(flow, resolver.resolve(flow)))
                 .toList();
 
         return new FlowDerivedModel(
                 keepNew(collect(expansions, FlowExpansion::domainEvent), DomainEventEntity.class, DomainEventEntity::name),
-                keepNew(collect(expansions, FlowExpansion::payloadModel), ModelEntity.class, ModelEntity::name),
+                // by id: the derived pieces reference the model by id, so a hand-written model that
+                // merely shares its name must not displace it (the reference would dangle)
+                keepNew(collect(expansions, FlowExpansion::payloadModel), ModelEntity.class, ModelEntity::id),
                 keepNew(collect(expansions, FlowExpansion::integrationEvent), IntegrationEventEntity.class, IntegrationEventEntity::topicName),
                 keepNew(collect(expansions, FlowExpansion::readModel), ReadModelEntity.class, rm -> rm.boundedContextId() + "/" + rm.name()),
                 keepNew(collect(expansions, FlowExpansion::projection), ProjectionEntity.class, ProjectionEntity::name),
@@ -78,10 +80,30 @@ public class FlowExpansionService {
         return result;
     }
 
+    /**
+     * A flow that names no fields carries the whole payload of its event — what a line drawn from
+     * an event means. Without this the derived integration event travels empty.
+     */
+    static Flow withEventPayload(FlowEntity e, ModelStore repository) {
+        if (e.materializedFields() != null && !e.materializedFields().isEmpty()) return toDomain(e, e.materializedFields());
+        var fields = repository.findAllOfType(DomainEventEntity.class).stream()
+                .filter(ev -> ev.name() != null && ev.name().equals(e.triggerEvent()) && ev.modelId() != null)
+                .findFirst()
+                .flatMap(ev -> repository.findById(ev.modelId(), ModelEntity.class))
+                .map(m -> m.fields() == null ? List.<String>of()
+                        : m.fields().stream().map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModelFieldEntity::name).toList())
+                .orElse(e.materializedFields());
+        return toDomain(e, fields);
+    }
+
     static Flow toDomain(FlowEntity e) {
+        return toDomain(e, e.materializedFields());
+    }
+
+    private static Flow toDomain(FlowEntity e, List<String> materializedFields) {
         return Flow.load(e.id(), e.name(), e.description(),
                 e.archetype() != null ? e.archetype().name() : null,
                 e.triggerAggregateId(), e.triggerEvent(), e.targetBoundedContextId(),
-                e.readModelName(), e.materializedFields(), e.targetUseCaseId(), e.inputMappings(), e.overrides());
+                e.readModelName(), materializedFields, e.targetUseCaseId(), e.inputMappings(), e.overrides());
     }
 }

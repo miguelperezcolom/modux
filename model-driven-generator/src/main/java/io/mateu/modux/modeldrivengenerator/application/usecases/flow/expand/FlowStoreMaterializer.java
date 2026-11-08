@@ -49,13 +49,15 @@ public class FlowStoreMaterializer {
 
     public void materialize() {
         var flows = repository.findAllOfType(FlowEntity.class).stream()
-                .map(FlowExpansionService::toDomain)
+                .map(e -> FlowExpansionService.withEventPayload(e, repository))
                 .toList();
         if (flows.isEmpty()) {
             return;
         }
 
-        var seenModelNames = keys(ModelEntity.class, ModelEntity::name);
+        // by id: the derived pieces reference the model by id, so a hand-written model that merely
+        // shares its name must not displace it (the reference would dangle)
+        var seenModelIds = keys(ModelEntity.class, ModelEntity::id);
         var seenEventNames = keys(DomainEventEntity.class, DomainEventEntity::name);
         var seenTopics = keys(IntegrationEventEntity.class, IntegrationEventEntity::topicName);
         var seenReadModels = keys(ReadModelEntity.class, rm -> rm.boundedContextId() + "/" + rm.name());
@@ -72,7 +74,7 @@ public class FlowStoreMaterializer {
             var sourceBoundedContextId = ctx.sourceBoundedContextId();
             var targetBoundedContextId = flow.getTargetBoundedContextId();
 
-            saveIfNew(x.payloadModel(), seenModelNames, ModelEntity::name);
+            saveIfNew(x.payloadModel(), seenModelIds, ModelEntity::id);
             saveIfNew(x.integrationEvent(), seenTopics, IntegrationEventEntity::topicName);
             saveIfNew(x.readModel(), seenReadModels, rm -> rm.boundedContextId() + "/" + rm.name());
             saveIfNew(x.modelMapping(), seenMappings, ModelMappingEntity::name);

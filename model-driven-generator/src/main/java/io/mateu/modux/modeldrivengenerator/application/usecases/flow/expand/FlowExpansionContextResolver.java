@@ -40,7 +40,7 @@ public class FlowExpansionContextResolver {
         var triggerUseCaseId = stored.map(
                 io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.FlowEntity::triggerUseCaseId)
                 .orElse(null);
-        return resolve(flow, triggerDomainServiceId, triggerUseCaseId,
+        var ctx = resolve(flow, triggerDomainServiceId, triggerUseCaseId,
                 repository.findAllOfType(AggregateEntity.class),
                 repository.findAllOfType(BoundedContextEntity.class),
                 repository.findAllOfType(ServiceEntity.class),
@@ -48,6 +48,21 @@ public class FlowExpansionContextResolver {
                 repository.findAllOfType(ProjectEntity.class),
                 repository.findAllOfType(ModelEntity.class),
                 repository.findAllOfType(UseCaseEntity.class));
+        // A field of the event's own payload is typed by it (the aggregate may not even have it).
+        var declared = flow.getMaterializedFields() != null ? flow.getMaterializedFields() : List.<String>of();
+        var eventFields = repository.findAllOfType(
+                        io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity.class).stream()
+                .filter(ev -> ev.name() != null && ev.name().equals(flow.getTriggerEvent()) && ev.modelId() != null)
+                .findFirst()
+                .flatMap(ev -> repository.findById(ev.modelId(), ModelEntity.class))
+                .map(ModelEntity::fields)
+                .orElse(List.of());
+        if (eventFields != null && ctx.fieldTypes() != null) {
+            eventFields.stream()
+                    .filter(f -> declared.contains(f.name()) && f.type() != null)
+                    .forEach(f -> ctx.fieldTypes().put(f.name(), f.type()));
+        }
+        return ctx;
     }
 
     /** Pre-domain-service-trigger overload, kept for existing tests. */

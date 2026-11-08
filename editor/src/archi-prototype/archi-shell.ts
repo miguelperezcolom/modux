@@ -1354,9 +1354,12 @@ export class ArchiShell extends LitElement {
     </div>`;
   }
   private applyConnect(o: ConnectOption, src: SceneNode, tgt: SceneNode) {
+    this.gestureNotice = null;
     o.apply();
-    this.flash(`${o.label}: «${src.label}» → «${tgt.label}»`);
+    // a gesture that could not go ahead says why (e.g. a flow needs to know who emits the event)
+    this.flash(this.gestureNotice ?? `${o.label}: «${src.label}» → «${tgt.label}»`);
   }
+  private gestureNotice: string | null = null;
   /**
    * The slice of the classic editor's host the connection vocabulary needs: the model and a way
    * to issue commands. The pickers and view plumbing it can also ask for have no counterpart in
@@ -1368,7 +1371,8 @@ export class ArchiShell extends LitElement {
     return {
       get model() { return self.model!; },
       command: (c: unknown) => self.emit('modux-command', { command: c }),
-      emit: none, sceneFor: () => self.scene, owningProcessOf: none, owningUseCaseOf: none,
+      emit: (name: string, detail?: { message?: string }) => { if (name === 'modux-notice' && detail?.message) self.gestureNotice = detail.message; },
+      sceneFor: () => self.scene, owningProcessOf: none, owningUseCaseOf: none,
       owningWorkflowOf: none, owningApiOf: none, menuEntryIn: () => null, newMenuItemId: (l: string) => l,
       openExtDepPicker: none, openRelationPicker: none, openConnectPicker: none,
       nodeClientRect: () => null, clearSelection: none, expandNode: none,
@@ -1465,7 +1469,7 @@ export class ArchiShell extends LitElement {
         <div class="zoombar">
           <button title="Acercar" @click=${() => this.canvasEl?.zoomBy(1.2)}>+</button>
           <button title="Alejar" @click=${() => this.canvasEl?.zoomBy(0.8)}>−</button>
-          <button title="Ajustar a la ventana" @click=${() => this.canvasEl?.fit()}>⤢</button>
+          <button title="Encuadrar: la selección si hay alguna; si no, toda la vista" @click=${() => this.canvasEl?.fit()}>⤢</button>
         </div>
         <div class="legend">${(() => {
           const used = new Set(this.scene.nodes.map((n) => kindLayer(n.kind)));

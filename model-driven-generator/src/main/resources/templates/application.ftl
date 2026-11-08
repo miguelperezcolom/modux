@@ -48,7 +48,10 @@ public class ${className} {
     @Bean
     @ConditionalOnMissingBean(com.fasterxml.jackson.databind.ObjectMapper.class)
     com.fasterxml.jackson.databind.ObjectMapper objectMapper() {
-        return com.fasterxml.jackson.databind.json.JsonMapper.builder().findAndAddModules().build();
+        // ISO dates on the wire: the generated consumers parse them with LocalDate.parse
+        return com.fasterxml.jackson.databind.json.JsonMapper.builder().findAndAddModules()
+                .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .build();
     }
 
 }
