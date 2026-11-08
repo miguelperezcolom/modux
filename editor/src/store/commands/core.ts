@@ -57,6 +57,22 @@ const INVARIANT_OWNERS = ['aggregates', 'valueObjects', 'entities'];
 /** The stub state model an aggregate is born with, so it is complete from birth. */
 const stateModelId = (aggregateId: string) => `model-${aggregateId.replace(/^agg-/, '')}`;
 
+/**
+ * Context-scoped store types → the list a bounded context keeps their ids in. No list: the element
+ * names its context itself (`boundedContextId`).
+ */
+const CONTEXT_MEMBERSHIP: Record<string, { list?: string }> = {
+  aggregates: { list: 'aggregateIds' },
+  useCases: { list: 'useCaseIds' },
+  domainEvents: { list: 'domainEventIds' },
+  applicationEvents: { list: 'applicationEventIds' },
+  domainServices: { list: 'domainServiceIds' },
+  readModels: { list: 'readModelIds' },
+  projections: { list: 'projectionIds' },
+  integrationEvents: {},
+  queryServices: {},
+};
+
 export const CORE_COMMANDS: Record<string, Handler> = {
   // ---- bounded contexts --------------------------------------------------
 
@@ -301,6 +317,31 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     }
     store.removeFromAllLists('boundedContexts', 'useCaseIds', id);
     if (target) store.addToList('boundedContexts', target, 'useCaseIds', id);
+  },
+
+  /**
+   * Move a context-scoped element (aggregate, use case, event, read model, service, projection…) to
+   * a bounded context, or detach it (no target). Ownership is recorded two ways depending on the
+   * type — the context lists the id, or the element names the context — and the projection reads
+   * both, with the element's own field winning. So both are rewritten: the id leaves every
+   * context's list and joins the target's, and a `boundedContextId` the element carries is set too,
+   * or a stale one would keep it where it was. What the canvas emits when an element is dropped
+   * into a context.
+   */
+  'set-element-context': (store, command) => {
+    const type = String(command.type ?? '');
+    const spec = CONTEXT_MEMBERSHIP[type];
+    if (!spec) throw new CommandError(`set-element-context no soportado para: ${type}`);
+    const id = String(command.id);
+    const element = store.get(type, id);
+    if (!element) throw new CommandError(`Elemento desconocido: ${type}/${id}`);
+    const target = (command.boundedContextId as string | undefined) || undefined;
+    if (target && !store.has('boundedContexts', target)) throw new CommandError(`Contexto desconocido: ${target}`);
+    if (spec.list) {
+      store.removeFromAllLists('boundedContexts', spec.list, id);
+      if (target) store.addToList('boundedContexts', target, spec.list, id);
+    }
+    if (!spec.list || 'boundedContextId' in element) store.patch(type, id, { boundedContextId: target ?? null });
   },
 
   // ---- strategic relations (top-level, one file each) ---------------------

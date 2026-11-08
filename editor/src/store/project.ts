@@ -67,6 +67,8 @@ export function project(store: ModelStore): ModuxModel {
     // Use cases with no owning context: they only nest under a context, so they'd vanish. Surface
     // them here for the canvas to draw top-level with a «sin asociar» badge until composed.
     looseUseCases: store.all('useCases').filter((u) => !owner.of.get(u.id)).map(useCase),
+    unownedElements: CONTEXT_SCOPED_TYPES.filter((type) => NESTED_ONLY.has(type)).flatMap((type) =>
+      store.all(type).filter((e) => !owner.of.get(e.id)).map((e) => ({ id: e.id, name: name(e), type }))),
     looseElements: store.all('looseElements').map((e) => ({
       id: e.id,
       name: str(e.name) ?? '',
@@ -158,6 +160,17 @@ const isDrawable = (f: FlowRef) => Boolean(f.sourceId && f.targetId);
  * context lists its aggregate ids, while a use case may instead name its
  * context. Indexing both once here keeps every projection below a lookup.
  */
+/** Types whose elements belong to a bounded context — listed by it, or naming it themselves. */
+const CONTEXT_SCOPED_TYPES = ['useCases', 'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices',
+  'readModels', 'queryServices', 'projections', 'scheduledTriggers'];
+
+/**
+ * The context-scoped types that are reachable ONLY through their owning context in the projection
+ * (use cases have `looseUseCases`, projections are top-level, scheduled triggers are not drawn).
+ */
+const NESTED_ONLY = new Set(['domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices',
+  'readModels', 'queryServices']);
+
 interface OwnerIndex {
   /** element id → bounded context id */
   of: Map<string, string>;
@@ -168,13 +181,13 @@ interface OwnerIndex {
 function ownerIndex(store: ModelStore): OwnerIndex {
   const of = new Map<string, string>();
   for (const context of store.all('boundedContexts')) {
-    for (const field of ['aggregateIds', 'useCaseIds', 'valueObjectIds']) {
+    for (const field of ['aggregateIds', 'useCaseIds', 'valueObjectIds', 'domainEventIds', 'readModelIds',
+      'domainServiceIds', 'applicationEventIds', 'projectionIds']) {
       for (const id of asList(context[field])) of.set(id, context.id);
     }
   }
   // the other direction: elements that name their context themselves
-  for (const type of ['useCases', 'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices', 'readModels',
-    'queryServices', 'projections', 'scheduledTriggers']) {
+  for (const type of CONTEXT_SCOPED_TYPES) {
     for (const element of store.all(type)) {
       const declared = str(element.boundedContextId);
       if (declared) of.set(element.id, declared);
@@ -210,6 +223,11 @@ function boundedContext(store: ModelStore, bc: Element, owner: OwnerIndex): Boun
       name: name(rm),
       aggregateId: str(rm.aggregateId),
     })) as ReadModelRef[],
+    queryServices: store.all('queryServices').filter(owns).map((qs) => ({
+      id: qs.id,
+      name: name(qs),
+      operations: nestedNamed(qs.operations),
+    })),
   };
 }
 

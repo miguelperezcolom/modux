@@ -884,6 +884,12 @@ export interface ModuxModel {
   looseUseCases?: UseCaseRef[];
   /** Free-standing nested elements (operation/invariant/field/use-case-step) awaiting a parent. */
   looseElements?: { id: string; name: string; elementType: string }[];
+  /**
+   * Context-scoped elements (events, read models, query services, domain services…) that no
+   * bounded context owns. They only nest under a context, so without this they would vanish from
+   * the projection — and a view could never show them. `type` is the store bucket.
+   */
+  unownedElements?: { id: string; name: string; type: string }[];
   /** Actor → app links (Role.uiAdapterIds). */
   actorAppUses?: ActorAppUseRef[];
   /** Data models with their fields — the mappings view edits them in place. */
@@ -930,6 +936,10 @@ export interface ModuxModel {
   }[];
   /** Legacy sagas awaiting their fusion into workflows (the migrate button counts them). */
   sagas?: { id: string; name: string }[];
+  /** Enumerations: data types, like models. */
+  enums?: { id: string; name: string }[];
+  /** Outbound gateways to external systems (resilience, auth). */
+  gateways?: { id: string; name: string }[];
   /** Code boundedContexts: how each bounded context DISTRIBUTES its elements into buildable units. */
   modules?: ModuleRef[];
   /** Deployables: a service says where code boundedContexts are DEPLOYED. */

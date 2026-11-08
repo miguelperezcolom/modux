@@ -13,7 +13,7 @@ import type { ModuxModel } from '../model.js';
 import { asList, nested, type Element, type ModelStore } from './store.js';
 
 export const CATALOG_PROJECTED_TYPES = [
-  'subscriptions', 'sagas', 'enums', 'businessRules', 'integrationEvents',
+  'subscriptions', 'sagas', 'enums', 'businessRules', 'integrationEvents', 'gateways',
 ];
 
 /** Use-case step types, and which edge list each contributes to. */
@@ -129,6 +129,10 @@ export function projectCatalog(store: ModelStore): Partial<ModuxModel> {
 
     /** Legacy sagas awaiting their fusion into workflows — the migrate button counts them. */
     sagas: store.all('sagas').map((s) => ({ id: s.id, name: name(s) })),
+
+    // Data types and outbound gateways: nothing draws them as edges, but a view can show them.
+    enums: store.all('enums').map((e) => ({ id: e.id, name: name(e) })),
+    gateways: store.all('gateways').map((g) => ({ id: g.id, name: name(g) })),
 
     views: store.all('views').map((v) => ({
       id: v.id,

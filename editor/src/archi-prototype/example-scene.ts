@@ -65,6 +65,9 @@ export const ARCHIMATE_SYMBOL: Record<string, string> = {
   deployment: 'am-deployment',
   module: 'gear', bff: 'interface', acl: 'am-acl', 'api-gateway': 'am-gateway',
   adapter: 'plug', saga: 'process', projector: 'readmodel', scheduler: 'clock',
+  // Catalog-only kinds: no palette tool (they are reached from the catalog tree), but a view can show them.
+  'query-service': 'am-service', model: 'am-object', system: 'am-component',
+  gateway: 'am-gateway', subscription: 'plug', notification: 'am-event', process: 'process',
 };
 
 const N = (
