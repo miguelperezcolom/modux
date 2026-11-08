@@ -403,8 +403,8 @@ public class GenerateCodeUseCase {
                     return m;
                 })
                 .toList();
-        if ((boundedContext.aggregateIds() != null && !boundedContext.aggregateIds().isEmpty())
-                || !uiUseCases.isEmpty()) {
+        if (!headless(project) && ((boundedContext.aggregateIds() != null && !boundedContext.aggregateIds().isEmpty())
+                || !uiUseCases.isEmpty())) {
             boundedContextModel.put("moduleMenuClassName", toTypeName(boundedContext.name()) + "Menu");
             boundedContextModel.put("uiUseCases", uiUseCases);
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/menu");
@@ -720,7 +720,7 @@ public class GenerateCodeUseCase {
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
         createFile(appDir, appModel, "application.ftl",
                 "src/main/java/" + packageDir + "/" + toClassName(service.name()) + "Application.java");
-        if (!uiCarriedByPage) {
+        if (!uiCarriedByPage && !headless(project)) {
             createFile(appDir, appModel, "home.ftl",
                     "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
         }
@@ -916,6 +916,7 @@ public class GenerateCodeUseCase {
                             + "/custom/Default" + aggregate.name() + "EventSourcing.java");
         }
 
+        if (!headless(project)) {
         createDir(boundedContextDir,
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName);
 
@@ -928,6 +929,7 @@ public class GenerateCodeUseCase {
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "crud-viewmodel.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "ViewModel.java");
+        }
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "options-supplier.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdOptionsSupplier.java");
@@ -974,6 +976,11 @@ public class GenerateCodeUseCase {
 
     private void generateUseCase(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                                  String boundedContextDir, String boundedContextPackageDir, UseCaseEntity useCase) {
+        var trio = crudTrioOf(boundedContext, useCase);
+        if (trio != null) {
+            generateCrudTrioUseCase(project, service, boundedContext, boundedContextDir, boundedContextPackageDir, useCase, trio);
+            return;
+        }
         var ucSlug = useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "");
         // File/class names go through the safe type name: display names may contain spaces.
         var ucClass = toTypeName(useCase.name());
@@ -1024,7 +1031,7 @@ public class GenerateCodeUseCase {
 
         // exposedAsUi: a Mateu page whose fields are the command and whose primary action
         // executes the use case (view model only; menu wiring happens with the module menu).
-        if (useCase.exposedAsUi()) {
+        if (useCase.exposedAsUi() && !headless(project)) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug);
 
             // Array fields backed by a model become inline-editable grids: resolve each
@@ -1078,6 +1085,65 @@ public class GenerateCodeUseCase {
         createFile(boundedContextDir, testModel, "usecase-test.ftl",
                 "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + ucClass + "UseCaseTest.java");
+    }
+
+    /** See {@link ProjectEntity#headless()}: no Mateu UI of its own. */
+    private static boolean headless(ProjectEntity project) {
+        return Boolean.TRUE.equals(project.headless());
+    }
+
+    /** One of an aggregate's derived CRUD use cases, and which of the three it is. */
+    private record CrudTrio(AggregateEntity aggregate, String role) {}
+
+    /**
+     * The use case is one of an aggregate's derived CRUD trio ({@code uc-crear/actualizar/eliminar
+     * {aggId}}) still in the shape the scaffold gave it. Those get a body that rests on the
+     * aggregate's built-in CRUD: generated as plain steps they would build nothing (a null
+     * aggregate on create, an update without the id). A trio someone has since extended with
+     * steps of their own is left to the general template, which honours them.
+     */
+    private CrudTrio crudTrioOf(BoundedContextEntity boundedContext, UseCaseEntity useCase) {
+        var aggregateIds = boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of();
+        for (var aggregateId : aggregateIds) {
+            var role = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudUseCases
+                    .idsOf(aggregateId).indexOf(useCase.id());
+            if (role < 0) continue;
+            var steps = useCase.steps() != null ? useCase.steps() : List.<UseCaseStepEntity>of();
+            var scaffoldShape = steps.stream().allMatch(st -> switch (st.type()) {
+                case ReadAggregate, SaveAggregate, PublishDomainEvent -> true;
+                case Custom -> role == 2 && st.name() != null && st.name().startsWith("delete");
+                default -> false;
+            });
+            if (!scaffoldShape) return null;
+            return repository.findById(aggregateId, AggregateEntity.class)
+                    .map(a -> new CrudTrio(a, List.of("create", "update", "delete").get(role)))
+                    .orElse(null);
+        }
+        return null;
+    }
+
+    private void generateCrudTrioUseCase(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
+                                         String boundedContextDir, String boundedContextPackageDir,
+                                         UseCaseEntity useCase, CrudTrio trio) {
+        var ucSlug = useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        var ucClass = toTypeName(useCase.name());
+        var event = (useCase.steps() != null ? useCase.steps() : List.<UseCaseStepEntity>of()).stream()
+                .filter(st -> st.type() == UseCaseStepType.PublishDomainEvent && st.domainEventId() != null)
+                .map(st -> repository.findById(st.domainEventId(), DomainEventEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .map(DomainEventEntity::name)
+                .findFirst().orElse(null);
+        var model = aggregateModel(project, service, boundedContext, trio.aggregate());
+        var trioMap = new HashMap<String, Object>();
+        trioMap.put("role", trio.role());
+        trioMap.put("slug", ucSlug);
+        trioMap.put("className", ucClass);
+        if (event != null) trioMap.put("event", event);
+        model.put("trio", trioMap);
+        var dir = "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug;
+        createDir(boundedContextDir, dir);
+        createFile(boundedContextDir, model, "crud-trio-command.ftl", dir + "/" + ucClass + "Command.java");
+        createFile(boundedContextDir, model, "crud-trio-usecase.ftl", dir + "/" + ucClass + "UseCase.java");
     }
 
     private Map<String, Object> enrichUseCaseMap(UseCaseEntity useCase) {
@@ -1523,6 +1589,11 @@ public class GenerateCodeUseCase {
                 var ucSlug = uc.name().toLowerCase().replaceAll("[^a-z0-9]", "");
                 var hasOutput = uc.outputModelId() != null && !uc.outputModelId().isBlank();
                 var wm = new HashMap<String, Object>();
+                var trio = crudTrioOf(boundedContext, uc);
+                if (trio != null) {
+                    // the trio's commands carry the id the path names (see crud-trio-command.ftl)
+                    wm.put("trio", trio.role());
+                }
                 wm.put("mappingAnn", capitalize(op.httpMethod().toLowerCase()) + "Mapping");
                 wm.put("path", op.path() != null ? op.path() : "");
                 wm.put("ucClass", ucClass);
@@ -2483,8 +2554,9 @@ public class GenerateCodeUseCase {
                 .filter(r -> inProject(r.projectId(), project))
                 .filter(r -> seenNames.add(r.name() == null ? r.id() : r.name().trim().toUpperCase()))
                 .toList();
-        // Roles OR an IdP each need the SecurityConfig (constants, and the OIDC chain).
-        if (roles.isEmpty() && idpFor(project).isEmpty()) return;
+        // Always a SecurityConfig: the service ships spring-boot-starter-security, and without
+        // one Spring's default locks every endpoint behind a random password. With no roles and
+        // no IdP the model declares no authorization, and the config says so (open service).
 
         var serviceName = serviceName(service);
         var appDir = serviceDir + "/" + serviceName + "-app";

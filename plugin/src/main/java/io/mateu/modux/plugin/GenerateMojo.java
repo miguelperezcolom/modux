@@ -42,7 +42,7 @@ public class GenerateMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException {
         try {
-            var path = Path.of(modelPath);
+            var path = ModuxModel.locate(modelPath);
             var model = ModuxModel.read(path);
 
             var id = override(projectId, model.projectString("id")

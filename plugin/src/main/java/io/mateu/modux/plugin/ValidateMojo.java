@@ -42,7 +42,7 @@ public class ValidateMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoFailureException {
         try {
-            var model = ModuxModel.read(Path.of(modelPath));
+            var model = ModuxModel.read(ModuxModel.locate(modelPath));
             var known = collectIds(model);
             var problems = new ArrayList<String>();
 

@@ -12,6 +12,7 @@
  */
 
 import type { Element } from './store.js';
+import { slug } from '../ids.js';
 
 const cap = (value: unknown) => {
   const text = String(value ?? '');
@@ -124,7 +125,9 @@ export function crudApi(aggregate: Element, boundedContextId: string): Element {
   const ids = crudUseCaseIds(aggregate.id);
   const apiId = crudApiId(aggregate.id);
   const model = aggregate.modelId ?? null;
-  const base = `/${aggregate.id}`;
+  // the path is public contract: it reads after the aggregate's NAME, not its id (a palette-minted
+  // id is a timestamp). Mirrored in CrudApi.java.
+  const base = `/${slug(String(aggregate.name ?? '')) || aggregate.id}`;
   const nameCap = cap(aggregate.name);
   const create = operation(`${apiId}-create`, `Crear${nameCap}`, 'POST', base,
     boundedContextId, { targetUseCaseId: ids[0], requestModelId: model, responseModelId: model });

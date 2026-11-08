@@ -458,6 +458,44 @@ describe('renaming', () => {
     expect((store.get('aggregates', 'agg-reserva')!.operations as Element[])[0].name).toBe('después');
   });
 
+  it('carries a rename to the companions still named after their owner', () => {
+    const store = model();
+    apply(store, { kind: 'add-boundedContext', id: 'bc-x', name: 'Contexto' } as never);
+    apply(store, { kind: 'add-aggregate', id: 'agg-x', name: 'Agregado', boundedContextId: 'bc-x' } as never);
+
+    apply(store, { kind: 'rename-element', type: 'boundedContext', id: 'bc-x', name: 'Prestamos' } as never);
+    apply(store, { kind: 'rename-element', type: 'aggregate', id: 'agg-x', name: 'Libro' } as never);
+
+    expect(store.get('modules', 'bc-x-main')?.name).toBe('Prestamos');
+    expect(store.get('models', 'model-x')?.name).toBe('Libro');
+  });
+
+  it('lets a service drawn after the contexts deploy their main modules', () => {
+    const store = ModelStore.from({ projects: [{ id: 'p', name: 'P' }] });
+    apply(store, { kind: 'add-boundedContext', id: 'bc-a', name: 'A' } as never);
+    apply(store, { kind: 'add-service', id: 'svc-1', name: 'Uno' } as never);
+    apply(store, { kind: 'add-service', id: 'svc-2', name: 'Dos' } as never);
+    expect(store.get('services', 'svc-1')?.moduleIds).toEqual(['bc-a-main']);
+    expect(store.get('services', 'svc-2')?.moduleIds).toBeUndefined();   // nothing left over
+    expect(store.get('projects', 'p')?.serviceIds).toEqual(['svc-1', 'svc-2']);
+  });
+
+  it('names the CRUD API path after the aggregate, not its (possibly minted) id', () => {
+    const store = model({
+      boundedContexts: [{ id: 'bc-res', name: 'Reservas', aggregateIds: ['aggregate-1794138423702'] }, { id: 'bc-2', name: 'Otro' }],
+      aggregates: [{ id: 'aggregate-1794138423702', name: 'Línea Pedido', modelId: 'm' }],
+    });
+    apply(store, { kind: 'add-context-crud', sourceId: 'bc-2', targetId: 'aggregate-1794138423702' } as never);
+    const ops = store.get('apis', crudApiId('aggregate-1794138423702'))!.operations as Element[];
+    expect(ops.map((o) => o.path)).toEqual(['/linea-pedido', '/linea-pedido/{id}', '/linea-pedido/{id}', '/linea-pedido']);
+  });
+
+  it('leaves a companion alone once it has a name of its own', () => {
+    const store = model({ models: [{ id: 'model-reserva', name: 'EstadoReserva' }] });
+    apply(store, { kind: 'rename-element', type: 'aggregate', id: 'agg-reserva', name: 'Booking' } as never);
+    expect(store.get('models', 'model-reserva')?.name).toBe('EstadoReserva');
+  });
+
   it('says so for a kind it does not know', () => {
     expect(() => apply(model(), { kind: 'rename-element', type: 'inventado', id: 'x' } as never))
       .toThrow(/no soportado/);

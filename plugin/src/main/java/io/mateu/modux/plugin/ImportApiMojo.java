@@ -46,7 +46,7 @@ public class ImportApiMojo extends AbstractMojo {
             throw new MojoExecutionException("No existe el contrato: " + contract.toAbsolutePath());
         }
         getLog().info("Modux import-api: " + contract);
-        System.setProperty("modux.model-file", modelPath);
+        System.setProperty("modux.model-file", ModuxModel.locate(modelPath).toString());
 
         try (var ctx = ModuxContext.create()) {
             var content = Files.readString(contract);

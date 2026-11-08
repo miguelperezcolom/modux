@@ -433,7 +433,21 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     store.remove('modules', id);
   },
 
-  'add-service': add({ type: 'services', init: () => ({ moduleIds: [] }) }),
+  'add-service': add({
+    type: 'services',
+    init: () => ({ moduleIds: [] }),
+    // Contexts drawn before any service exists have main modules nothing deploys: the new
+    // service takes them, as it would have had it been there first (see wireMainModule).
+    after: (id, store) => {
+      const deployed = new Set(store.all('services').flatMap((s) => asList(s.moduleIds)));
+      for (const m of store.all('modules')) {
+        if (m.main === true && !deployed.has(m.id)) store.addToList('services', id, 'moduleIds', m.id);
+      }
+      // the generator builds the services the project lists — one drawn and not listed is ignored
+      const project = store.all('projects')[0];
+      if (project) store.addToList('projects', project.id, 'serviceIds', id);
+    },
+  }),
   'remove-service': remove({ type: 'services' }),
   'add-service-module': (store, command) => {
     const service = String(command.id);

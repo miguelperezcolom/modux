@@ -66,6 +66,18 @@ const TOP_LEVEL: Record<string, TopLevel> = {
   'process': { type: 'processes' },
 };
 
+/**
+ * Elements born alongside another and named after it: a context's main module, an aggregate's
+ * state model. A rename carries over to them while they still have the old name — once someone
+ * named one on purpose, it is left alone. Without this the generated code keeps the placeholder
+ * («Contexto», «Agregado») the palette minted them with.
+ */
+const COMPANIONS: Record<string, (store: ModelStore, el: Element) => { type: string; id: string }[]> = {
+  boundedContexts: (store, el) => store.all('modules')
+    .filter((m) => m.boundedContextId === el.id && m.main === true).map((m) => ({ type: 'modules', id: m.id })),
+  aggregates: (_store, el) => (typeof el.modelId === 'string' && el.modelId ? [{ type: 'models', id: el.modelId }] : []),
+};
+
 const NESTED: Record<string, Nested> = {
   'operation': { owners: ['aggregates'], list: 'operations' },
   'api-operation': { owners: ['apis'], list: 'operations' },
@@ -97,8 +109,12 @@ export const RENAME_COMMANDS: Record<string, Handler> = {
     if (top) {
       // a rename of something that is not there is a no-op, not a failure: the canvas may be
       // one step behind the model
-      if (store.has(top.type, id)) {
+      const before = store.get(top.type, id);
+      if (before) {
         store.patch(top.type, id, { [top.field ?? 'name']: command.name });
+        for (const c of COMPANIONS[top.type]?.(store, before) ?? []) {
+          if (store.get(c.type, c.id)?.name === before.name) store.patch(c.type, c.id, { name: command.name });
+        }
       }
       return;
     }
