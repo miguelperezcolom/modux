@@ -40,6 +40,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- the Mateu release whose design contract (mateu-uidl) the Figma importer reads -->
+        <mateu.version>3.0-beta.51</mateu.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -96,15 +98,30 @@
         </dependency>
 
         <!--
-            NO hay dependencia de mateu, y es deliberado: modux GENERA código que corre sobre
-            mateu, pero modux no corre sobre mateu. Lo que se emite son strings (ver
+            NO hay dependencia de CÓDIGO de mateu, y es deliberado: modux GENERA código que corre
+            sobre mateu, pero modux no corre sobre mateu. Lo que se emite son strings (ver
             ComponentTreeJava y las plantillas .ftl), y un string no necesita el tipo en el
             classpath. El vocabulario ajeno que sí hay que conocer —FieldDataType,
             FieldStereotype— está copiado en domain/shared diciendo de quién es.
 
-            Esto es lo que permite construir modux con un `mvn install` limpio, sin tener mateu
-            compilado al lado, y por tanto publicar modux-maven-plugin.
+            La única excepción es un RECURSO: el contrato de diseño Figma ⇄ Mateu
+            (META-INF/mateu/contract.json), que mateu publica dentro de mateu-uidl y que el
+            importador de Figma lee del classpath en vez de mantener una copia a mano (la copia
+            se quedó 15 componentes por detrás, toda la categoría Page Templates). Se toma la
+            release publicada en Maven Central —así un `mvn install` limpio sigue sin necesitar
+            mateu compilado al lado— y SIN dependencias transitivas: sólo interesa el fichero.
         -->
+        <dependency>
+            <groupId>io.mateu</groupId>
+            <artifactId>mateu-uidl</artifactId>
+            <version>${mateu.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <dependency>
             <groupId>com.google.googlejavaformat</groupId>
