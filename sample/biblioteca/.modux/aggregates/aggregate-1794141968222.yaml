@@ -5,4 +5,4 @@ operations:
   - id: op-emit-event-1794145397368
     name: emitPrestamoRetrasado
     emits: PrestamoRetrasado
-    kind: CUSTOM
+    type: CUSTOM

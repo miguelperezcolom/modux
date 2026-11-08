@@ -450,6 +450,19 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     },
   }),
   'remove-service': remove({ type: 'services' }),
+
+  /** The port a service listens on: unique, since `up.sh` starts them all on the same host. */
+  'set-service-port': (store, command) => {
+    const id = String(command.id);
+    if (!store.has('services', id)) throw new CommandError(`Servicio desconocido: ${id}`);
+    const raw = String(command.port ?? '').trim();
+    if (!raw) { store.patch('services', id, { port: null }); return; }
+    const port = Number(raw);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new CommandError(`«${raw}» no es un puerto válido`);
+    const taken = store.all('services').find((s) => s.id !== id && s.port === port);
+    if (taken) throw new CommandError(`El puerto ${port} ya lo usa el servicio «${taken.name ?? taken.id}»`);
+    store.patch('services', id, { port });
+  },
   'add-service-module': (store, command) => {
     const service = String(command.id);
     if (!store.has('services', service)) throw new CommandError(`Servicio desconocido: ${service}`);

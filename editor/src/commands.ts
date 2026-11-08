@@ -768,6 +768,8 @@ export type ModuxCommand =
       outputModelId?: string | null;
       exposedAsRest?: boolean;
     }
+  | { kind: 'set-operation-intent'; id: string; intent?: string }
+  | { kind: 'set-service-port'; id: string; port?: number | string | null }
   | {
       /** Change what an element is, within a family (see store/commands/retype.ts); blocked while referenced. */
       kind: 'change-element-type';
