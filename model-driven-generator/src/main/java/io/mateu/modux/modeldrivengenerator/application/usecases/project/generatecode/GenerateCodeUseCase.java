@@ -1022,7 +1022,7 @@ public class GenerateCodeUseCase {
                             + "/custom/Default" + ucClass + "Steps.java");
         }
 
-        if (useCase.exposedAsRest()) {
+        if (useCase.exposedAsRest() || calledThroughInboundAcl(boundedContext, useCase)) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/rest");
             createFile(boundedContextDir, model, "usecase-rest-controller.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
@@ -1085,6 +1085,17 @@ public class GenerateCodeUseCase {
         createFile(boundedContextDir, testModel, "usecase-test.ftl",
                 "src/test/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + ucClass + "UseCaseTest.java");
+    }
+
+    /**
+     * An external system calls this use case through the context's inbound ACL (the editor's
+     * «external system → use case» gesture). The call has to arrive somewhere: that is the use
+     * case's REST endpoint, whether or not it was also flagged exposedAsRest.
+     */
+    private static boolean calledThroughInboundAcl(BoundedContextEntity boundedContext, UseCaseEntity useCase) {
+        return boundedContext.acls() != null && boundedContext.acls().stream()
+                .filter(a -> a.direction() != null && "INBOUND".equalsIgnoreCase(String.valueOf(a.direction())))
+                .anyMatch(a -> a.translatedUseCaseIds() != null && a.translatedUseCaseIds().contains(useCase.id()));
     }
 
     /** See {@link ProjectEntity#headless()}: no Mateu UI of its own. */

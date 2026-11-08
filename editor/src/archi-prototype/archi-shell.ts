@@ -541,7 +541,7 @@ export class ArchiShell extends LitElement {
    * accidental drag from orphaning it. Only context-scoped elements nest; for anything else, or
    * when it already belongs there, this is a no-op.
    */
-  private adoptIntoContext(id: string, x: number, y: number) {
+  private adoptIntoContext(id: string, x: number, y: number, label?: string) {
     const entry = this.catalogById().get(id);
     if ((entry?.kind ?? this.pendingKinds.get(id)) === 'module') { this.deployInto(id, x, y, entry?.label); return; }
     const contextType = entry?.contextType ?? BOUND_CONTEXT_TYPE[this.pendingKinds.get(id) ?? ''];
@@ -549,7 +549,7 @@ export class ArchiShell extends LitElement {
     const ctx = this.contextAt(x, y, id);
     if (!ctx || entry?.ownerId === ctx.id) return;
     this.emit('modux-command', { command: { kind: 'set-element-context', type: contextType, id, boundedContextId: ctx.id } });
-    this.flash(`«${entry?.label ?? this.node(id)?.label ?? id}» pasa a «${ctx.label}»`);
+    this.flash(`«${entry?.label ?? label ?? this.node(id)?.label ?? id}» pasa a «${ctx.label}»`);
   }
   /** A module dropped inside a service (deployment) box is deployed by it — and only by it. */
   private deployInto(id: string, x: number, y: number, label?: string) {
@@ -889,7 +889,8 @@ export class ArchiShell extends LitElement {
         this.view = { members: [...this.view.members, { id, x, y, w: el.w, h: el.h }] };
         this.emit('view-changed', { view: this.view });
         this.pendingKinds.set(id, el.kind);
-        this.adoptIntoContext(id, x, y);
+        // just minted: not in the projected model yet, so name it by what was dropped
+        this.adoptIntoContext(id, x, y, name);
         this.select(id);
       } else {
         this.flash(`«${el.label}» necesita un contenedor o aún no se puede crear suelto`);

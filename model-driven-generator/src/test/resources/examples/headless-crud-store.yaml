@@ -10,8 +10,11 @@ boundedContexts:
 - id: "bc-prestamos"
   name: "Prestamos"
   aggregateIds: ["agg-libro"]
-  useCaseIds: ["uc-crearAgg-libro", "uc-actualizarAgg-libro", "uc-eliminarAgg-libro"]
+  useCaseIds: ["uc-crearAgg-libro", "uc-actualizarAgg-libro", "uc-eliminarAgg-libro", "uc-prestar"]
   domainEventIds: ["ev-agg-libroCreado", "ev-agg-libroModificado", "ev-agg-libroEliminado"]
+  # the editor's «external system → use case» gesture: the call enters through the inbound ACL
+  acls:
+  - {id: "acl-mostrador", name: "AclMostrador", externalSystem: "ext-mostrador", direction: "INBOUND", translatedUseCaseIds: ["uc-prestar"]}
 modules:
 - {id: "bc-prestamos-main", name: "Prestamos", boundedContextId: "bc-prestamos", main: true}
 aggregates:
@@ -50,6 +53,11 @@ useCases:
   steps:
   - {id: "step-delete", name: "deleteLibro", type: "Custom", aggregateId: "agg-libro"}
   - {id: "step-publish", name: "publishLibroEliminado", type: "PublishDomainEvent", domainEventId: "ev-agg-libroEliminado"}
+- id: "uc-prestar"
+  name: "PrestarLibro"
+  inputModelId: "model-libro"
+  steps:
+  - {id: "step-prestar", name: "prestar", type: "Custom", intent: "Presta el libro"}
 queryServices:
 - id: "qs-crud-agg-libro"
   name: "LibroQueries"

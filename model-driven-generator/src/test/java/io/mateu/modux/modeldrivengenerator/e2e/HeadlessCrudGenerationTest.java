@@ -84,6 +84,14 @@ class HeadlessCrudGenerationTest {
         assertTrue(app.contains("com.fasterxml.jackson.databind.ObjectMapper objectMapper()"), app);
     }
 
+    @Test
+    void a_use_case_an_external_system_calls_gets_its_rest_entry_and_rejections_say_why() throws Exception {
+        var out = generate();
+        assertTrue(file(out, "PrestarLibroController.java").isPresent(),
+                "a use case called through the inbound ACL has no REST entry");
+        assertTrue(read(out, "application.yaml").contains("include-message: always"));
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();
