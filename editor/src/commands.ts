@@ -739,6 +739,20 @@ export type ModuxCommand =
       boundedContextId?: string;
     }
   | {
+      /** Move a context-scoped element (`type` = its store bucket) to a context, or detach it (omit boundedContextId). */
+      kind: 'set-element-context';
+      type: string;
+      id: string;
+      boundedContextId?: string;
+    }
+  | {
+      /** Change what an element is, within a family (see store/commands/retype.ts); blocked while referenced. */
+      kind: 'change-element-type';
+      id: string;
+      from: string;
+      to: string;
+    }
+  | {
       /** A free-standing element with no parent yet (adopted into its owner later by composition). */
       kind: 'add-loose-element';
       id: string;

@@ -22,6 +22,7 @@ import { PAGE_COMMANDS } from './commands/pages.js';
 import { PLATFORM_COMMANDS } from './commands/platform.js';
 import { READSIDE_COMMANDS } from './commands/readside.js';
 import { RENAME_COMMANDS } from './commands/rename.js';
+import { RETYPE_COMMANDS } from './commands/retype.js';
 import { UI_COMMANDS } from './commands/ui-wiring.js';
 import { WORKFLOW_COMMANDS } from './commands/workflows.js';
 import type { Changes, ModelStore } from './store.js';
@@ -39,6 +40,7 @@ export const HANDLERS: Record<string, Handler> = {
   ...CRUD_COMMANDS,
   ...UI_COMMANDS,
   ...RENAME_COMMANDS,
+  ...RETYPE_COMMANDS,
   // the UI block
   ...APP_COMMANDS,
   ...PAGE_COMMANDS,

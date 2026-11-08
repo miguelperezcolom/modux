@@ -52,6 +52,18 @@ const TOP_LEVEL: Record<string, TopLevel> = {
   'domain-event': { type: 'domainEvents' },
   'use-case': { type: 'useCases' },
   'workflow': { type: 'workflows' },
+  'etl-flow': { type: 'etlFlows' },
+  'identity-provider': { type: 'identityProviders' },
+  'service': { type: 'services' },
+  'module': { type: 'modules' },
+  'projection': { type: 'projections' },
+  'saga': { type: 'sagas' },
+  'model': { type: 'models' },
+  'enum': { type: 'enums' },
+  'gateway': { type: 'gateways' },
+  'subscription': { type: 'subscriptions' },
+  'notification': { type: 'notifications' },
+  'process': { type: 'processes' },
 };
 
 const NESTED: Record<string, Nested> = {

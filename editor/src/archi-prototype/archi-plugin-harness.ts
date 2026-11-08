@@ -53,6 +53,7 @@ let view = localStorage.getItem(VK)
       case 'readView': return view;
       case 'writeView': view = req.content as string; localStorage.setItem(VK, view); return true;
       case 'setModified': return null;
+      case 'setTextFocus': return null; // the IDE uses it to route copy/paste keys; nothing to do here
       default: throw new Error(`unknown op: ${op}`);
     }
   };

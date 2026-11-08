@@ -12,6 +12,8 @@ import '../modux-canvas.js';
 import { SYMBOLS, type CanvasTool, type ModuxCanvas } from '../modux-canvas.js';
 import type { Scene, SceneNode, SceneEdge, Point } from '../scene.js';
 import type { ModuxModel } from '../model.js';
+import { catalogEntries, retypeKey, type CatalogEntry } from './catalog.js';
+import { RETYPES, retypeTargets } from '../store/commands/retype.js';
 import { snapValue } from '../snap.js';
 
 /** SPIKE: a free-form view is just which model elements it shows and where. */
@@ -70,9 +72,10 @@ const EXTRA_TOOLS: ElementTool[] = [
 const KIND_LAYER: Record<string, LayerKey> = {
   component: 'context', area: 'context', system: 'context',
   event: 'event',
-  usecase: 'behavior', person: 'behavior', service: 'behavior',
-  workflow: 'orchestration', 'workflow-step': 'orchestration', 'etl-flow': 'orchestration',
-  api: 'api', 'api-operation': 'api', 'proxy-api': 'api', 'integration-event': 'api',
+  usecase: 'behavior', person: 'behavior', service: 'behavior', policy: 'behavior', 'query-service': 'behavior',
+  workflow: 'orchestration', 'workflow-step': 'orchestration', 'etl-flow': 'orchestration', process: 'orchestration',
+  api: 'api', 'api-operation': 'api', 'proxy-api': 'api', 'integration-event': 'api', subscription: 'api', notification: 'api',
+  gateway: 'external',
   'external-system': 'external', 'identity-provider': 'external',
   'ai-agent': 'ai', 'mcp-gateway': 'ai', rag: 'ai',
   'ui-app': 'ui', page: 'ui', 'menu-item': 'ui',
@@ -118,33 +121,24 @@ const BOUND_CREATE: Record<string, (id: string, name: string) => Record<string, 
   'integration-event': (id, name) => ({ kind: 'add-loose-element', id, name, elementType: 'integration-event' }),
 };
 
-/** Where each element kind lands in the projected model, so a member id resolves back to a node. */
-const RESOLVE_INDEX: { field: keyof ModuxModel; kind: string }[] = [
-  { field: 'boundedContexts', kind: 'component' },
-  { field: 'aggregates', kind: 'aggregate' },
-  { field: 'entities', kind: 'entity' },
-  { field: 'valueObjects', kind: 'value-object' },
-  { field: 'actors', kind: 'person' },
-  { field: 'looseUseCases', kind: 'usecase' },
-  { field: 'workflows', kind: 'workflow' },
-  { field: 'etlFlows', kind: 'etl-flow' },
-  { field: 'apis', kind: 'api' },
-  { field: 'proxyApis', kind: 'proxy-api' },
-  { field: 'externalSystems', kind: 'external-system' },
-  { field: 'identityProviders', kind: 'identity-provider' },
-  { field: 'aiAgents', kind: 'ai-agent' },
-  { field: 'mcpGateways', kind: 'mcp-gateway' },
-  { field: 'rags', kind: 'rag' },
-  { field: 'uiApps', kind: 'ui-app' },
-  { field: 'pages', kind: 'page' },
-  { field: 'services', kind: 'deployment' },
-  { field: 'modules', kind: 'module' },
-];
-
-/** A loose element's `elementType` → the node kind to draw it as. */
-const LOOSE_KIND: Record<string, string> = {
-  invariant: 'invariant', 'read-model': 'read-model', 'integration-event': 'integration-event',
+/** Human label of a node kind, for the catalog tree — elements of different kinds often share a name. */
+const CATALOG_KIND_LABEL: Record<string, string> = {
+  ...Object.fromEntries(ELEMENT_TOOLS.map((t) => [t.kind, t.label])),
+  deployment: 'Servicio', service: 'Servicio de dominio', 'query-service': 'Query service', model: 'Modelo',
+  system: 'Sistema', projector: 'Proyección', saga: 'Saga', gateway: 'Gateway', subscription: 'Suscripción',
+  notification: 'Notificación', process: 'Proceso',
 };
+
+/** Palette kind → store type, for a freshly minted element that is not in the projection yet. */
+const BOUND_CONTEXT_TYPE: Record<string, string> = {
+  aggregate: 'aggregates', usecase: 'useCases', policy: 'useCases',
+};
+
+/** The size a kind is placed at: its palette tool's, or a plain box for catalog-only kinds. */
+function defaultSize(kind: string): { w: number; h: number } {
+  const tool = ELEMENT_TOOLS.find((t) => t.kind === kind);
+  return tool ? { w: tool.w, h: tool.h } : { w: 170, h: 56 };
+}
 
 /** Node kind → the `type` the rename-element command expects (rename.ts). Absent ⇒ rename unsupported. */
 const RENAME_TYPE: Record<string, string> = {
@@ -203,17 +197,19 @@ export class ArchiShell extends LitElement {
     }
   }
   /** kind de nodo → tipo del modelo (para rename-element). */
-  private modelType(kind: string) { return RENAME_TYPE[kind] ?? kind; }
+  private modelType(n: SceneNode) {
+    return (this.bound ? this.catalogById().get(n.id)?.renameType : undefined) ?? RENAME_TYPE[n.kind] ?? n.kind;
+  }
   /** Resuelve un id del modelo a { kind de nodo, label }, recorriendo el modelo proyectado. */
   private resolveElement(id: string): { kind: string; label: string } | null {
+    const e = this.catalogById().get(id);
+    return e ? { kind: e.kind, label: e.label } : null;
+  }
+  private _catalogIndex: { model: ModuxModel; byId: Map<string, CatalogEntry> } | null = null;
+  private catalogById(): Map<string, CatalogEntry> {
     const m = this.model!;
-    for (const { field, kind } of RESOLVE_INDEX) {
-      const el = ((m[field] as { id: string; name?: string }[] | undefined) ?? []).find((x) => x.id === id);
-      if (el) return { kind, label: el.name ?? id };
-    }
-    const le = (m.looseElements ?? []).find((x) => x.id === id);
-    if (le) return { kind: LOOSE_KIND[le.elementType] ?? le.elementType, label: le.name };
-    return null;
+    if (this._catalogIndex?.model !== m) this._catalogIndex = { model: m, byId: new Map(catalogEntries(m).map((e) => [e.id, e])) };
+    return this._catalogIndex.byId;
   }
   /** Escena = miembros de la vista (resueltos contra el modelo) + relaciones entre ellos. */
   private buildViewScene(): Scene {
@@ -229,14 +225,27 @@ export class ArchiShell extends LitElement {
       });
     }
     const edges: SceneEdge[] = [];
+    // A child drawn inside its owner needs no composition line: the nesting already says it (as in
+    // ArchiMate). The line only shows when the two are apart on the canvas.
+    const box = new Map(this.view.members.map((x) => [x.id, x]));
+    const nestedIn = (childId: string, ownerId: string) => {
+      const c = box.get(childId), o = box.get(ownerId);
+      return !!c && !!o && Math.abs(c.x - o.x) < o.w / 2 && Math.abs(c.y - o.y) < o.h / 2;
+    };
     for (const r of m.relations ?? []) if (ids.has(r.sourceId) && ids.has(r.targetId))
       edges.push({ id: `rel:${r.sourceId}->${r.targetId}`, sourceId: r.sourceId, targetId: r.targetId, kind: 'association', markerEnd: 'open-arrow', label: r.type ?? undefined });
-    for (const a of m.aggregates ?? []) if (a.boundedContextId && ids.has(a.id) && ids.has(a.boundedContextId))
+    for (const a of m.aggregates ?? []) if (a.boundedContextId && ids.has(a.id) && ids.has(a.boundedContextId) && !nestedIn(a.id, a.boundedContextId))
       edges.push({ id: `agg-ctx:${a.id}`, sourceId: a.boundedContextId, targetId: a.id, kind: 'composition', markerStart: 'diamond' });
     for (const e of m.entities ?? []) if (e.aggregateId && ids.has(e.id) && ids.has(e.aggregateId))
       edges.push({ id: `ent-agg:${e.id}`, sourceId: e.aggregateId, targetId: e.id, kind: 'composition', markerStart: 'diamond' });
     for (const v of m.valueObjects ?? []) if (v.aggregateId && ids.has(v.id) && ids.has(v.aggregateId))
       edges.push({ id: `vo-agg:${v.id}`, sourceId: v.aggregateId, targetId: v.id, kind: 'composition', markerStart: 'diamond' });
+    // What else a context nests (use cases, events, read models, query services…): composed by it too.
+    for (const e of catalogEntries(m)) if (e.ownerId && e.kind !== 'aggregate' && ids.has(e.id) && ids.has(e.ownerId) && !nestedIn(e.id, e.ownerId))
+      edges.push({ id: `nest-ctx:${e.id}`, sourceId: e.ownerId, targetId: e.id, kind: 'composition', markerStart: 'diamond' });
+    // A projection writes its read model.
+    for (const p of m.projections ?? []) if (p.readModelId && ids.has(p.id) && ids.has(p.readModelId))
+      edges.push({ id: `proj-rm:${p.id}`, sourceId: p.id, targetId: p.readModelId, kind: 'access', markerEnd: 'open-arrow', dashed: true, dashArray: '2 3' });
     return { nodes, edges };
   }
   @state() private selectedId: string | null = null;
@@ -258,6 +267,8 @@ export class ArchiShell extends LitElement {
   /** Sticky palette tool (Shift-click keeps the tool selected after use, like Archi). */
   private sticky = false;
   /** Element being dragged from the palette onto the canvas (pointer-based; see beginPaletteDrag). */
+  /** Catalog element being dragged from the tree onto the canvas (see beginCatalogDrag). */
+  @state() private _catalogDrag: { entry: CatalogEntry; x: number; y: number; startX: number; startY: number; moved: boolean } | null = null;
   @state() private _paletteDrag: { el: ElementTool; x: number; y: number; startX: number; startY: number; moved: boolean } | null = null;
   /** Format painter: the fill to stamp onto clicked nodes (null = painter off). */
   @state() private painter: string | null = null;
@@ -316,6 +327,11 @@ export class ArchiShell extends LitElement {
     .row .lbl { overflow: hidden; text-overflow: ellipsis; }
     .child { padding-left: 16px; }
     .row.folder { font-weight: 600; color: #334155; }
+    .row.absent .lbl { color: #94a3b8; }
+    .row .kindtag { color: #94a3b8; font-size: 10.5px; flex: none; }
+    .row.absent .swatch { opacity: .45; }
+    .row .add { margin-left: auto; color: #94a3b8; font-size: 12px; padding-right: 6px; visibility: hidden; }
+    .row.absent:hover .add { visibility: visible; }
     .row.folder .fic { color: #94a3b8; margin-right: 2px; }
     .row .count { margin-left: auto; color: #94a3b8; font-size: 11px; font-weight: 400; padding-right: 6px; }
     .row .rel-ic { color: #94a3b8; width: 13px; text-align: center; }
@@ -490,8 +506,63 @@ export class ArchiShell extends LitElement {
     });
     this.moveNodes(moves);
   }
-  private onNodeMoved = (e: Event) => { const d = (e as CustomEvent).detail; this.moveNodes([d]); if (!this.bound) this.maybeNest(d.id); };
-  private onNodesMoved = (e: Event) => this.moveNodes((e as CustomEvent).detail.moves);
+  private onNodeMoved = (e: Event) => {
+    const d = (e as CustomEvent).detail; this.moveNodes([d]);
+    if (this.bound) this.adoptIntoContext(d.id, d.x, d.y); else this.maybeNest(d.id);
+  };
+  private onNodesMoved = (e: Event) => {
+    const moves = (e as CustomEvent).detail.moves as { id: string; x: number; y: number }[];
+    this.moveNodes(moves);
+    if (this.bound) for (const mv of moves) this.adoptIntoContext(mv.id, mv.x, mv.y);
+  };
+
+  /**
+   * Bound mode: an element dropped inside a bounded context BELONGS to it — the drop is the
+   * modelling gesture, not just placement (like Archi's nest-to-relate). The model moves (the
+   * composition edge then derives); dropping it outside again does not detach, which keeps an
+   * accidental drag from orphaning it. Only context-scoped elements nest; for anything else, or
+   * when it already belongs there, this is a no-op.
+   */
+  private adoptIntoContext(id: string, x: number, y: number) {
+    const entry = this.catalogById().get(id);
+    const contextType = entry?.contextType ?? BOUND_CONTEXT_TYPE[this.pendingKinds.get(id) ?? ''];
+    if (!contextType) return;
+    const ctx = this.contextAt(x, y, id);
+    if (!ctx || entry?.ownerId === ctx.id) return;
+    this.emit('modux-command', { command: { kind: 'set-element-context', type: contextType, id, boundedContextId: ctx.id } });
+    this.flash(`«${entry?.label ?? this.node(id)?.label ?? id}» pasa a «${ctx.label}»`);
+  }
+  /** The innermost bounded context of this view whose box holds the point. */
+  private contextAt(x: number, y: number, excludeId?: string): SceneNode | undefined {
+    return this.scene.nodes
+      .filter((c) => c.kind === 'component' && c.id !== excludeId
+        && Math.abs(x - c.x) < c.w / 2 && Math.abs(y - c.y) < c.h / 2)
+      .sort((a, b) => a.w * a.h - b.w * b.h)[0];
+  }
+  /**
+   * Kinds minted from the palette in this session, by id: a fresh element is not in the projected
+   * model until the host re-derives it, so its store type comes from the palette kind meanwhile.
+   */
+  private pendingKinds = new Map<string, string>();
+  /**
+   * A centre near (x, y) where a w×h box overlaps nothing in the view — so double-clicking several
+   * catalog elements lays them out instead of stacking them. Walks square rings outwards.
+   */
+  private freeSpot(x: number, y: number, w: number, h: number): { x: number; y: number } {
+    const GAP = 24;
+    const clear = (cx: number, cy: number) => this.view.members.every((m) =>
+      Math.abs(cx - m.x) >= (w + m.w) / 2 + GAP || Math.abs(cy - m.y) >= (h + m.h) / 2 + GAP);
+    const sx = w + GAP, sy = h + GAP;
+    for (let ring = 0; ring <= 12; ring++) {
+      for (let i = -ring; i <= ring; i++) {
+        for (const [dx, dy] of [[i, -ring], [i, ring], [-ring, i], [ring, i]]) {
+          const cx = x + dx * sx, cy = y + dy * sy;
+          if (clear(cx, cy)) return { x: cx, y: cy };
+        }
+      }
+    }
+    return { x, y };
+  }
 
   // Dropping a node inside a container simply nests it (no relationship dialog).
   private setParentId(id: string, parentId: string | undefined) { this.patchNodes((n) => (n.id === id ? { ...n, parentId } : n)); }
@@ -514,7 +585,7 @@ export class ArchiShell extends LitElement {
       // In bound mode the label is the model element's name — rename it there, not on the derived
       // scene (which the next projection would overwrite, so the edit would never persist).
       const n = this.node(d.id);
-      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: this.modelType(n.kind), id: d.id, name: d.name } });
+      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: this.modelType(n), id: d.id, name: d.name } });
       return;
     }
     this.commit();
@@ -671,7 +742,7 @@ export class ArchiShell extends LitElement {
   private rename(name: string) {
     if (this.bound) {
       const n = this.selectedNode();
-      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: this.modelType(n.kind), id: n.id, name } });
+      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: this.modelType(n), id: n.id, name } });
       return;
     }
     const id = this.selectedId; if (!id) return;
@@ -775,6 +846,8 @@ export class ArchiShell extends LitElement {
         this.emit('modux-command', { command: build(id, name) });
         this.view = { members: [...this.view.members, { id, x, y, w: el.w, h: el.h }] };
         this.emit('view-changed', { view: this.view });
+        this.pendingKinds.set(id, el.kind);
+        this.adoptIntoContext(id, x, y);
         this.select(id);
       } else {
         this.flash(`«${el.label}» necesita un contenedor o aún no se puede crear suelto`);
@@ -835,7 +908,7 @@ export class ArchiShell extends LitElement {
       <span class="lbl">${n.label}</span></div>`;
   }
 
-  private folder(key: string, label: string, rows: TemplateResult[], count: number): TemplateResult {
+  private folder(key: string, label: string, rows: TemplateResult[], count: number | string): TemplateResult {
     const collapsed = this.collapsed.has('f:' + key);
     return html`
       <div class="row folder" @click=${() => this.toggle('f:' + key)}>
@@ -845,30 +918,111 @@ export class ArchiShell extends LitElement {
       ${collapsed ? nothing : rows}`;
   }
 
-  private renderTree(): TemplateResult {
+  /**
+   * Bound mode: the tree is the whole CATALOG, not just this view. Elements already in the view
+   * read normally (click selects them on the canvas); the rest are dimmed, and are brought in by
+   * dragging them onto the canvas (or double-clicking: dropped at the centre of what is visible).
+   */
+  private renderCatalogTree(): TemplateResult {
     const q = this.treeQuery.trim().toLowerCase();
-    const layers: LayerKey[] = ['context', 'domain', 'event', 'behavior'];
+    const here = new Set(this.view.members.map((x) => x.id));
+    const entries = catalogEntries(this.model!).filter((e) => !q || e.label.toLowerCase().includes(q));
+    return html`${(Object.keys(LAYER) as LayerKey[]).map((fk) => {
+      const items = entries.filter((e) => kindLayer(e.kind) === fk).sort((a, b) => a.label.localeCompare(b.label));
+      if (!items.length) return nothing;
+      const shown = items.filter((e) => here.has(e.id)).length;
+      return this.folder(fk, LAYER[fk].name, items.map((e) => this.catalogRow(e, here.has(e.id))), `${shown}/${items.length}`);
+    })}${this.renderTreeRelations(q)}`;
+  }
+  private catalogRow(e: CatalogEntry, inView: boolean): TemplateResult {
+    const sw = LAYER[kindLayer(e.kind)];
+    const sel = inView && (this.selectedIds.includes(e.id) || this.selectedId === e.id);
+    return html`<div class="row child ${inView ? '' : 'absent'} ${sel ? 'sel' : ''}"
+         title=${inView ? e.label : `${e.label} — arrastra al lienzo (o doble click) para añadirlo a la vista`}
+         @pointerdown=${(ev: PointerEvent) => this.beginCatalogDrag(e, inView, ev)}
+         @dblclick=${() => { if (!inView) this.addCatalogMember(e); }}>
+      <span class="twisty"></span>
+      <span class="swatch" style="background:${sw.fill};border-color:${sw.stroke}"></span>
+      <span class="lbl">${e.label}</span><span class="kindtag">${CATALOG_KIND_LABEL[e.kind] ?? e.kind}</span>
+      ${inView ? nothing : html`<span class="add">＋</span>`}</div>`;
+  }
+  /** Pointer-based, like the palette drag — native DnD hangs inside JCEF. */
+  private beginCatalogDrag(entry: CatalogEntry, inView: boolean, e: PointerEvent) {
+    if (e.button !== 0) return;
+    if (inView) {
+      if (e.ctrlKey || e.metaKey) this.toggleSel(entry.id); else this.select(entry.id);
+      return;
+    }
+    e.preventDefault();
+    this._catalogDrag = { entry, x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, moved: false };
+    window.addEventListener('pointermove', this.onCatalogDragMove);
+    window.addEventListener('pointerup', this.onCatalogDragUp);
+  }
+  private onCatalogDragMove = (e: PointerEvent) => {
+    const d = this._catalogDrag; if (!d) return;
+    const moved = d.moved || Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 5;
+    this._catalogDrag = { ...d, x: e.clientX, y: e.clientY, moved };
+  };
+  private onCatalogDragUp = (e: PointerEvent) => {
+    window.removeEventListener('pointermove', this.onCatalogDragMove);
+    window.removeEventListener('pointerup', this.onCatalogDragUp);
+    const d = this._catalogDrag; this._catalogDrag = null;
+    if (!d?.moved) return;                                   // a tap on an absent row does nothing
+    const c = this.canvasEl; if (!c) return;
+    const r = c.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    const p = c.sceneFromClient(e.clientX, e.clientY);
+    this.addCatalogMember(d.entry, p.x, p.y);
+  };
+  /**
+   * Adds an existing catalog element to this view — a reference, nothing is minted. With a drop
+   * point it lands there (and joins the context it was dropped in); without one, at the first free
+   * spot around the centre of what is visible.
+   */
+  private addCatalogMember(entry: CatalogEntry, x?: number, y?: number) {
+    if (this.view.members.some((m) => m.id === entry.id)) return;
+    const { w, h } = defaultSize(entry.kind);
+    const dropped = x !== undefined && y !== undefined;
+    if (!dropped) {
+      const c = this.canvasEl, r = c?.getBoundingClientRect();
+      const centre = c && r ? c.sceneFromClient(r.left + r.width / 2, r.top + r.height / 2) : { x: 0, y: 0 };
+      ({ x, y } = this.freeSpot(snapValue(centre.x), snapValue(centre.y), w, h));
+    }
+    // member x/y are the box's CENTRE, as everywhere on the canvas
+    const at = { x: snapValue(x!), y: snapValue(y!) };
+    this.view = { members: [...this.view.members, { id: entry.id, ...at, w, h }] };
+    this.emit('view-changed', { view: this.view });
+    if (dropped) this.adoptIntoContext(entry.id, at.x, at.y);
+    this.select(entry.id);
+  }
+
+  private renderTree(): TemplateResult {
+    if (this.bound) return this.renderCatalogTree();
+    const q = this.treeQuery.trim().toLowerCase();
+    const layers = Object.keys(LAYER) as LayerKey[];
     return html`
       ${layers.map((fk) => {
         const nodes = this.scene.nodes
           .filter((n) => kindLayer(n.kind) === fk && !['junction', 'note', 'group'].includes(n.kind))
           .filter((n) => !q || n.label.toLowerCase().includes(q))
           .sort((a, b) => a.label.localeCompare(b.label));
-        if (q && !nodes.length) return nothing;
+        if (!nodes.length) return nothing;
         return this.folder(fk, LAYER[fk].name, nodes.map((n) => this.treeRow(n)), nodes.length);
       })}
-      ${(() => {
-        const edges = this.scene.edges
-          .map((e) => ({ e, s: this.node(e.sourceId), t: this.node(e.targetId) }))
-          .filter(({ s, t }) => s && t)
-          .map(({ e, s, t }) => ({ e, text: `${s!.label} — ${REL_NOTATION[e.kind]?.label ?? e.kind} → ${t!.label}` }))
-          .filter(({ text }) => !q || text.toLowerCase().includes(q));
-        if (q && !edges.length) return nothing;
-        const rows = edges.map(({ e, text }) => html`<div class="row child ${this.selectedId === e.id ? 'sel' : ''}"
-            @click=${() => { this.selectedId = e.id; this.selectedIds = []; }}>
-          <span class="twisty"></span><span class="rel-ic">╱</span><span class="lbl">${text}</span></div>`);
-        return this.folder('rel', 'Relaciones', rows, edges.length);
-      })()}`;
+      ${this.renderTreeRelations(q)}`;
+  }
+
+  private renderTreeRelations(q: string) {
+    const edges = this.scene.edges
+      .map((e) => ({ e, s: this.node(e.sourceId), t: this.node(e.targetId) }))
+      .filter(({ s, t }) => s && t)
+      .map(({ e, s, t }) => ({ e, text: `${s!.label} — ${REL_NOTATION[e.kind]?.label ?? e.kind} → ${t!.label}` }))
+      .filter(({ text }) => !q || text.toLowerCase().includes(q));
+    if (q && !edges.length) return nothing;
+    const rows = edges.map(({ e, text }) => html`<div class="row child ${this.selectedId === e.id ? 'sel' : ''}"
+        @click=${() => { this.selectedId = e.id; this.selectedIds = []; }}>
+      <span class="twisty"></span><span class="rel-ic">╱</span><span class="lbl">${text}</span></div>`);
+    return this.folder('rel', 'Relaciones', rows, edges.length);
   }
 
   // ---- palette -------------------------------------------------------------
@@ -964,6 +1118,31 @@ export class ArchiShell extends LitElement {
 
   // ---- properties ----------------------------------------------------------
   /** SPIKE: properties bound to the real model (aggregates view). */
+  /**
+   * The «Tipo» field: read-only, or — for the closed list of convertible types — a picker of what
+   * it can become. The model refuses (and says why) when something still points at the element.
+   */
+  private typeField(id: string, fallback: string) {
+    const entry = this.catalogById().get(id);
+    const from = entry ? retypeKey(entry) : undefined;
+    const targets = from ? retypeTargets(from) : [];
+    if (!from || !targets.length) return html`<label>Tipo</label><div class="ro">${fallback}</div>`;
+    const change = (e: Event) => {
+      const select = e.target as HTMLSelectElement, to = select.value;
+      // Show the CURRENT type until the model says otherwise: a refused change (banner) leaves it as
+      // it was, an accepted one re-renders the picker with the new type.
+      select.value = from;
+      if (to !== from) this.emit('modux-command', { command: { kind: 'change-element-type', id, from, to } });
+    };
+    return html`<label>Tipo</label>
+      <select .value=${from} @change=${change} title="Cambiar el tipo conserva id, nombre y lo común; se bloquea si algo lo referencia">
+        ${/* fixed family order: options must not be reordered in place, or the select's value
+            (set before its children update) would end up on the wrong one after a change */ ''}
+        ${Object.keys(RETYPES).filter((k) => k === from || targets.includes(k))
+          .map((k) => html`<option value=${k} ?selected=${k === from}>${RETYPES[k].label}</option>`)}
+      </select>`;
+  }
+
   private renderBoundProps() {
     const m = this.model!, id = this.selectedId;
     const rename = (e: Event) => this.rename((e.target as HTMLInputElement).value);
@@ -983,6 +1162,7 @@ export class ArchiShell extends LitElement {
       const invs = (agg.invariants ?? []).length;
       return html`<div class="form">
         <label>Nombre</label><input .value=${agg.name} @input=${rename} />
+        ${this.typeField(agg.id, 'Agregado')}
         <label>Contexto</label>
         <select .value=${agg.boundedContextId ?? ''} @change=${(e: Event) => this.emit('modux-command', { command: { kind: 'set-aggregate-context', id: agg.id, boundedContextId: (e.target as HTMLSelectElement).value } })}>
           ${m.boundedContexts.map((bc) => html`<option value=${bc.id}>${bc.name}</option>`)}
@@ -998,11 +1178,27 @@ export class ArchiShell extends LitElement {
       const cmdKind = ent ? 'set-entity-aggregate' : 'set-value-object-aggregate';
       return html`<div class="form">
         <label>Nombre</label><input .value=${mem.name} @input=${rename} />
-        <label>Tipo</label><div class="ro">${ent ? 'Entidad' : 'Value object'}</div>
+        ${this.typeField(mem.id, ent ? 'Entidad' : 'Value object')}
         <label>Agregado</label>
         <select .value=${mem.aggregateId ?? ''} @change=${(e: Event) => this.emit('modux-command', { command: { kind: cmdKind, id: mem.id, aggregateId: (e.target as HTMLSelectElement).value } })}>
           ${(m.aggregates ?? []).map((a) => html`<option value=${a.id}>${a.name}</option>`)}
         </select></div>`;
+    }
+    // Everything else in the catalog: its name, what it is and — when it can belong to one — its context.
+    const entry = id ? this.catalogById().get(id) : undefined;
+    if (entry) {
+      const setContext = (e: Event) => this.emit('modux-command', { command: {
+        kind: 'set-element-context', type: entry.contextType, id: entry.id,
+        boundedContextId: (e.target as HTMLSelectElement).value || undefined } });
+      return html`<div class="form">
+        <label>Nombre</label><input .value=${entry.label} @input=${rename} />
+        ${this.typeField(entry.id, CATALOG_KIND_LABEL[entry.kind] ?? entry.kind)}
+        ${entry.contextType ? html`<label>Contexto</label>
+          <select .value=${entry.ownerId ?? ''} @change=${setContext}>
+            <option value="">— sin contexto —</option>
+            ${m.boundedContexts.map((c) => html`<option value=${c.id} ?selected=${c.id === entry.ownerId}>${c.name}</option>`)}
+          </select>` : nothing}
+      </div>`;
     }
     return html`<div class="empty">Selecciona un elemento del modelo.</div>`;
   }
@@ -1089,7 +1285,7 @@ export class ArchiShell extends LitElement {
       </div>
 
       <div class="panel tree">
-        <header>Modelo</header>
+        <header>${this.bound ? 'Catálogo' : 'Modelo'}</header>
         <input class="treesearch" type="search" placeholder="Buscar…" .value=${this.treeQuery}
           @input=${(e: Event) => (this.treeQuery = (e.target as HTMLInputElement).value)} />
         <div class="body">${this.renderTree()}</div>
@@ -1151,6 +1347,9 @@ export class ArchiShell extends LitElement {
       ${this.toast ? html`<div class="toast">${this.toast}</div>` : nothing}
       ${this._paletteDrag?.moved
         ? html`<div class="drag-ghost" style="left:${this._paletteDrag.x}px;top:${this._paletteDrag.y}px">${this._paletteDrag.el.label}</div>`
+        : nothing}
+      ${this._catalogDrag?.moved
+        ? html`<div class="drag-ghost" style="left:${this._catalogDrag.x}px;top:${this._catalogDrag.y}px">${this._catalogDrag.entry.label}</div>`
         : nothing}
     `;
   }
