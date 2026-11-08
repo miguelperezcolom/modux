@@ -6,8 +6,9 @@ package ${project.packageName}.${module.slug}.infra.in.async;
 <#list enrichedActions as action>
 <#if action.type == "CallUseCase">
 <#assign hasCallUseCase = true>
-<#if action.matchedFields??>
-<#list action.matchedFields as f>
+<#if action.commandFields??>
+<#-- the fields the constructor call below actually writes -->
+<#list action.commandFields as f>
 <#if f.basicType>
 <#if f.type == "date"><#assign needsLocalDate = true></#if>
 <#if f.type == "time"><#assign needsLocalTime = true></#if>

@@ -16,13 +16,23 @@ boundedContexts:
   # the editor's «external system → use case» gesture: the call enters through the inbound ACL
   acls:
   - {id: "acl-mostrador", name: "AclMostrador", externalSystem: "ext-mostrador", direction: "INBOUND", translatedUseCaseIds: ["uc-prestar"]}
+- id: "bc-avisos"
+  name: "Avisos"
+  useCaseIds: ["uc-registrar"]
 modules:
 - {id: "bc-prestamos-main", name: "Prestamos", boundedContextId: "bc-prestamos", main: true}
+- {id: "bc-avisos-main", name: "Avisos", boundedContextId: "bc-avisos", main: true}
 aggregates:
 - id: "agg-libro"
   name: "Libro"
   modelId: "model-libro"
 models:
+# named like the payload a flow derives on purpose: it must not displace it
+- id: "model-retrasado"
+  name: "PrestamoRetrasadoPayload"
+  fields:
+  - {id: "f-r-prestamo", name: "prestamoId", basicType: true, type: "string"}
+  - {id: "f-r-vence", name: "fechaVencimiento", basicType: true, type: "date"}
 - id: "model-libro"
   name: "Libro"
   fields:
@@ -32,6 +42,7 @@ domainEvents:
 - {id: "ev-agg-libroCreado", name: "LibroCreado"}
 - {id: "ev-agg-libroModificado", name: "LibroModificado"}
 - {id: "ev-agg-libroEliminado", name: "LibroEliminado"}
+- {id: "ev-retrasado", name: "PrestamoRetrasado", modelId: "model-retrasado"}
 useCases:
 - id: "uc-crearAgg-libro"
   name: "CrearLibro"
@@ -66,6 +77,11 @@ useCases:
   steps:
   - {id: "step-call-agg-libro", name: "callLibro", type: "CallAggregateOperation", aggregateId: "agg-libro"}
   - {id: "step-call-prestar", name: "callPrestarLibro", type: "CallUseCase", useCaseId: "uc-prestar"}
+- id: "uc-registrar"
+  name: "RegistrarAviso"
+  inputModelId: "model-retrasado"
+  steps:
+  - {id: "step-registrar", name: "registrar", type: "Custom", intent: "Registra el aviso"}
 queryServices:
 - id: "qs-crud-agg-libro"
   name: "LibroQueries"
@@ -85,3 +101,6 @@ externalSystems:
 - {id: "ext-mostrador", name: "Mostrador", dependsOnApiIds: ["api-crud-agg-libro"]}
 scheduledTriggers:
 - {id: "st-diario", name: "Diario Retrasos", cronExpression: "0 0 6 * * *", useCaseId: "uc-reservar"}
+# what the plugin draws from an event to a use case of another context: no field list
+flows:
+- {id: "flow-retraso", name: "RegistrarAviso", archetype: "TRIGGERS", triggerAggregateId: "agg-libro", triggerEvent: "PrestamoRetrasado", targetBoundedContextId: "bc-avisos", targetUseCaseId: "uc-registrar"}
