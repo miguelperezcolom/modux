@@ -24,6 +24,8 @@ public class CSharpEmitter {
            .append("\" by figma-maven-plugin — review the TODOs before shipping.</summary>\n");
         out.append("[UI(\"").append(screen.route().replaceFirst("^/", "")).append("\"), Title(\"")
            .append(Names.escape(screen.name())).append("\")]\n");
+        if (screen.template() != null) out.append("// TODO page template ").append(screen.template())
+                .append(": compose it in IComponentTreeSupplier.Component(); its slots are flattened below\n");
         if ("wizard".equals(screen.type())) out.append("// TODO wizard frame: extend Wizard and assign [Step(n)] to the properties\n");
         out.append("public class ").append(className).append("\n{\n");
         out.append(body);
@@ -67,6 +69,10 @@ public class CSharpEmitter {
                 for (Screen.Node child : node.children()) emitNode(child, out, pending, names);
             }
             default -> {
+                if (!node.children().isEmpty()) {
+                    for (Screen.Node child : node.children()) emitNode(child, out, pending, names);
+                    return;
+                }
                 flush(pending, out);
                 out.append("    // TODO ").append(node.kind()).append(": fluent-only in Mateu.NET — compose it from\n");
                 out.append("    // IComponentTreeSupplier.Component(), e.g. new ").append(Names.pascal(node.kind()))

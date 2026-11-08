@@ -51,7 +51,7 @@ public class FigmaGenerateMojo extends AbstractMojo {
     @Parameter(property = "figma.basePackage", defaultValue = "generated.figma")
     private String basePackage;
 
-    /** Overrides the bundled Mateu design contract. */
+    /** Overrides the Mateu design contract (default: the one published in io.mateu:mateu-uidl). */
     @Parameter(property = "figma.contract")
     private File contract;
 
@@ -73,7 +73,9 @@ public class FigmaGenerateMojo extends AbstractMojo {
             int generated = 0;
             try (Stream<Path> files = Files.list(figmaDir.toPath())) {
                 for (Path file : files.filter(p -> p.toString().endsWith(".json")).sorted().toList()) {
-                    for (Screen screen : reader.read(file)) {
+                    List<Screen> screens = reader.read(file);
+                    reader.warnings().forEach(w -> getLog().warn("figma:generate (" + file.getFileName() + "): " + w));
+                    for (Screen screen : screens) {
                         String className = Names.pascal(screen.name());
                         if (targetLanguages.contains("java")) {
                             Path dir = outputDir.toPath().resolve("java").resolve(basePackage.replace('.', '/'));

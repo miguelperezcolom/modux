@@ -158,6 +158,11 @@ The app follows **Hexagonal Architecture** (the same pattern it generates), unde
   `project/aicomplete`, `project/generatehla`, `model/{check,lint,topology,view}`,
   `flow/coherence`, `process/expand`, `interaction/{derive,shared}` (sequence
   scenarios: ephemeral derivation + message-backing resolution).
+  `project/importfigma` (and `figma-maven-plugin`) read the Figma ⇄ Mateu design
+  contract from the `io.mateu:mateu-uidl` artifact (`META-INF/mateu/contract.json`,
+  version pinned by `mateu.version` in each pom) — never keep a copy in modux; bump
+  `mateu.version` to follow a newer contract. `FigmaPageTemplatesTest` fails when a
+  contract kind is missing from `UiComponentNodeEntity.KINDS`.
 - `application/out/` — ports: `repositories/`, `query/` (+ `dtos/`), `store/`
   (`ModelStore`, `WorkspaceStore`), `shared/`.
 - `infra/in/` — inbound adapters:

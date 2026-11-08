@@ -85,7 +85,19 @@ public record UiComponentNodeEntity(
             "tab", "accordionLayout", "card", "gridLayout", "boardLayout", "dashboardLayout",
             "masterDetailLayout", "foldoutLayout", "carouselLayout", "appLayout",
             // Mateu design-contract containers (Figma importer)
-            "section", "zones", "wizard", "app", "hero", "toolbar", "scoreboard", "pageHeader");
+            "section", "zones", "wizard", "app", "hero", "toolbar", "scoreboard", "pageHeader",
+            // Mateu design-contract v2 containers (io.mateu:mateu-uidl META-INF/mateu/contract.json)
+            "accordion", "accordionPanel", "avatarGroup", "boardLayoutItem", "boardLayoutRow",
+            "buttonGroup", "confirmDialog", "container", "contentLayout", "contextMenu",
+            "dashboardPanel", "details", "dialog", "div", "drawer", "dropZone", "foldoutPanel",
+            "formItem", "formRow", "formSection", "formSubSection", "fullWidth", "grid",
+            "gridGroupColumn", "popover", "responsiveGrid", "scroller", "slotted", "split", "tabs",
+            "tooltip",
+            // v2 page templates: the FormTemplates are laid out with the kinds above by the
+            // importer; these are the Java-archetype frames, kept as placeholder nodes
+            "pageTemplate", "templatePart", "calendarPage", "collectionDetail", "dashboard",
+            "dataManagement", "foldout", "ganttPage", "generalOverview", "guidedProcessDrawer",
+            "heroSearch", "itemOverview", "smartSearchPage", "todoList", "welcome");
 
     /** Leaf components. */
     public static final Set<String> COMPONENT_KINDS = Set.of(
@@ -100,7 +112,11 @@ public record UiComponentNodeEntity(
             // Mateu's enterprise/booking wave (dispatched components, 2026-07)
             "planningBoard", "offerCard", "addOnPicker", "paymentPicker", "pricingTable",
             "processMonitor", "resourceGrid", "taskQueue", "ledger", "chat", "markdown",
-            "breadcrumbs");
+            "breadcrumbs",
+            // Mateu design-contract v2 components
+            "actionPanel", "anchor", "avatar", "badge", "bpmn", "chart", "cookieConsent",
+            "formEditor", "gridColumn", "icon", "image", "map", "matrixGrid", "messageInput",
+            "messageList", "notFound", "notification", "recordMerge", "virtualList", "workflow");
 
     /** Every valid node kind. */
     public static final Set<String> KINDS;

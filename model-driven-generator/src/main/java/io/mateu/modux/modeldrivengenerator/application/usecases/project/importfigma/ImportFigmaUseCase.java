@@ -34,7 +34,9 @@ public class ImportFigmaUseCase {
     public List<PageEntity> handle(ImportFigmaCommand command) {
         JsonNode figmaFile = fetch(command);
         FigmaContract contract = FigmaContract.load(command.contractPath());
-        List<PageEntity> pages = new FigmaToModel(contract).map(figmaFile);
+        FigmaToModel mapper = new FigmaToModel(contract);
+        List<PageEntity> pages = mapper.map(figmaFile);
+        mapper.warnings().forEach(warning -> log.warn("Figma import: {}", warning));
         for (PageEntity page : pages) {
             repository.save(page);
             log.info("Imported Figma frame as page '{}' ({} content nodes)", page.name(),

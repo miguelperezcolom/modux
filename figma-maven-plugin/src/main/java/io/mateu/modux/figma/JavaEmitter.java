@@ -30,6 +30,11 @@ public class JavaEmitter {
            .append("\" by figma-maven-plugin — review the TODOs before shipping. */\n");
         out.append("@UI(\"").append(screen.route()).append("\")\n");
         out.append("@Title(\"").append(Names.escape(screen.name())).append("\")\n");
+        if (screen.template() != null) {
+            out.append("// Page template ").append(screen.template()).append(": in YAML declare `template: {type: ")
+               .append(screen.template()).append("}` on the Form; in Java compose the matching archetype.\n");
+            out.append("// Its slots are flattened below (fields, texts and actions only).\n");
+        }
         if (wizard) {
             out.append("// TODO wizard frame: extend io.mateu.core...orchestrators.wizard.Wizard,\n");
             out.append("// declare one field per WizardStep and move the sections below into the steps\n");
@@ -113,6 +118,12 @@ public class JavaEmitter {
                 for (Screen.Node child : node.children()) emitNode(child, out, pending, names, depth);
             }
             default -> {
+                if (!node.children().isEmpty()) {
+                    // a container the emitter has no annotation for (page template, slot, tabs…):
+                    // its content still comes out
+                    for (Screen.Node child : node.children()) emitNode(child, out, pending, names, depth);
+                    return;
+                }
                 flush(pending, out);
                 String name = names.unique(Names.camel(orDefault(node.title(), node.kind())));
                 out.append("  @Label(\"\")\n");

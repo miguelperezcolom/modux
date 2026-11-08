@@ -20,6 +20,8 @@
   <properties>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- the Mateu release whose design contract (mateu-uidl) the reader uses -->
+    <mateu.version>3.0-beta.51</mateu.version>
   </properties>
 
   <dependencies>
@@ -40,6 +42,19 @@
       <artifactId>maven-core</artifactId>
       <version>3.9.9</version>
       <scope>provided</scope>
+    </dependency>
+    <!-- Only for its META-INF/mateu/contract.json: the Figma <-> Mateu design contract is read
+         from the Mateu release, never kept as a copy here. No transitive dependencies. -->
+    <dependency>
+      <groupId>io.mateu</groupId>
+      <artifactId>mateu-uidl</artifactId>
+      <version>${mateu.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>

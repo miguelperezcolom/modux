@@ -26,6 +26,8 @@ public class PythonEmitter {
         out.append(")\n\n\n");
         out.append("@ui(\"").append(screen.route().replaceFirst("^/", "")).append("\")\n");
         out.append("@title(\"").append(Names.escape(screen.name())).append("\")\n");
+        if (screen.template() != null) out.append("# TODO page template ").append(screen.template())
+                .append(": compose it in component(); its slots are flattened below\n");
         if ("wizard".equals(screen.type())) out.append("# TODO wizard frame: extend Wizard and assign Step(n) markers\n");
         out.append("class ").append(className).append(":\n");
         out.append(body.length() > 0 ? body : "    pass\n");
@@ -71,9 +73,15 @@ public class PythonEmitter {
             case "verticalLayout", "horizontalLayout", "zones", "pageHeader", "wizard", "app" -> {
                 for (Screen.Node child : node.children()) emitNode(child, out, pending, names);
             }
-            default -> out.append("    # TODO ").append(node.kind())
+            default -> {
+                if (!node.children().isEmpty()) {
+                    for (Screen.Node child : node.children()) emitNode(child, out, pending, names);
+                    return;
+                }
+                out.append("    # TODO ").append(node.kind())
                     .append(": compose with mateu_uidl.components.").append(Names.pascal(node.kind()))
                     .append(node.text() != null ? " — text \"" + Names.escape(node.text()) + "\"" : "").append("\n\n");
+            }
         }
     }
 

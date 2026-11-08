@@ -104,22 +104,22 @@ public final class ComponentTreeJava {
             case "formLayout" -> use("FormLayout") + ".builder().autoResponsive(true).content(" + listOf(map(kids)) + ").build()";
             case "gridLayout" -> use("DashboardLayout") + ".builder().columns(3).items(" + listOf(map(kids)) + ").build()";
             case "dashboardLayout" -> use("DashboardLayout") + ".builder().items(" + listOf(map(kids)) + ").build()";
-            case "splitLayout" -> use("SplitLayout") + ".builder().master(" + vertical(kids.subList(0, (kids.size() + 1) / 2)) +
+            case "splitLayout", "split" -> use("SplitLayout") + ".builder().master(" + vertical(kids.subList(0, (kids.size() + 1) / 2)) +
                     ").detail(" + vertical(kids.subList((kids.size() + 1) / 2, kids.size())) + ").build()";
             case "masterDetailLayout" -> use("MasterDetailLayout") + ".builder().master(" +
                     (kids.isEmpty() ? vertical(List.of()) : expr(kids.get(0))) +
                     ").detail(" + vertical(kids.isEmpty() ? kids : kids.subList(1, kids.size())) + ").build()";
-            case "tabLayout" -> {
+            case "tabLayout", "tabs" -> {
                 var tabs = new ArrayList<String>();
                 var i = 0;
                 for (var t : kids) {
                     if (!"tab".equals(t.kind())) continue;
-                    tabs.add(use("Tab") + ".builder().label(" + q(or(t.title(), "Pestaña " + (tabs.size() + 1))) +
+                    tabs.add(use("Tab") + ".builder().label(" + q(or(t.title(), or(t.label(), "Pestaña " + (tabs.size() + 1)))) +
                             ").content(" + expr(t) + ").active(" + (i++ == 0) + ").build()");
                 }
                 yield use("TabLayout") + ".builder().tabs(" + listOf(tabs) + ").build()";
             }
-            case "accordionLayout" -> {
+            case "accordionLayout", "accordion" -> {
                 var panels = new ArrayList<String>();
                 for (var c : kids) {
                     panels.add(use("AccordionPanel") + ".builder().label(" + q(or(c.title(), or(c.label(), "Sección " + (panels.size() + 1)))) +
@@ -141,6 +141,9 @@ public final class ComponentTreeJava {
                 }
                 yield use("FoldoutLayout") + ".builder().panels(" + listOf(panels) + ").build()";
             }
+            case "dashboardPanel" -> use("DashboardPanel") + ".builder().title(" + q(or(n.title(), "Panel")) + ")" +
+                    (n.params() != null && n.params().get("subtitle") != null ? ".subtitle(" + q(n.params().get("subtitle")) + ")" : "") +
+                    ".content(" + vertical(kids) + ").build()";
             case "carouselLayout" -> use("CarouselLayout") + ".builder().content(" + listOf(map(kids)) + ").dots(true).nav(true).build()";
             case "hero" -> use("HeroSection") + ".builder().title(" + q(or(n.title(), "Un titular que vende")) +
                     ").subtitle(" + q(or(n.text(), "El subtítulo que lo explica")) + ").centered(true)" +
@@ -278,7 +281,11 @@ public final class ComponentTreeJava {
             case "field" -> standaloneField(n);
             case "listing" -> listing(n, false);
             case "crud" -> listing(n, true);
-            default -> use("Text") + ".builder().text(" + q("[" + n.kind() + "]") + ").build()";
+            // a kind with no builder of its own: its content still renders (a container from the
+            // design contract), else an honest placeholder naming the kind
+            default -> kids.isEmpty()
+                    ? use("Text") + ".builder().text(" + q("[" + n.kind() + "]") + ").build()"
+                    : vertical(kids);
         };
     }
 
