@@ -8,6 +8,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Initialise a modux catalog: create {@code .modux/} with its marker at the chosen directory
@@ -28,15 +29,32 @@ public final class NewCatalogAction extends AnAction {
             return;
         }
         try {
-            // Just the directory: its name is the marker, and the buckets appear as elements are
-            // added (§12.3). No index file to seed.
+            // The directory's name is the marker and the buckets appear as elements are added
+            // (§12.3). The one element seeded is the project: a repository is one project, and
+            // without it nothing can be generated — nor is there any gesture to create it later.
+            var slug = ModuxActionSupport.slug(dir.getName());
             var catalog = WriteCommandAction.writeCommandAction(project)
                     .withName("Init Modux Catalog")
-                    .<VirtualFile, IOException>compute(() -> dir.createChildDirectory(this, ModuxProject.CATALOG_DIR));
+                    .<VirtualFile, IOException>compute(() -> {
+                        var root = dir.createChildDirectory(this, ModuxProject.CATALOG_DIR);
+                        var file = root.createChildDirectory(this, "projects").createChildData(this, slug + ".yaml");
+                        file.setBinaryContent(projectYaml(slug, dir.getName()).getBytes(StandardCharsets.UTF_8));
+                        return root;
+                    });
             Messages.showInfoMessage(project, "Catálogo creado en " + catalog.getPath()
-                    + ".\nCrea una vista con New → Modux View.", "Modux");
+                    + " (proyecto «" + slug + "», revisa su paquete en projects/" + slug + ".yaml)."
+                    + "\nCrea una vista con New → Modux View.", "Modux");
         } catch (IOException e) {
             Messages.showErrorDialog(project, "No se pudo crear el catálogo: " + e.getMessage(), "Modux");
         }
+    }
+
+    /** The seeded project element: identity and where generation goes, all of it editable. */
+    static String projectYaml(String slug, String name) {
+        var pkg = "com.example." + slug.replace("-", "");
+        return "id: " + slug + "\n"
+                + "name: \"" + name.replace("\"", "") + "\"\n"
+                + "packageName: " + pkg + "\n"
+                + "outputPath: generated\n";
     }
 }

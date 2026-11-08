@@ -12,7 +12,7 @@ import ${pkg}.application.usecases.${aggregate.name?lower_case}.${trio.role}.${b
 import ${pkg}.application.usecases.${aggregate.name?lower_case}.${trio.role}.${builtIn}UseCase;
 <#if trio.event??>
 import ${pkg}.domain.events.${trio.event}Event;
-import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.cloud.stream.function.StreamOperations;
 </#if>
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class ${trio.className}UseCase {
 
     final ${builtIn}UseCase ${builtIn?uncap_first};
 <#if trio.event??>
-    final StreamBridge streamBridge;
+    final StreamOperations streamBridge;
 </#if>
 
     @Transactional

@@ -746,6 +746,13 @@ export type ModuxCommand =
       boundedContextId?: string;
     }
   | {
+      /** Set or clear an element's free-text description (same type vocabulary as rename). */
+      kind: 'set-element-description';
+      type: string;
+      id: string;
+      description?: string;
+    }
+  | {
       /** Change what an element is, within a family (see store/commands/retype.ts); blocked while referenced. */
       kind: 'change-element-type';
       id: string;

@@ -204,6 +204,8 @@ export interface ViewLayout {
   edges: Record<string, Point[]>;
   /** Node id → explicit size, for resizable containers. */
   sizes?: Record<string, { w: number; h: number }>;
+  /** Node id → fill colour chosen for THIS view (presentation, not model). */
+  fills?: Record<string, string>;
   /**
    * LEGACY (pre single-level): the persisted detail level. Only read by the
    * one-shot migration that folds the old per-level sheets into this one.
@@ -235,6 +237,7 @@ export function normalizeViewLayout(value: ViewLayout | DiagramLayout | undefine
       nodes: v.nodes ?? {},
       edges: v.edges ?? {},
       sizes: v.sizes ?? {},
+      ...(v.fills ? { fills: v.fills } : {}),
       detail: v.detail,
       collapsed: v.collapsed,
       expanded: v.expanded,

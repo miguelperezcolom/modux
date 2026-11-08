@@ -25,7 +25,7 @@ import '../archi-prototype/archi-shell.js';
 import type { ArchiShell } from '../archi-prototype/archi-shell.js';
 
 /** One member of a free-form view: an element id and where it sits on the canvas. */
-type ViewMember = { id: string; x: number; y: number; w: number; h: number };
+type ViewMember = { id: string; x: number; y: number; w: number; h: number; fill?: string };
 
 /**
  * The view document (§12): self-contained members + geometry. The Archi shell wants members with
@@ -126,6 +126,7 @@ export class ModuxArchiIde extends LitElement {
         y: pos?.y ?? 120 + Math.floor(i / 4) * 180,
         w: size?.w ?? DEFAULT_W,
         h: size?.h ?? DEFAULT_H,
+        ...(geom.fills?.[id] ? { fill: geom.fills[id] } : {}),
       };
     });
   }
@@ -209,15 +210,17 @@ export class ModuxArchiIde extends LitElement {
     try {
       const nodes: ViewLayout['nodes'] = {};
       const sizes: NonNullable<ViewLayout['sizes']> = {};
+      const fills: Record<string, string> = {};
       for (const m of this.members) {
         nodes[m.id] = { x: m.x, y: m.y };
         sizes[m.id] = { w: m.w, h: m.h };
+        if (m.fill) fills[m.id] = m.fill;
       }
       this.doc = {
         viewId: this.doc.viewId,
         ...(this.doc.name ? { name: this.doc.name } : {}),
         memberIds: this.members.map((m) => m.id),
-        geometry: { nodes, edges: {}, sizes },
+        geometry: { nodes, edges: {}, sizes, ...(Object.keys(fills).length ? { fills } : {}) },
       };
       await writeView(bridge, stringify(this.doc));
       await this.fs.commit();

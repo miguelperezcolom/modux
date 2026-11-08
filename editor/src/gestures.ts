@@ -56,7 +56,7 @@ const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
   { id: 'uc-call', label: 'Invocación', hint: 'Caso de uso → caso de uso: lo invoca como un paso' },
   { id: 'query-call', label: 'Consulta', hint: 'Caso de uso → query service: lo consulta' },
   { id: 'aggregate-call', label: 'Opera sobre', hint: 'Caso de uso → agregado: opera sobre él' },
-  { id: 'emission', label: 'Emisión', hint: 'Agregado/servicio → evento de dominio · caso de uso → evento de aplicación' },
+  { id: 'emission', label: 'Emisión', hint: 'Agregado/servicio → evento de dominio · caso de uso → evento (lo publica como paso)' },
   { id: 'flow-triggers', label: 'Flow · dispara', hint: 'Evento → caso de uso de otro contexto (TRIGGERS)' },
   { id: 'flow-materializes', label: 'Flow · materializa', hint: 'Evento → contexto o read model (MATERIALIZES)' },
   { id: 'actor-use', label: 'Uso (actor)', hint: 'Actor → caso de uso, query service, agregado (CRUD) o agente' },
@@ -204,7 +204,7 @@ export function connectionOptions(
   }
   if (
     (emitterIds.has(sourceId) && eventIds.has(targetId)) ||
-    (ucIds.has(sourceId) && appEventIds.has(targetId))
+    (ucIds.has(sourceId) && (appEventIds.has(targetId) || eventIds.has(targetId)))
   ) {
     offer('emission', () => {
       if (!(m.emissions ?? []).some((em) => em.sourceId === sourceId && em.domainEventId === targetId)) {
