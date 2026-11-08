@@ -29,8 +29,13 @@ import java.util.regex.Pattern;
  *       its variant values, the {@code #config} text layer ({@code "fieldId=email; actionId=save"},
  *       empty values not read) and the text layers named in its {@code texts} map become
  *       {@code params} (title/text/label/fieldId/stereotype land on the node's typed fields). A text
- *       layer still showing its own name is an unedited placeholder and is not read.
- *   <li>A frame named {@code slot:<name>} holds the content of that slot of the instance it is in
+ *       layer still showing its own name is an unedited placeholder and is not read. The current
+ *       library carries config and texts as TEXT/BOOLEAN component properties
+ *       ({@code componentProperties}, keys {@code <name>#<id>}): they WIN over {@code #config}
+ *       and the text layers; an unknown one is a warning.
+ *   <li>A native Figma slot (a child of type {@code SLOT}, named after its frame or linked to the
+ *       {@code slot:<name>} property) or a frame named {@code slot:<name>} holds the content of
+ *       that slot of the instance it is in
  *       — or, beside a page-template instance in a screen frame, of that template's slot; the other
  *       siblings are the template's {@code content}. The {@code content} slot (or an entry's only
  *       slot) becomes the node's children; any other slot a child {@code verticalLayout} carrying
@@ -211,7 +216,8 @@ public class FigmaToModel {
             }
             return mapInstance(node, new LinkedHashMap<>());
         }
-        if (Set.of("FRAME", "GROUP", "SECTION", "COMPONENT").contains(type)) {
+        // a SLOT out of its instance (a detached copy) groups like a frame
+        if (Set.of("FRAME", "GROUP", "SECTION", "COMPONENT", "SLOT").contains(type)) {
             List<UiComponentNodeEntity> children = foldSections(mapChildren(node));
             if (children.isEmpty()) return null;
             Matcher slot = SLOT.matcher(name);
@@ -228,8 +234,14 @@ public class FigmaToModel {
             if (characters.isBlank()) return null;
             return node("text", null, characters, null, List.of(), Map.of());
         }
-        return null; // shapes, vectors, images: decoration
+        if (DECORATION.contains(type)) return null; // shapes, vectors, images
+        warn(node, "a " + type + " layer is not read (no Mateu counterpart)");
+        return null;
     }
+
+    /** Layer types that only draw: never content, never a warning. */
+    private static final Set<String> DECORATION = Set.of("RECTANGLE", "ELLIPSE", "LINE", "VECTOR",
+            "STAR", "POLYGON", "REGULAR_POLYGON", "BOOLEAN_OPERATION");
 
     /**
      * An instance through its contract entry.
@@ -310,19 +322,55 @@ public class FigmaToModel {
             } else if (!layerName.startsWith("#")) {
                 String param = entry.texts().get(layerName);
                 // a layer still showing its own name is an unedited placeholder
-                if (param != null && !characters.isBlank() && !characters.equals(layerName)) {
+                if (param != null && !characters.isBlank() && !entry.isPlaceholder(layerName, characters)) {
                     params.put(param, characters);
                 }
             }
         }
+        // the current library's TEXT/BOOLEAN component properties (Figma's properties panel) win
+        // over #config and the text layers — a property bound to a layer is the same value
+        var all = instance.path("componentProperties").fields();
+        while (all.hasNext()) {
+            var property = all.next();
+            String type = property.getValue().path("type").asText();
+            if (!"TEXT".equals(type) && !"BOOLEAN".equals(type)) continue;
+            String name = property.getKey().replaceAll("#[^#]*$", "");
+            String param = entry.paramOfProperty(name);
+            if (param == null) {
+                warn(instance, "property \"" + name + "\" is not a param of " + entry.name());
+                continue;
+            }
+            String value = property.getValue().path("value").asText("");
+            if (value.isBlank() || "false".equals(value) && "BOOLEAN".equals(type)) continue;
+            String layer = entry.layerOfProperty(name);
+            if (layer != null && entry.isPlaceholder(layer, value)) continue;
+            params.put(param, value);
+        }
         return params;
     }
 
-    /** The instance's own layers: everything but nested Mateu instances and slot frames. */
+    /**
+     * The contract name of a slot layer, or null: a frame named {@code slot:<name>} (an older
+     * library, a detached copy, a sibling frame) or a native Figma slot — a node of type
+     * {@code SLOT}, named after its frame, else after the SLOT property it references
+     * ({@code componentPropertyReferences.slotContentId = "slot:<name>#<id>"}).
+     */
+    static String slotName(JsonNode child) {
+        Matcher m = SLOT.matcher(child.path("name").asText());
+        if (m.matches()) return m.group(1);
+        if (!"SLOT".equals(child.path("type").asText())) return null;
+        String ref = child.path("componentPropertyReferences").path("slotContentId").asText("");
+        String fromRef = ref.replaceAll("#[^#]*$", "").replaceFirst("^slot:", "");
+        if (!fromRef.isEmpty()) return fromRef;
+        String name = child.path("name").asText("");
+        return name.isEmpty() ? null : name;
+    }
+
+    /** The instance's own layers: everything but nested Mateu instances and slots. */
     private List<JsonNode> ownLayers(JsonNode node, List<JsonNode> out) {
         for (JsonNode child : node.path("children")) {
             if (hidden(child)) continue;
-            if (SLOT.matcher(child.path("name").asText()).matches()) continue;
+            if (slotName(child) != null) continue;
             if (entryOf(child) != null) continue;
             out.add(child);
             ownLayers(child, out);
@@ -330,13 +378,13 @@ public class FigmaToModel {
         return out;
     }
 
-    /** The {@code slot:<name>} frames of an instance (not crossing nested Mateu instances). */
+    /** The slots of an instance (not crossing nested Mateu instances). */
     private Map<String, List<JsonNode>> slotsOf(JsonNode node, Map<String, List<JsonNode>> out) {
         for (JsonNode child : node.path("children")) {
             if (hidden(child)) continue;
-            Matcher m = SLOT.matcher(child.path("name").asText());
-            if (m.matches()) {
-                List<JsonNode> list = out.computeIfAbsent(m.group(1), x -> new ArrayList<>());
+            String slot = slotName(child);
+            if (slot != null) {
+                List<JsonNode> list = out.computeIfAbsent(slot, x -> new ArrayList<>());
                 child.path("children").forEach(list::add);
                 continue;
             }

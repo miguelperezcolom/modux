@@ -10,6 +10,8 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * The Mateu design contract — the single source of truth of the Figma design-to-code pipeline
@@ -40,12 +42,47 @@ public class FigmaContract {
      * @param slots the slot names the entry accepts, in contract order
      * @param hasYaml false for the entries the contract marks {@code yaml: null} (Java archetypes)
      * @param note the contract's {@code yamlNote}, when any
+     * @param props the entry's non-visual config keys ({@code props}): component properties in the
+     *     current library, {@code #config} keys in older ones
+     * @param drawnTexts layer → the text its sketch draws when a primitive names its layer apart
+     *     from it ({@code {text: "+", layer: "Icon"}}): what an untouched layer still shows
      */
     public record Entry(String name, String kind, Map<String, String> texts, boolean container,
-                        Map<String, String> defaults, List<String> slots, boolean hasYaml, String note) {
+                        Map<String, String> defaults, List<String> slots, boolean hasYaml, String note,
+                        Set<String> props, Map<String, String> drawnTexts) {
 
         public Entry(String name, String kind, Map<String, String> texts, boolean container) {
             this(name, kind, texts, container, Map.of(), List.of(), true, null);
+        }
+
+        public Entry(String name, String kind, Map<String, String> texts, boolean container,
+                     Map<String, String> defaults, List<String> slots, boolean hasYaml, String note) {
+            this(name, kind, texts, container, defaults, slots, hasYaml, note, Set.of(), Map.of());
+        }
+
+        /**
+         * The param a TEXT/BOOLEAN component property carries, or null. Mateu's library plugin
+         * names a {@code props} key as the param, and a {@code texts} layer as its param when that
+         * is unambiguous, else as the layer itself ({@code Title1}); every spelling is read back.
+         */
+        public String paramOfProperty(String property) {
+            if (texts.containsKey(property)) return texts.get(property);
+            if (props.contains(property)) return property;
+            long layers = texts.values().stream().filter(property::equals).count();
+            return layers == 1 ? property : null;
+        }
+
+        /** The text layer a TEXT property is bound to, when it is a {@code texts} one. */
+        public String layerOfProperty(String property) {
+            if (texts.containsKey(property)) return property;
+            if (props.contains(property)) return null;
+            return texts.entrySet().stream().filter(e -> e.getValue().equals(property))
+                    .map(Map.Entry::getKey).findFirst().orElse(null);
+        }
+
+        /** Whether {@code value} is what the untouched {@code layer} shows (its name or drawn text). */
+        public boolean isPlaceholder(String layer, String value) {
+            return value.equals(layer) || value.equals(drawnTexts.get(layer));
         }
 
         /** The last segment of the name: the FormTemplate record for page templates. */
@@ -97,9 +134,29 @@ public class FigmaContract {
                     slots,
                     // v1 had no yaml mapping at all: every entry counts as mapped there
                     !component.has("yaml") || !yaml.isNull(),
-                    component.path("yamlNote").asText(null)));
+                    component.path("yamlNote").asText(null),
+                    propsOf(component),
+                    drawnTexts(component.path("sketch"), new LinkedHashMap<>())));
         }
         return contract;
+    }
+
+    static Set<String> propsOf(JsonNode component) {
+        Set<String> props = new LinkedHashSet<>();
+        component.path("props").fieldNames().forEachRemaining(props::add);
+        return props;
+    }
+
+    static Map<String, String> drawnTexts(JsonNode sketch, Map<String, String> out) {
+        if (sketch.isArray()) {
+            sketch.forEach(n -> drawnTexts(n, out));
+        } else if (sketch.isObject()) {
+            if (sketch.path("layer").isTextual() && sketch.path("text").isTextual()) {
+                out.put(sketch.path("layer").asText(), sketch.path("text").asText());
+            }
+            sketch.elements().forEachRemaining(n -> drawnTexts(n, out));
+        }
+        return out;
     }
 
     public Entry byFigmaName(String name) {

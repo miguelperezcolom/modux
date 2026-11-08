@@ -21,8 +21,9 @@ import java.util.regex.Pattern;
  * ({@code META-INF/mateu/contract.json}), never from a copy. Same conventions as modux's
  * {@code importfigma} use case and mateu's {@code design/figma/to-yaml}: instances of
  * {@code Mateu/*} become nodes (Mateu defaults + variants + {@code #config} + text overrides as
- * params; a text layer still showing its own name is an unedited placeholder), {@code slot:<name>}
- * frames hold an instance's content (beside a page-template instance, the template's), hidden and
+ * params, then the current library's TEXT/BOOLEAN component properties, which win; a text still
+ * showing its placeholder is not read), native Figma slots (type {@code SLOT}) and
+ * {@code slot:<name>} frames hold an instance's content (beside a page-template instance, the template's), hidden and
  * {@code #…} layers and {@code _…} screens are skipped, sections without slot content absorb the
  * siblings that follow them, plain frames group, and {@code Mateu · *} library canvases are
  * skipped.
@@ -41,11 +42,62 @@ public class FigmaScreenReader {
     private static final Pattern PARTIAL = Pattern.compile("^partial:(.+)$");
 
     private record Entry(String name, String kind, Map<String, String> texts, Map<String, String> defaults,
-                         List<String> slots, boolean hasYaml) {
+                         List<String> slots, boolean hasYaml, Set<String> props, Map<String, String> drawnTexts) {
 
         String simpleName() {
             return name.substring(name.lastIndexOf('/') + 1);
         }
+
+        /** The param a TEXT/BOOLEAN component property carries (see Mateu's plugin plan.ts), or null. */
+        String paramOfProperty(String property) {
+            if (texts.containsKey(property)) return texts.get(property);
+            if (props.contains(property)) return property;
+            long layers = texts.values().stream().filter(property::equals).count();
+            return layers == 1 ? property : null;
+        }
+
+        String layerOfProperty(String property) {
+            if (texts.containsKey(property)) return property;
+            if (props.contains(property)) return null;
+            return texts.entrySet().stream().filter(e -> e.getValue().equals(property))
+                    .map(Map.Entry::getKey).findFirst().orElse(null);
+        }
+
+        boolean isPlaceholder(String layer, String value) {
+            return value.equals(layer) || value.equals(drawnTexts.get(layer));
+        }
+    }
+
+    private static Map<String, String> drawnTexts(JsonNode sketch, Map<String, String> out) {
+        if (sketch.isArray()) {
+            sketch.forEach(n -> drawnTexts(n, out));
+        } else if (sketch.isObject()) {
+            if (sketch.path("layer").isTextual() && sketch.path("text").isTextual()) {
+                out.put(sketch.path("layer").asText(), sketch.path("text").asText());
+            }
+            sketch.elements().forEachRemaining(n -> drawnTexts(n, out));
+        }
+        return out;
+    }
+
+    /** Layer types that only draw: never content, never a warning. */
+    private static final Set<String> DECORATION = Set.of("RECTANGLE", "ELLIPSE", "LINE", "VECTOR",
+            "STAR", "POLYGON", "REGULAR_POLYGON", "BOOLEAN_OPERATION");
+
+    /**
+     * The contract name of a slot layer, or null: a frame named {@code slot:<name>} or a native
+     * Figma slot (type {@code SLOT}, named after its frame, else after the SLOT property it
+     * references, {@code componentPropertyReferences.slotContentId}).
+     */
+    static String slotName(JsonNode child) {
+        Matcher m = SLOT.matcher(child.path("name").asText());
+        if (m.matches()) return m.group(1);
+        if (!"SLOT".equals(child.path("type").asText())) return null;
+        String ref = child.path("componentPropertyReferences").path("slotContentId").asText("");
+        String fromRef = ref.replaceAll("#[^#]*$", "").replaceFirst("^slot:", "");
+        if (!fromRef.isEmpty()) return fromRef;
+        String name = child.path("name").asText("");
+        return name.isEmpty() ? null : name;
     }
 
     private final Map<String, Entry> contract = new LinkedHashMap<>();
@@ -75,8 +127,11 @@ public class FigmaScreenReader {
             List<String> slots = new ArrayList<>();
             component.path("yaml").path("slots").fieldNames().forEachRemaining(slots::add);
             String name = component.path("name").asText();
+            Set<String> props = new java.util.LinkedHashSet<>();
+            component.path("props").fieldNames().forEachRemaining(props::add);
             contract.put(name, new Entry(name, component.path("kind").asText(), texts, defaults, slots,
-                    !component.has("yaml") || !component.path("yaml").isNull()));
+                    !component.has("yaml") || !component.path("yaml").isNull(), props,
+                    drawnTexts(component.path("sketch"), new LinkedHashMap<>())));
         }
     }
 
@@ -195,7 +250,8 @@ public class FigmaScreenReader {
             }
             return mapInstance(node, new LinkedHashMap<>());
         }
-        if (Set.of("FRAME", "GROUP", "SECTION", "COMPONENT").contains(type)) {
+        // a SLOT out of its instance (a detached copy) groups like a frame
+        if (Set.of("FRAME", "GROUP", "SECTION", "COMPONENT", "SLOT").contains(type)) {
             List<Screen.Node> children = foldSections(mapChildren(node));
             if (children.isEmpty()) return null;
             Matcher partial = PARTIAL.matcher(name);
@@ -215,6 +271,7 @@ public class FigmaScreenReader {
             if (characters.isBlank()) return null;
             return new Screen.Node("text", null, characters, null, null, null, Map.of(), List.of());
         }
+        if (!DECORATION.contains(type)) warnings.add(name + ": a " + type + " layer is not read (no Mateu counterpart)");
         return null;
     }
 
@@ -240,6 +297,24 @@ public class FigmaScreenReader {
             }
         }
         collectTexts(instance, entry, params);
+        // the current library's TEXT/BOOLEAN component properties win over #config and text layers
+        var all = instance.path("componentProperties").fields();
+        while (all.hasNext()) {
+            var property = all.next();
+            String type = property.getValue().path("type").asText();
+            if (!"TEXT".equals(type) && !"BOOLEAN".equals(type)) continue;
+            String name = property.getKey().replaceAll("#[^#]*$", "");
+            String param = entry.paramOfProperty(name);
+            if (param == null) {
+                warnings.add(instance.path("name").asText() + ": property \"" + name + "\" is not a param of " + entry.name());
+                continue;
+            }
+            String value = property.getValue().path("value").asText("");
+            if (value.isBlank() || "false".equals(value) && "BOOLEAN".equals(type)) continue;
+            String layer = entry.layerOfProperty(name);
+            if (layer != null && entry.isPlaceholder(layer, value)) continue;
+            params.put(param, value);
+        }
 
         Map<String, List<JsonNode>> rawSlots = slotsOf(instance, new LinkedHashMap<>());
         extraSlots.forEach((k, v) -> rawSlots.computeIfAbsent(k, x -> new ArrayList<>()).addAll(v));
@@ -276,7 +351,7 @@ public class FigmaScreenReader {
     private void collectTexts(JsonNode node, Entry entry, Map<String, String> params) {
         for (JsonNode child : node.path("children")) {
             if (hidden(child)) continue;
-            if (SLOT.matcher(child.path("name").asText()).matches() || entryOf(child) != null) continue;
+            if (slotName(child) != null || entryOf(child) != null) continue;
             if ("TEXT".equals(child.path("type").asText())) {
                 String layerName = child.path("name").asText();
                 String characters = child.path("characters").asText();
@@ -289,7 +364,7 @@ public class FigmaScreenReader {
                     }
                 } else if (!layerName.startsWith("#")) {
                     String param = entry.texts().get(layerName);
-                    if (param != null && !characters.isBlank() && !characters.equals(layerName)) {
+                    if (param != null && !characters.isBlank() && !entry.isPlaceholder(layerName, characters)) {
                         params.put(param, characters);
                     }
                 }
@@ -302,9 +377,9 @@ public class FigmaScreenReader {
     private Map<String, List<JsonNode>> slotsOf(JsonNode node, Map<String, List<JsonNode>> out) {
         for (JsonNode child : node.path("children")) {
             if (hidden(child)) continue;
-            Matcher m = SLOT.matcher(child.path("name").asText());
-            if (m.matches()) {
-                List<JsonNode> list = out.computeIfAbsent(m.group(1), x -> new ArrayList<>());
+            String slot = slotName(child);
+            if (slot != null) {
+                List<JsonNode> list = out.computeIfAbsent(slot, x -> new ArrayList<>());
                 child.path("children").forEach(list::add);
                 continue;
             }
