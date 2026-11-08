@@ -226,6 +226,9 @@ public final class EditorBridge implements Disposable {
         }
     }
 
+    /** How much a pinch zooms relative to the raw magnification macOS reports. */
+    private static final double PINCH_GAIN = 3.0;
+
     /** Forward one magnification step to the canvas as a wheel-at-cursor zoom. */
     private void onMagnify(JComponent component, double magnification) {
         if (magnification == 0 || magnification <= -1) return;
@@ -238,8 +241,10 @@ public final class EditorBridge implements Disposable {
         double x = p != null ? p.x : component.getWidth() / 2.0;
         double y = p != null ? p.y : component.getHeight() / 2.0;
         // The canvas maps a wheel event to scale 2^(-clamp(deltaY)·0.005). Invert so this
-        // magnification step becomes the matching zoom: deltaY = -log2(1+m)/0.005.
-        double deltaY = -(Math.log1p(magnification) / Math.log(2)) / 0.005;
+        // magnification step becomes a zoom of (1+m)^PINCH_GAIN: deltaY = -GAIN·log2(1+m)/0.005.
+        // At 1:1 the trackpad's ~1% steps made a whole pinch barely reach ×1.5 ("extremadamente
+        // lento"); native macOS canvases amplify the gesture the same way.
+        double deltaY = -PINCH_GAIN * (Math.log1p(magnification) / Math.log(2)) / 0.005;
         String js = "(function(){"
                 + "function f(r){for(const e of r.querySelectorAll('*')){"
                 + "if(e.tagName==='MODUX-CANVAS')return e;"

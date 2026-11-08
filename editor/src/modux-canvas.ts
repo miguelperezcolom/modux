@@ -301,6 +301,12 @@ export class ModuxCanvas extends LitElement {
   private _fitted = false;
 
   static styles = css`
+    /* Lines keep their width on screen whatever the zoom (like Archi): the viewport scales the
+       geometry, not the pen. Hit areas stay a constant size to grab, too. */
+    .viewport path, .viewport line, .viewport polyline, .viewport polygon,
+    .viewport rect, .viewport circle, .viewport ellipse {
+      vector-effect: non-scaling-stroke;
+    }
     :host {
       display: block;
       width: 100%;
@@ -2425,11 +2431,11 @@ export class ModuxCanvas extends LitElement {
             ? svg`
                 ${this._guides.v.map(
                   (x) => svg`<line x1=${x} y1="-100000" x2=${x} y2="100000"
-                        style="stroke: var(--modux-guide, #ec4899)" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
+                        style="stroke: var(--modux-guide, #ec4899)" stroke-width="1" pointer-events="none"></line>`,
                 )}
                 ${this._guides.h.map(
                   (y) => svg`<line x1="-100000" y1=${y} x2="100000" y2=${y}
-                        style="stroke: var(--modux-guide, #ec4899)" stroke-width=${1 / this._t.k} pointer-events="none"></line>`,
+                        style="stroke: var(--modux-guide, #ec4899)" stroke-width="1" pointer-events="none"></line>`,
                 )}
               `
             : ''}
