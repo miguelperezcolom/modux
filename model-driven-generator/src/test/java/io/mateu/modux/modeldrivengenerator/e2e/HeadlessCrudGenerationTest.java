@@ -103,6 +103,17 @@ class HeadlessCrudGenerationTest {
         assertTrue(file(out, "DefaultReservarLibroSteps.java").isPresent(), "no developer-owned default for the hook");
     }
 
+    @Test
+    void a_scheduled_trigger_really_runs_its_use_case_and_the_listing_searches_every_text_column() throws Exception {
+        var out = generate();
+        var scheduler = read(out, "DiarioRetrasosScheduler.java");
+        assertTrue(scheduler.contains("useCase.handle(new ReservarLibroCommand(null, null))"), scheduler);
+        assertTrue(scheduler.contains("${DIARIO_RETRASOS_CRON:0 0 6 * * *}"), scheduler);
+        assertTrue(read(out, "BibliotecaApplication.java").contains("@org.springframework.scheduling.annotation.EnableScheduling"));
+        var query = read(out, "LibroDBQueryService.java");
+        assertTrue(query.contains("lower(CAST(col_isbn AS varchar)) LIKE ? OR lower(CAST(col_titulo AS varchar)) LIKE ?"), query);
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

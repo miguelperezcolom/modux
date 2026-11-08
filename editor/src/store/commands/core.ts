@@ -71,6 +71,7 @@ const CONTEXT_MEMBERSHIP: Record<string, { list?: string }> = {
   projections: { list: 'projectionIds' },
   integrationEvents: {},
   queryServices: {},
+  scheduledTriggers: { list: 'scheduledTriggerIds' },
 };
 
 export const CORE_COMMANDS: Record<string, Handler> = {

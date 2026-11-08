@@ -10,6 +10,7 @@ boundedContexts:
 - id: "bc-prestamos"
   name: "Prestamos"
   aggregateIds: ["agg-libro"]
+  scheduledTriggerIds: ["st-diario"]
   useCaseIds: ["uc-crearAgg-libro", "uc-actualizarAgg-libro", "uc-eliminarAgg-libro", "uc-prestar", "uc-reservar"]
   domainEventIds: ["ev-agg-libroCreado", "ev-agg-libroModificado", "ev-agg-libroEliminado"]
   # the editor's «external system → use case» gesture: the call enters through the inbound ACL
@@ -82,3 +83,5 @@ apis:
   implementedByBoundedContextIds: ["bc-prestamos"]
 externalSystems:
 - {id: "ext-mostrador", name: "Mostrador", dependsOnApiIds: ["api-crud-agg-libro"]}
+scheduledTriggers:
+- {id: "st-diario", name: "Diario Retrasos", cronExpression: "0 0 6 * * *", useCaseId: "uc-reservar"}

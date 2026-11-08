@@ -166,10 +166,10 @@ const CONTEXT_SCOPED_TYPES = ['useCases', 'domainEvents', 'applicationEvents', '
 
 /**
  * The context-scoped types that are reachable ONLY through their owning context in the projection
- * (use cases have `looseUseCases`, projections are top-level, scheduled triggers are not drawn).
+ * (use cases have `looseUseCases`, projections are top-level).
  */
 const NESTED_ONLY = new Set(['domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices',
-  'readModels', 'queryServices']);
+  'readModels', 'queryServices', 'scheduledTriggers']);
 
 interface OwnerIndex {
   /** element id → bounded context id */
@@ -182,7 +182,7 @@ function ownerIndex(store: ModelStore): OwnerIndex {
   const of = new Map<string, string>();
   for (const context of store.all('boundedContexts')) {
     for (const field of ['aggregateIds', 'useCaseIds', 'valueObjectIds', 'domainEventIds', 'readModelIds',
-      'domainServiceIds', 'applicationEventIds', 'projectionIds']) {
+      'domainServiceIds', 'applicationEventIds', 'projectionIds', 'scheduledTriggerIds']) {
       for (const id of asList(context[field])) of.set(id, context.id);
     }
   }
@@ -227,6 +227,12 @@ function boundedContext(store: ModelStore, bc: Element, owner: OwnerIndex): Boun
       id: qs.id,
       name: name(qs),
       operations: nestedNamed(qs.operations),
+    })),
+    scheduledTriggers: store.all('scheduledTriggers').filter(owns).map((t) => ({
+      id: t.id,
+      name: name(t),
+      cronExpression: str(t.cronExpression),
+      useCaseId: str(t.useCaseId),
     })),
   };
 }

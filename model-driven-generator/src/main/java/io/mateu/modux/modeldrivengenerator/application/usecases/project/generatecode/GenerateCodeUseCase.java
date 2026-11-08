@@ -3420,13 +3420,27 @@ public class GenerateCodeUseCase {
 
     private void generateScheduledTrigger(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                                           String boundedContextDir, String boundedContextPackageDir, ScheduledTriggerEntity trigger) {
+        // A trigger fires a use case; one that names none has nothing to run (validate flags it).
+        var useCase = trigger.useCaseId() == null ? null
+                : repository.findById(trigger.useCaseId(), UseCaseEntity.class).orElse(null);
+        if (useCase == null) return;
         createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/scheduler");
 
         Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("trigger", fromJson(toJson(trigger)));
+        var uc = new HashMap<String, Object>();
+        uc.put("className", toTypeName(useCase.name()));
+        uc.put("slug", useCase.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+        // a scheduled run carries no input: every command field is passed empty
+        var inputFields = useCase.inputModelId() == null || useCase.inputModelId().isBlank() ? 1
+                : repository.findById(useCase.inputModelId(), ModelEntity.class)
+                        .map(m -> m.fields() == null ? 0 : m.fields().size()).orElse(0);
+        uc.put("commandArity", inputFields);
+        model.put("useCase", uc);
+        model.put("triggerClass", toTypeName(trigger.name()) + "Scheduler");
 
         createFile(boundedContextDir, model, "scheduled-trigger.ftl",
-                "src/main/java/" + boundedContextPackageDir + "/infra/in/scheduler/" + capitalize(trigger.name()) + "Scheduler.java");
+                "src/main/java/" + boundedContextPackageDir + "/infra/in/scheduler/" + toTypeName(trigger.name()) + "Scheduler.java");
     }
 
     // ─── createFile overloads ─────────────────────────────────────────────────

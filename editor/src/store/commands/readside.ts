@@ -109,11 +109,14 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
 
   'add-scheduled-trigger': add({
     type: 'scheduledTriggers',
-    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'scheduledTriggerIds' },
+    // may be born free-standing (dropped on a canvas) and nested into a context afterwards
+    parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'scheduledTriggerIds', required: false },
     init: (c) => ({
-      // daily at midnight: a schedule you have to mean to keep, not one that fires every minute
-      cronExpression: c.cronExpression ?? '0 0 * * *',
-      targetUseCaseId: c.targetUseCaseId ?? null,
+      // daily at midnight — a schedule you have to mean to keep, not one that fires every minute.
+      // Six fields (seconds first): the generated @Scheduled is Spring's cron, not crontab's.
+      cronExpression: c.cronExpression ?? '0 0 0 * * *',
+      // the stored field is useCaseId (the schema's and the generator's); the command says targetUseCaseId
+      useCaseId: c.targetUseCaseId ?? null,
     }),
   }),
 
@@ -131,7 +134,18 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
     if (target && !store.has('useCases', target)) {
       throw new CommandError(`Caso de uso desconocido: ${target}`);
     }
-    store.patch('scheduledTriggers', id, { targetUseCaseId: target ?? null });
+    store.patch('scheduledTriggers', id, { useCaseId: target ?? null });
+  },
+
+  /** When the trigger fires: a Spring cron (six fields, seconds first). */
+  'set-scheduled-trigger-cron': (store, command) => {
+    const id = String(command.id);
+    if (!store.has('scheduledTriggers', id)) throw new CommandError(`Disparador desconocido: ${id}`);
+    const cron = String(command.cronExpression ?? '').trim();
+    if (cron.split(/\s+/).length !== 6) {
+      throw new CommandError(`«${cron}» no es un cron de Spring: lleva seis campos (segundo minuto hora día mes día-semana)`);
+    }
+    store.patch('scheduledTriggers', id, { cronExpression: cron });
   },
 };
 

@@ -51,11 +51,13 @@ const NESTED_INDEX: { field: keyof BoundedContextRef; kind: string }[] = [
   { field: 'domainServices', kind: 'service' },
   { field: 'readModels', kind: 'read-model' },
   { field: 'queryServices', kind: 'query-service' },
+  { field: 'scheduledTriggers', kind: 'scheduler' },
 ];
 /** Store bucket of an element no context owns (`unownedElements`) → the node kind to draw it as. */
 const UNOWNED_KIND: Record<string, string> = {
   domainEvents: 'event', applicationEvents: 'event', integrationEvents: 'integration-event',
   domainServices: 'service', readModels: 'read-model', queryServices: 'query-service',
+  scheduledTriggers: 'scheduler',
 };
 
 /** One catalog element as a view sees it: what it is, what it is called, which context nests it. */
@@ -78,6 +80,7 @@ const CONTEXT_TYPE_OF: Record<string, string> = {
   aggregates: 'aggregates', looseUseCases: 'useCases', useCases: 'useCases', projections: 'projections',
   domainEvents: 'domainEvents', applicationEvents: 'applicationEvents', integrationEvents: 'integrationEvents',
   domainServices: 'domainServices', readModels: 'readModels', queryServices: 'queryServices',
+  scheduledTriggers: 'scheduledTriggers',
 };
 
 /**
@@ -94,6 +97,7 @@ const RENAME_TYPE_OF: Record<string, string> = {
   notifications: 'notification', processes: 'process',
   domainEvents: 'domain-event', applicationEvents: 'application-event', integrationEvents: 'integration-event',
   domainServices: 'domain-service', readModels: 'read-model', queryServices: 'query-service',
+  scheduledTriggers: 'scheduled-trigger',
 };
 
 /**
