@@ -87,6 +87,7 @@ export function project(store: ModelStore): ModuxModel {
       id: s.id,
       name: name(s),
       moduleIds: asList(s.moduleIds),
+      port: typeof s.port === 'number' ? s.port : undefined,
     })),
     modules: store.all('modules').map((m) => ({
       id: m.id,
@@ -275,7 +276,8 @@ const aggregate = (agg: Element, owner: OwnerIndex): AggregateRef => ({
   boundedContextId: owner.of.get(agg.id) ?? '',
   modelId: str(agg.modelId),
   invariants: nestedNamed(agg.invariants),
-  operations: nestedNamed(agg.operations),
+  operations: (Array.isArray(agg.operations) ? (agg.operations as Element[]) : [])
+    .map((o) => ({ id: o.id, name: name(o), intent: str(o.intent) })),
 });
 
 const entity = (ent: Element): EntityRef => ({

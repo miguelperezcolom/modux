@@ -27,7 +27,7 @@ function graft(store: ModelStore, id: string, name: string, elementType: string,
     const agg = mustGet(store, 'aggregates', ownerId, 'Agregado');
     const ops = nested(agg.operations);
     if (!ops.some((o) => o.id === id)) {
-      store.patch('aggregates', agg.id, { operations: [...ops, { id, name, kind: 'CUSTOM' }] });
+      store.patch('aggregates', agg.id, { operations: [...ops, { id, name, type: 'CUSTOM' }] });
     }
   } else if (elementType === 'use-case-step') {
     const uc = mustGet(store, 'useCases', ownerId, 'Caso de uso');

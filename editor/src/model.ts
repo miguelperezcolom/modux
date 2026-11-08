@@ -509,6 +509,8 @@ export interface OperationRef {
   name: string;
   inputModelId?: string;
   outputModelId?: string;
+  /** Custom operation: what it does (the spec of its hook). */
+  intent?: string;
 }
 
 export interface AggregateRef {
@@ -864,6 +866,8 @@ export interface ServiceRef {
   id: string;
   name: string;
   moduleIds?: string[];
+  /** The port it listens on (8080 when unset). */
+  port?: number;
   /** Infrastructure it leans on (drawn at the distribution level). */
   database?: string;
   outboxEnabled?: boolean;

@@ -1271,6 +1271,23 @@ export class ArchiShell extends LitElement {
       <div class="rowx" style="grid-template-columns:1fr auto"><input id="new-invariant" placeholder="Nueva regla, p. ej. IsbnObligatorio" @keydown=${(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') nameIt(); }} />
         <button @click=${nameIt}>+</button></div>`;
   }
+  /** What an aggregate can do: named operations whose body is a hook in the custom module. */
+  private renderOperations(aggregateId: string, operations: { id: string; name: string; intent?: string }[]) {
+    const add = () => {
+      const input = this.renderRoot.querySelector('#new-operation') as HTMLInputElement | null;
+      const name = input?.value.trim(); if (!input || !name) return;
+      this.cmd({ kind: 'add-operation', aggregateId, id: `op-${Date.now()}`, name });
+      input.value = '';
+    };
+    return html`<div class="sec"><span>Operaciones</span></div>
+      ${operations.map((o) => html`<div class="rowx" style="grid-template-columns:1fr auto">
+        <input .value=${o.name} @change=${(e: Event) => this.cmd({ kind: 'rename-element', type: 'operation', id: o.id, name: (e.target as HTMLInputElement).value })} />
+        <button title="Quitar operación" @click=${() => this.cmd({ kind: 'remove-operation', id: o.id })}>✕</button>
+        <textarea placeholder="Qué hace (se convierte en el gancho a implementar)…" .value=${o.intent ?? ''}
+          @change=${(e: Event) => this.cmd({ kind: 'set-operation-intent', id: o.id, intent: (e.target as HTMLTextAreaElement).value })}></textarea></div>`)}
+      <div class="rowx" style="grid-template-columns:1fr auto"><input id="new-operation" placeholder="Nueva operación, p. ej. retirar" @keydown=${(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') add(); }} />
+        <button @click=${add}>+</button></div>`;
+  }
   /** A use case's contract and pipeline: what it takes, what it returns, what it does. */
   private renderUseCaseContract(id: string) {
     const m = this.model!;
@@ -1354,7 +1371,8 @@ export class ArchiShell extends LitElement {
         <label>Value objects</label><div class="ro">${vos}</div>
         ${this.describeField(agg.id)}
         ${agg.modelId ? this.renderFields(agg.modelId) : nothing}
-        ${this.renderInvariants(agg.id, agg.invariants ?? [])}</div>`;
+        ${this.renderInvariants(agg.id, agg.invariants ?? [])}
+        ${this.renderOperations(agg.id, agg.operations ?? [])}</div>`;
     }
     const ent = (m.entities ?? []).find((x) => x.id === id);
     const vo = (m.valueObjects ?? []).find((x) => x.id === id);
@@ -1392,6 +1410,9 @@ export class ArchiShell extends LitElement {
             ${m.boundedContexts.map((c) => html`<option value=${c.id} ?selected=${c.id === entry.ownerId}>${c.name}</option>`)}
           </select>` : nothing}
         ${this.describeField(entry.id)}
+        ${entry.kind === 'deployment' ? html`<label>Puerto</label>
+          <input type="number" min="1" max="65535" placeholder="8080" .value=${String(m.services?.find((x) => x.id === entry.id)?.port ?? '')}
+            @change=${(e: Event) => this.cmd({ kind: 'set-service-port', id: entry.id, port: (e.target as HTMLInputElement).value })} />` : nothing}
         ${entry.kind === 'model' ? this.renderFields(entry.id) : nothing}
         ${entry.kind === 'usecase' || entry.kind === 'policy' ? this.renderUseCaseContract(entry.id) : nothing}
       </div>`;

@@ -333,6 +333,26 @@ describe('what things do', () => {
     expect(store.get('aggregates', 'agg-reserva')?.description).toBeUndefined();
   });
 
+  it('writes operations with the field the generator reads, and describes them', () => {
+    const store = model();
+    apply(store, { kind: 'add-operation', aggregateId: 'agg-reserva', id: 'op-1', name: 'cancelar' } as never);
+    apply(store, { kind: 'set-operation-intent', id: 'op-1', intent: 'Cancela la reserva' } as never);
+    expect((store.get('aggregates', 'agg-reserva')!.operations as Element[])[0])
+      .toEqual({ id: 'op-1', name: 'cancelar', type: 'CUSTOM', intent: 'Cancela la reserva' });
+    expect(project(store).aggregates?.[0].operations?.[0]).toMatchObject({ name: 'cancelar', intent: 'Cancela la reserva' });
+  });
+
+  it('gives a service a valid port of its own', () => {
+    const store = model({ services: [{ id: 'a', name: 'A', moduleIds: [] }, { id: 'b', name: 'B', moduleIds: [] }] });
+    apply(store, { kind: 'set-service-port', id: 'a', port: '8081' } as never);
+    expect(store.get('services', 'a')?.port).toBe(8081);
+    expect(project(store).services?.find((s) => s.id === 'a')?.port).toBe(8081);
+    expect(() => apply(store, { kind: 'set-service-port', id: 'b', port: 8081 } as never)).toThrow(/ya lo usa/);
+    expect(() => apply(store, { kind: 'set-service-port', id: 'b', port: 'abc' } as never)).toThrow(/no es un puerto/);
+    apply(store, { kind: 'set-service-port', id: 'a', port: '' } as never);
+    expect(store.get('services', 'a')?.port).toBeUndefined();
+  });
+
   it('aims a scheduled trigger with the field the generator reads, on a Spring cron', () => {
     const store = model({ useCases: [{ id: 'uc-detectar', name: 'DetectarRetrasos' }] });
     apply(store, { kind: 'add-scheduled-trigger', id: 'st-1', name: 'Diario' } as never);

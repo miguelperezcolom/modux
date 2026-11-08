@@ -21,7 +21,18 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
     const operations = nested(aggregate.operations);
     if (operations.some((o) => o.id === id)) return;
     store.patch('aggregates', aggregate.id, {
-      operations: [...operations, { id, name: command.name, kind: 'CUSTOM' }],
+      operations: [...operations, { id, name: command.name, type: 'CUSTOM' }],
+    });
+  },
+
+  /** What a custom operation does: the spec of its hook in the developer-owned module. */
+  'set-operation-intent': (store, command) => {
+    const id = String(command.id);
+    const owner = store.findOwner(['aggregates'], 'operations', id);
+    if (!owner) throw new CommandError(`Operación desconocida: ${id}`);
+    const text = String(command.intent ?? '').trim();
+    store.patch(owner.type, owner.element.id, {
+      operations: nested(owner.element.operations).map((o) => (o.id === id ? { ...o, intent: text || null } : o)),
     });
   },
 
@@ -266,7 +277,7 @@ function withEmissionAdded(operations: Element[], event: Element): Element[] | n
       id: `op-emit-${event.id}`,
       name: `emit${eventName}`,
       emits: eventName,
-      kind: 'CUSTOM',
+      type: 'CUSTOM',
     }];
   }
   const [first, ...rest] = operations;
