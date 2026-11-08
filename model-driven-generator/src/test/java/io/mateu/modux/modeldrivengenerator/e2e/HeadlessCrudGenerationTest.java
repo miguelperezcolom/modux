@@ -89,7 +89,18 @@ class HeadlessCrudGenerationTest {
         var out = generate();
         assertTrue(file(out, "PrestarLibroController.java").isPresent(),
                 "a use case called through the inbound ACL has no REST entry");
-        assertTrue(read(out, "application.yaml").contains("include-message: always"));
+        assertTrue(read(out, "application.yaml").contains("include-message: always") && read(out, "application.yaml").contains("    web:\n        error:"));
+    }
+
+    @Test
+    void steps_the_template_cannot_write_become_hooks_not_todos() throws Exception {
+        var out = generate();
+        var useCase = read(out, "ReservarLibroUseCase.java");
+        assertFalse(useCase.contains("TODO"), useCase);
+        assertTrue(useCase.contains("steps.callLibro(command);") && useCase.contains("steps.callPrestarLibro(command);"), useCase);
+        var hook = read(out, "ReservarLibroSteps.java");
+        assertTrue(hook.contains("Opera sobre Libro"), hook);
+        assertTrue(file(out, "DefaultReservarLibroSteps.java").isPresent(), "no developer-owned default for the hook");
     }
 
     private static Optional<Path> file(Path root, String name) throws Exception {

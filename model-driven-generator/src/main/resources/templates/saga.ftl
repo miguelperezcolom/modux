@@ -30,7 +30,7 @@ import ${project.packageName}.${module.slug}.application.out.${step.gateway.clas
 </#list>
 </#if>
 import lombok.RequiredArgsConstructor;
-import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.cloud.stream.function.StreamOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,7 +63,7 @@ public class ${saga.name?cap_first}Saga {
 </#list>
 </#if>
 <#if saga.steps?has_content && saga.steps?filter(s -> s.type == "PublishDomainEvent")?has_content>
-    final StreamBridge streamBridge;
+    final StreamOperations streamBridge;
 </#if>
 <#if saga.steps?has_content && saga.steps?filter(s -> s.type == "Custom")?has_content>
     final ${saga.name?cap_first}Steps steps;

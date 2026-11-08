@@ -62,6 +62,22 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
     }
     const event = store.get('domainEvents', targetId);
     if (!event) throw new CommandError(`Evento de dominio desconocido: ${targetId}`);
+    // A use case publishes a domain event as one of its steps (as the CRUD trio does): the
+    // event carries what the use case decided, so it goes out after the steps before it.
+    const publisher = store.get('useCases', String(command.sourceId));
+    if (publisher) {
+      const steps = nested(publisher.steps);
+      if (steps.some((step) => step.type === 'PublishDomainEvent' && step.domainEventId === targetId)) return;
+      store.patch('useCases', publisher.id, {
+        steps: [...steps, {
+          id: `step-publish-${targetId}`,
+          name: `publish${event.name ?? targetId}`,
+          type: 'PublishDomainEvent',
+          domainEventId: targetId,
+        }],
+      });
+      return;
+    }
     const emitter = findEmitter(store, String(command.sourceId));
     const operations = withEmissionAdded(nested(emitter.element.operations), event);
     if (operations) store.patch(emitter.type, emitter.element.id, { operations });
@@ -79,6 +95,13 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
     }
     const event = store.get('domainEvents', targetId);
     if (!event) throw new CommandError(`Evento de dominio desconocido: ${targetId}`);
+    const publisher = store.get('useCases', String(command.sourceId));
+    if (publisher) {
+      store.patch('useCases', publisher.id, {
+        steps: nested(publisher.steps).filter((step) => !(step.type === 'PublishDomainEvent' && step.domainEventId === targetId)),
+      });
+      return;
+    }
     for (const type of ['aggregates', 'domainServices']) {
       const emitter = store.get(type, String(command.sourceId));
       if (!emitter) continue;

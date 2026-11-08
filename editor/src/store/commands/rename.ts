@@ -127,6 +127,29 @@ export const RENAME_COMMANDS: Record<string, Handler> = {
   },
 };
 
+/**
+ * Set (or clear) an element's free-text description. Same type vocabulary as rename-element;
+ * a nested kind (an operation…) is described inside its owner.
+ */
+export const DESCRIBE_COMMANDS: Record<string, Handler> = {
+  'set-element-description': (store, command) => {
+    const kind = String(command.type ?? '');
+    const id = String(command.id);
+    const text = typeof command.description === 'string' && command.description.trim() ? command.description : null;
+    if (store.has('looseElements', id)) { store.patch('looseElements', id, { description: text }); return; }
+    const top = TOP_LEVEL[kind];
+    if (top) { if (store.has(top.type, id)) store.patch(top.type, id, { description: text }); return; }
+    const spec = NESTED[kind];
+    if (!spec) throw new CommandError(`set-element-description no soportado para: ${kind}`);
+    const found = store.findOwner(spec.owners, spec.list, id);
+    if (!found) return;
+    store.patch(found.type, found.element.id, {
+      [spec.list]: (nested(found.element[spec.list]) as Element[]).map((item) =>
+        (item.id === id ? { ...item, description: text } : item)),
+    });
+  },
+};
+
 function renameNested(store: ModelStore, spec: Nested, id: string, name: unknown): void {
   const found = store.findOwner(spec.owners, spec.list, id);
   if (!found) return;

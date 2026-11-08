@@ -5,6 +5,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.client.RestTemplate;
 
 // io.mateu is scanned so Mateu's web layer (MateuController: the UI shell at "/"
@@ -20,6 +22,22 @@ public class ${className} {
     @Bean
     RestTemplate restTemplate() {
         return new RestTemplate();
+    }
+
+    // Local profile (no infrastructure): events go to the log instead of the broker. The Kafka binder
+    // cannot bind without a broker, so every write blocked on it and then failed. The generated code
+    // publishes through StreamOperations, which this replaces only under the local profile.
+    @Bean
+    @Primary
+    @Profile("local")
+    org.springframework.cloud.stream.function.StreamOperations localEvents() {
+        var log = org.slf4j.LoggerFactory.getLogger("modux.events");
+        return new org.springframework.cloud.stream.function.StreamOperations() {
+            @Override public boolean send(String to, Object data) { log.info("evento → {}: {}", to, data); return true; }
+            @Override public boolean send(String to, Object data, org.springframework.util.MimeType type) { return send(to, data); }
+            @Override public boolean send(String to, String binder, Object data) { return send(to, data); }
+            @Override public boolean send(String to, String binder, Object data, org.springframework.util.MimeType type) { return send(to, data); }
+        };
     }
 
     // The generated persistence and messaging adapters inject Jackson 2's ObjectMapper, which

@@ -4,7 +4,7 @@ import ${project.packageName}.${module.slug}.application.out.integration.${class
 import ${project.packageName}.${module.slug}.application.out.integration.${className}Publisher;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.cloud.stream.function.StreamOperations;
 import org.springframework.stereotype.Component;
 
 /** Publishes ${className} to its topic (Kafka, via Spring Cloud Stream's dynamic destinations). */
@@ -14,7 +14,7 @@ public class ${className}KafkaPublisher implements ${className}Publisher {
 
     static final String TOPIC = "${integrationEvent.topicName!""}";
 
-    final StreamBridge streamBridge;
+    final StreamOperations streamBridge;
     final ObjectMapper objectMapper;
 
     @Override

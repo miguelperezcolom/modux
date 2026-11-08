@@ -296,6 +296,18 @@ describe('what things do', () => {
       .toBe('Otro,ReservaCreada');
   });
 
+  it('lets a use case publish a domain event as a step, and takes it back', () => {
+    const store = model({
+      domainEvents: [{ id: 'ev-devuelto', name: 'LibroDevuelto' }],
+      useCases: [{ id: 'uc-devolver', name: 'Devolver', steps: [{ id: 's1', name: 'devolver', type: 'Custom' }] }],
+    });
+    apply(store, { kind: 'add-emission', sourceId: 'uc-devolver', targetId: 'ev-devuelto' } as never);
+    apply(store, { kind: 'add-emission', sourceId: 'uc-devolver', targetId: 'ev-devuelto' } as never);
+    expect((store.get('useCases', 'uc-devolver')!.steps as Element[]).map((s) => s.type)).toEqual(['Custom', 'PublishDomainEvent']);
+    apply(store, { kind: 'remove-emission', sourceId: 'uc-devolver', targetId: 'ev-devuelto' } as never);
+    expect((store.get('useCases', 'uc-devolver')!.steps as Element[]).map((s) => s.type)).toEqual(['Custom']);
+  });
+
   it('gives an emitter with no operations a stub to carry the emission, and takes it back', () => {
     const store = model({ domainEvents: [{ id: 'ev-creada', name: 'ReservaCreada' }] });
 

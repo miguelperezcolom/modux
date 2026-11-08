@@ -29,7 +29,7 @@ import ${project.packageName}.${module.slug}.application.usecases.${step.useCase
 </#list>
 </#if>
 <#if usecase.needsStreamBridge>
-import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.cloud.stream.function.StreamOperations;
 </#if>
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
@@ -72,7 +72,7 @@ class ${usecase.className}UseCaseTest {
 </#if>
 <#if usecase.needsStreamBridge>
     @Mock
-    StreamBridge streamBridge;
+    StreamOperations streamBridge;
 
 </#if>
     @InjectMocks

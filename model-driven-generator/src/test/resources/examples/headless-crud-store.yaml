@@ -10,7 +10,7 @@ boundedContexts:
 - id: "bc-prestamos"
   name: "Prestamos"
   aggregateIds: ["agg-libro"]
-  useCaseIds: ["uc-crearAgg-libro", "uc-actualizarAgg-libro", "uc-eliminarAgg-libro", "uc-prestar"]
+  useCaseIds: ["uc-crearAgg-libro", "uc-actualizarAgg-libro", "uc-eliminarAgg-libro", "uc-prestar", "uc-reservar"]
   domainEventIds: ["ev-agg-libroCreado", "ev-agg-libroModificado", "ev-agg-libroEliminado"]
   # the editor's «external system → use case» gesture: the call enters through the inbound ACL
   acls:
@@ -58,6 +58,13 @@ useCases:
   inputModelId: "model-libro"
   steps:
   - {id: "step-prestar", name: "prestar", type: "Custom", intent: "Presta el libro"}
+# what the plugin's «Opera sobre» and «Invocación» gestures leave: steps with no code of their own
+- id: "uc-reservar"
+  name: "ReservarLibro"
+  inputModelId: "model-libro"
+  steps:
+  - {id: "step-call-agg-libro", name: "callLibro", type: "CallAggregateOperation", aggregateId: "agg-libro"}
+  - {id: "step-call-prestar", name: "callPrestarLibro", type: "CallUseCase", useCaseId: "uc-prestar"}
 queryServices:
 - id: "qs-crud-agg-libro"
   name: "LibroQueries"

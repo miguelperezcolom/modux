@@ -17,7 +17,7 @@ import { RETYPES, retypeTargets } from '../store/commands/retype.js';
 import { snapValue } from '../snap.js';
 
 /** SPIKE: a free-form view is just which model elements it shows and where. */
-type ViewMembers = { members: { id: string; x: number; y: number; w: number; h: number }[] };
+type ViewMembers = { members: { id: string; x: number; y: number; w: number; h: number; fill?: string }[] };
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
 import { connectionOptions, type GestureHost } from '../gestures.js';
@@ -97,6 +97,8 @@ function kindLayer(kind: string): LayerKey { return KIND_LAYER[kind] ?? 'domain'
 const BOUND_CREATE: Record<string, (id: string, name: string) => Record<string, unknown>> = {
   component: (id, name) => ({ kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' }),
   aggregate: (id, name) => ({ kind: 'add-aggregate', id, name }),
+  // a domain event: dropped inside a context it joins it (BOUND_CONTEXT_TYPE)
+  event: (id, name) => ({ kind: 'add-domain-event', id, name }),
   entity: (id, name) => ({ kind: 'add-entity', id, name }),
   'value-object': (id, name) => ({ kind: 'add-value-object', id, name }),
   person: (id, name) => ({ kind: 'add-actor', id, name }),
@@ -135,7 +137,7 @@ const CATALOG_KIND_LABEL: Record<string, string> = {
 
 /** Palette kind → store type, for a freshly minted element that is not in the projection yet. */
 const BOUND_CONTEXT_TYPE: Record<string, string> = {
-  aggregate: 'aggregates', usecase: 'useCases', policy: 'useCases',
+  aggregate: 'aggregates', usecase: 'useCases', policy: 'useCases', event: 'domainEvents',
 };
 
 /** The size a kind is placed at: its palette tool's, or a plain box for catalog-only kinds. */
@@ -150,6 +152,7 @@ const RENAME_TYPE: Record<string, string> = {
   person: 'actor', usecase: 'use-case', workflow: 'workflow', api: 'api', 'proxy-api': 'proxy-api',
   'external-system': 'external-system', 'ai-agent': 'ai-agent', 'mcp-gateway': 'mcp-gateway', rag: 'rag',
   'ui-app': 'ui-app', page: 'page', 'read-model': 'read-model', 'integration-event': 'integration-event',
+  event: 'domain-event', policy: 'use-case',
 };
 
 /**
@@ -225,7 +228,7 @@ export class ArchiShell extends LitElement {
       nodes.push({
         id: mem.id, label: el.label, kind: el.kind, symbol: ARCHIMATE_SYMBOL[el.kind] ?? el.kind,
         x: mem.x, y: mem.y, w: mem.w, h: mem.h,
-        fill: LAYER[kindLayer(el.kind)].fill, stroke: '#5C5C5C',
+        fill: mem.fill ?? LAYER[kindLayer(el.kind)].fill, stroke: '#5C5C5C',
       });
     }
     const edges: SceneEdge[] = [];
@@ -766,14 +769,28 @@ export class ArchiShell extends LitElement {
   private onCanvasSelected(e: Event) {
     const d = (e as CustomEvent).detail;
     if (d?.elementType === 'node') {
-      if (this.painter !== null) { this.commit(); this.patchNodes((n) => (n.id === d.id ? { ...n, fill: this.painter! } : n)); return; }
+      if (this.painter !== null) { this.paintFill(d.id, this.painter); return; }
       this.select(d.id);
     } else if (d?.elementType === 'edge') { this.selectedId = d.id; this.selectedIds = []; this.ctx = null; }
   }
+  /**
+   * Copiar formato (Archi's format painter): load the selected element's fill, then each click on
+   * another node applies it. The colour itself is chosen in Apariencia.
+   */
   private toggleFormatPainter() {
     if (this.painter !== null) { this.painter = null; return; }
     const n = this.selectedNode();
-    if (n?.fill) this.painter = n.fill;
+    if (!n?.fill) { this.flash('Selecciona el elemento cuyo color quieres copiar (el color se elige en Apariencia)'); return; }
+    this.painter = n.fill;
+  }
+  private paintFill(id: string, fill: string) {
+    if (this.bound) {
+      this.view = { members: this.view.members.map((m) => (m.id === id ? { ...m, fill } : m)) };
+      this.emit('view-changed', { view: this.view });
+      return;
+    }
+    this.commit();
+    this.patchNodes((n) => (n.id === id ? { ...n, fill } : n));
   }
 
   private rename(name: string) {
@@ -789,6 +806,12 @@ export class ArchiShell extends LitElement {
   }
   private setFill(v: string) {
     const id = this.selectedId; if (!id) return;
+    if (this.bound) {
+      // a colour is this view's presentation, kept in the view document — never the model
+      this.view = { members: this.view.members.map((m) => (m.id === id ? { ...m, fill: v } : m)) };
+      this.emit('view-changed', { view: this.view });
+      return;
+    }
     this.patchNodes((n) => (n.id === id ? { ...n, fill: v } : n));
   }
   private selectedEdge() { return this.scene.edges.find((e) => e.id === this.selectedId) ?? null; }
@@ -1189,7 +1212,37 @@ export class ArchiShell extends LitElement {
       </select>`;
   }
 
+  /** Bound mode: the description of the selected element, edited in the model. */
+  private describeField(id: string) {
+    const entry = this.catalogById().get(id);
+    const type = entry?.renameType;
+    if (!type) return nothing;
+    const set = (e: Event) => this.emit('modux-command', { command: {
+      kind: 'set-element-description', type, id, description: (e.target as HTMLTextAreaElement).value } });
+    return html`<label>Descripción</label>
+      <textarea placeholder="Qué es, en lenguaje del dominio…" .value=${this.model?.descriptions?.[id] ?? ''} @change=${set}></textarea>`;
+  }
+  /** Bound mode, Apariencia: the fill this view gives the element (presentation only). */
+  private renderBoundAppearance(id: string | null) {
+    const mem = id ? this.view.members.find((m) => m.id === id) : undefined;
+    const entry = id ? this.catalogById().get(id) : undefined;
+    if (!mem || !entry) return html`<div class="empty">Selecciona un elemento de la vista.</div>`;
+    const layer = LAYER[kindLayer(entry.kind)];
+    const fill = mem.fill ?? layer.fill;
+    return html`<div class="form">
+      <label>Relleno</label>
+      <span class="colorrow"><input type="color" .value=${fill} @input=${(e: Event) => this.setFill((e.target as HTMLInputElement).value)} /><span class="ro">${fill}</span></span>
+      ${mem.fill ? html`<label></label><button class="addprop" @click=${() => this.resetFill(mem.id)}>Restablecer el color de la capa</button>` : nothing}
+      <label>Borde</label><div class="ro">#5C5C5C (notación ArchiMate)</div>
+      <label>Capa</label><div class="ro">${layer.name}</div>
+      <label></label><div class="ro">El color es de esta vista; el modelo no cambia.</div></div>`;
+  }
+  private resetFill(id: string) {
+    this.view = { members: this.view.members.map((m) => { if (m.id !== id) return m; const { fill: _f, ...rest } = m; return rest; }) };
+    this.emit('view-changed', { view: this.view });
+  }
   private renderBoundProps() {
+    if (this.tab === 'appearance') return this.renderBoundAppearance(this.selectedId);
     const m = this.model!, id = this.selectedId;
     const rename = (e: Event) => this.rename((e.target as HTMLInputElement).value);
     const bc = m.boundedContexts.find((x) => x.id === id);
@@ -1199,7 +1252,8 @@ export class ArchiShell extends LitElement {
         <label>Nombre</label><input .value=${bc.name} @input=${rename} />
         <label>Tipo</label><div class="ro">Bounded context</div>
         <label>Subdominio</label><div class="ro">${bc.subdomainType}</div>
-        <label>Agregados</label><div class="ro">${aggs}</div></div>`;
+        <label>Agregados</label><div class="ro">${aggs}</div>
+        ${this.describeField(bc.id)}</div>`;
     }
     const agg = (m.aggregates ?? []).find((a) => a.id === id);
     if (agg) {
@@ -1215,7 +1269,8 @@ export class ArchiShell extends LitElement {
         </select>
         <label>Entidades</label><div class="ro">${ents}</div>
         <label>Value objects</label><div class="ro">${vos}</div>
-        <label>Invariantes</label><div class="ro">${invs}</div></div>`;
+        <label>Invariantes</label><div class="ro">${invs}</div>
+        ${this.describeField(agg.id)}</div>`;
     }
     const ent = (m.entities ?? []).find((x) => x.id === id);
     const vo = (m.valueObjects ?? []).find((x) => x.id === id);
@@ -1228,7 +1283,8 @@ export class ArchiShell extends LitElement {
         <label>Agregado</label>
         <select .value=${mem.aggregateId ?? ''} @change=${(e: Event) => this.emit('modux-command', { command: { kind: cmdKind, id: mem.id, aggregateId: (e.target as HTMLSelectElement).value } })}>
           ${(m.aggregates ?? []).map((a) => html`<option value=${a.id}>${a.name}</option>`)}
-        </select></div>`;
+        </select>
+        ${this.describeField(mem.id)}</div>`;
     }
     // Everything else in the catalog: its name, what it is and — when it can belong to one — its context.
     const entry = id ? this.catalogById().get(id) : undefined;
@@ -1244,6 +1300,7 @@ export class ArchiShell extends LitElement {
             <option value="">— sin contexto —</option>
             ${m.boundedContexts.map((c) => html`<option value=${c.id} ?selected=${c.id === entry.ownerId}>${c.name}</option>`)}
           </select>` : nothing}
+        ${this.describeField(entry.id)}
       </div>`;
     }
     return html`<div class="empty">Selecciona un elemento del modelo.</div>`;
@@ -1335,13 +1392,13 @@ export class ArchiShell extends LitElement {
 
   render() {
     const t = this.tool;
-    const hint = this.painter !== null ? 'Pincel activo — click en un nodo para pintar su relleno'
+    const hint = this.painter !== null ? 'Copiar formato — click en los nodos a los que dar este color'
       : t.kind === 'place' ? `Coloca «${t.el.label}» — click en el lienzo`
       : t.kind === 'connect' ? `${t.rel === null ? 'Conector mágico' : `Relación «${REL_NOTATION[t.rel]?.label ?? t.rel}»`} — click en origen y luego en destino`
       : '';
     return html`
       <div class="toolbar">
-        <span class="brand">modux <small>· experimento UI estilo Archi</small></span>
+        <span class="brand">modux <small>· vista</small></span>
         ${hint ? html`<span class="hint">${hint} · Esc cancela</span>` : nothing}
         ${this.selectedIds.length >= 2 ? html`<span class="aligngrp">
           <button title="Alinear izquierda" @click=${() => this.align('left')}>⇤</button>
@@ -1354,8 +1411,10 @@ export class ArchiShell extends LitElement {
         </span>` : nothing}
         <div class="spacer"></div>
         <button class=${t.kind === 'select' ? 'on' : ''} @click=${() => this.resetTool()}>Seleccionar</button>
-        <button title="Copiar formato: coge el relleno del elemento seleccionado y píntalo en otros"
-          class=${this.painter !== null ? 'on' : ''} @click=${() => this.toggleFormatPainter()}>Pincel 🖌</button>
+        <button title="Copiar formato: toma el color del elemento seleccionado y aplícalo a otros con un click. El color se elige en Apariencia."
+          class=${this.painter !== null ? 'on' : ''} @click=${() => this.toggleFormatPainter()}>${this.painter !== null
+            ? html`<span class="swatch" style="background:${this.painter};display:inline-block;width:12px;height:12px;border:1px solid #5C5C5C;margin-right:6px;vertical-align:-1px"></span>`
+            : nothing}Copiar formato</button>
         <button class=${t.kind === 'connect' && t.rel === null ? 'on' : ''} @click=${() => (this.tool = { kind: 'connect', rel: null })}>Conector mágico ✦</button>
       </div>
 
@@ -1406,7 +1465,7 @@ export class ArchiShell extends LitElement {
       </div>
 
       <div class="panel props">
-        <div class="tabs">${(['main', 'appearance', 'properties'] as const).map((tb) => html`
+        <div class="tabs">${(this.bound ? ['main', 'appearance'] as const : ['main', 'appearance', 'properties'] as const).map((tb) => html`
           <button class=${this.tab === tb ? 'on' : ''} @click=${() => (this.tab = tb)}>${tb === 'main' ? 'Principal' : tb === 'appearance' ? 'Apariencia' : 'Propiedades'}</button>`)}</div>
         <div class="body">${this.renderProps()}</div>
       </div>

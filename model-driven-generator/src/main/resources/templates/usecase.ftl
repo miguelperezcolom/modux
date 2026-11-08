@@ -41,7 +41,7 @@ import ${project.packageName}.${module.slug}.domain.events.${step.domainEvent.cl
 </#list>
 </#if>
 <#if usecase.needsStreamBridge>
-import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.cloud.stream.function.StreamOperations;
 </#if>
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -84,7 +84,7 @@ public class ${usecase.className}UseCase {
 </#list>
 </#if>
 <#if usecase.needsStreamBridge>
-    final StreamBridge streamBridge;
+    final StreamOperations streamBridge;
 </#if>
 <#if usecase.steps?has_content && usecase.steps?filter(s -> s.type == "Custom")?has_content>
     final ${usecase.className}Steps steps;
@@ -128,7 +128,7 @@ public class ${usecase.className}UseCase {
         // TODO: call gateway ${step.gateway.className?uncap_first}Gateway (operation not resolved)
 </#if>
 <#elseif step.type == "PublishDomainEvent" && step.domainEvent??>
-        streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.className}Event(null /* TODO: aggregateId */<#if step.argFields??><#list step.argFields as a>, <#if a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if></#list></#if>));
+        streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.className}Event(<#if step.aggregateIdExpr??>String.valueOf(${step.aggregateIdExpr})<#else>null /* TODO: aggregateId */</#if><#if step.argFields??><#list step.argFields as a>, <#if a.expr??>${a.expr}<#elseif a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if></#list></#if>));
 <#elseif step.type == "CallUseCase" && step.useCase??>
         ${step.useCase.className?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.className}Command */);
 <#elseif step.type == "ApplyModelMapping">

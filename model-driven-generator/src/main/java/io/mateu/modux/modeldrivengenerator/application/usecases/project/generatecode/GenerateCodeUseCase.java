@@ -1010,8 +1010,10 @@ public class GenerateCodeUseCase {
                         + "/" + ucClass + "UseCase.java");
 
         // custom-steps hook: port in the generated boundedContext, default implementation in the custom boundedContext
-        var hasCustomStep = useCase.steps() != null
-                && useCase.steps().stream().anyMatch(s -> s.type() == UseCaseStepType.Custom);
+        // from the enriched steps: a step the template could not write became a Custom hook too
+        @SuppressWarnings("unchecked")
+        var enriched = (List<Map<String, Object>>) ((Map<String, Object>) model.get("usecase")).get("steps");
+        var hasCustomStep = enriched != null && enriched.stream().anyMatch(st -> "Custom".equals(st.get("type")));
         if (hasCustomStep) {
             createFile(boundedContextDir, model, "usecase-steps.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
@@ -1173,12 +1175,28 @@ public class GenerateCodeUseCase {
             }
         }
 
+        // The result the last Custom step returns (see usecase.ftl): what a later step can read.
+        List<String> resultFieldNames = List.of();
+        if (useCase.outputModelId() != null && !useCase.outputModelId().isBlank()) {
+            resultFieldNames = repository.findById(useCase.outputModelId(), ModelEntity.class)
+                    .map(m -> m.fields() == null ? List.<String>of() : m.fields().stream().map(ModelFieldEntity::name).toList())
+                    .orElse(List.of());
+        }
+        var lastCustom = -1;
+        if (useCase.steps() != null) {
+            for (int i = 0; i < useCase.steps().size(); i++) {
+                if (useCase.steps().get(i).type() == UseCaseStepType.Custom) lastCustom = i;
+            }
+        }
+
         var enrichedSteps = new java.util.ArrayList<Map<String, Object>>();
         var needsStreamBridge = false;
         var loadedAggregates = new java.util.HashSet<String>();
 
         if (useCase.steps() != null) {
+            var stepIndex = -1;
             for (var step : useCase.steps()) {
+                stepIndex++;
                 var stepMap = enrichStep(step.id(), step.name(),
                         step.type() != null ? step.type().name() : "Custom",
                         step.aggregateId(), step.operationId(),
@@ -1189,6 +1207,14 @@ public class GenerateCodeUseCase {
                 }
 
                 String stepType = (String) stepMap.get("type");
+                // A step this template cannot write for real becomes a hook (two-zone rule: no TODO
+                // business logic in the generated zone). Its intent says what it has to do.
+                var hookIntent = hookIntentFor(stepType, stepMap, commandFieldNames, loadedAggregates);
+                if (hookIntent != null) {
+                    stepMap.put("type", "Custom");
+                    if (!stepMap.containsKey("intent")) stepMap.put("intent", hookIntent);
+                    stepType = "Custom";
+                }
                 if ("CallGateway".equals(stepType) && stepMap.get("gatewayOperation") instanceof Map<?, ?> opMap) {
                     var inModelId = (String) opMap.get("inputModelId");
                     if (inModelId != null) {
@@ -1204,6 +1230,31 @@ public class GenerateCodeUseCase {
                         if (payloadModel != null && payloadModel.fields() != null) {
                             stepMap.put("argFields", buildArgs(payloadModel.fields(), commandFieldNames));
                         }
+                    }
+                    // After the step that produced the result, the event is built from it first:
+                    // that is where a Custom step leaves what it decided (ids, dates, flags).
+                    var fromResult = stepIndex > lastCustom && lastCustom >= 0 && !resultFieldNames.isEmpty();
+                    var available = new java.util.ArrayList<String>();
+                    if (fromResult) available.addAll(resultFieldNames);
+                    commandFieldNames.stream().sorted().forEach(available::add);
+                    if (stepMap.get("argFields") instanceof List<?> args) {
+                        for (var a : args) {
+                            @SuppressWarnings("unchecked") var am = (Map<String, Object>) a;
+                            var n = (String) am.get("name");
+                            if (fromResult && resultFieldNames.contains(n)) {
+                                am.put("matched", true);
+                                am.put("expr", "result." + n + "()");
+                            } else if (commandFieldNames.contains(n)) {
+                                am.put("expr", "command." + n + "()");
+                            }
+                        }
+                    }
+                    // the event's aggregateId: the first id the use case has at hand
+                    var idField = available.stream().filter(n -> n.equals("id") || n.endsWith("Id")).findFirst();
+                    if (idField.isPresent()) {
+                        var n = idField.get();
+                        stepMap.put("aggregateIdExpr",
+                                (fromResult && resultFieldNames.contains(n) ? "result." : "command.") + n + "()");
                     }
                 } else if ("ReadAggregate".equals(stepType) && stepMap.get("aggregate") instanceof Map<?, ?> aggMap) {
                     var aggName = (String) aggMap.get("name");
@@ -1223,6 +1274,41 @@ public class GenerateCodeUseCase {
         map.put("steps", enrichedSteps);
         map.put("needsStreamBridge", needsStreamBridge);
         return map;
+    }
+
+    /**
+     * Why a step has to be a hook, or null when the template writes it for real: an aggregate
+     * operation (its arguments are business decisions), saving an aggregate nothing loaded (it
+     * has to be built from the command), or loading one when the command carries no id.
+     */
+    private static String hookIntentFor(String stepType, Map<String, Object> stepMap,
+                                        Set<String> commandFieldNames, Set<String> loadedAggregates) {
+        var agg = stepMap.get("aggregate") instanceof Map<?, ?> a ? (String) a.get("name") : null;
+        switch (stepType) {
+            case "CallUseCase":
+                var uc = stepMap.get("useCase") instanceof Map<?, ?> u ? (String) u.get("className") : null;
+                return uc != null ? "Invoca el caso de uso " + uc + " con un comando construido a partir de este" : null;
+            case "ApplyModelMapping":
+                return "Aplica el mapeo de modelos" + (stepMap.get("modelMapping") instanceof Map<?, ?> mm ? " «" + mm.get("name") + "»" : "");
+            case "CallGateway":
+                return stepMap.get("gateway") instanceof Map<?, ?> g && !(stepMap.get("gatewayOperation") instanceof Map<?, ?>)
+                        ? "Llama al gateway " + g.get("className") + " (elige la operación)" : null;
+            default:
+                break;
+        }
+        if (agg == null) return null;
+        return switch (stepType) {
+            case "CallAggregateOperation" -> {
+                var op = stepMap.get("operation") instanceof Map<?, ?> o ? (String) o.get("name") : null;
+                yield op != null ? "Invoca la operación «" + op + "» de " + agg + " con los datos del comando"
+                        : "Opera sobre " + agg + " (carga el agregado, aplica el cambio y guárdalo)";
+            }
+            case "SaveAggregate" -> loadedAggregates.contains(agg) ? null
+                    : "Construye " + agg + " a partir del comando y guárdalo";
+            case "ReadAggregate" -> commandFieldNames.contains("id") ? null
+                    : "Carga " + agg + " a partir de los datos del comando";
+            default -> null;
+        };
     }
 
     private List<Map<String, Object>> buildArgs(List<ModelFieldEntity> fields, Set<String> commandFieldNames) {
