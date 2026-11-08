@@ -18,10 +18,12 @@ import java.util.Set;
  * {@code catalog-and-views.md}).
  *
  * <p>A view document ({@code *.modux-view.yaml}) lives in the repository, outside the catalog, and
- * references a catalog view by id (§12.2). {@link CheckModelUseCase} sees only the catalog, so it
- * cannot know a document's {@code viewId} has gone dangling — a view renamed or deleted leaves the
- * document pointing at nothing. This walks the repository, finds every document, and reports the
- * ones whose {@code viewId} the catalog does not have.
+ * references a catalog view by id (§12.2).
+ * {@link io.mateu.modux.modeldrivengenerator.application.usecases.model.check.CheckModelUseCase
+ * CheckModelUseCase} sees only the catalog, so it cannot know a document's {@code viewId} has gone
+ * dangling — a view renamed or deleted leaves the document pointing at nothing. This walks the
+ * repository, finds every document, and reports the ones whose {@code viewId} the catalog does not
+ * have.
  */
 public final class ViewDocumentChecker {
 
