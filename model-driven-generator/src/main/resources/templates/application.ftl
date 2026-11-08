@@ -11,6 +11,8 @@ import org.springframework.web.client.RestTemplate;
 
 // io.mateu is scanned so Mateu's web layer (MateuController: the UI shell at "/"
 // and the /mateu/v3/sync API) gets registered — Mateu ships no Spring auto-configuration.
+// Scheduled triggers (infra/in/scheduler) only fire with scheduling enabled.
+@org.springframework.scheduling.annotation.EnableScheduling
 @SpringBootApplication(scanBasePackages = {"${project.packageName}", "io.mateu"})
 public class ${className} {
 

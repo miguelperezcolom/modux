@@ -2,6 +2,8 @@ package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#assign visibleFields = safeFields?filter(f -> f.searchable || f.visible)>
 <#assign firstStringField = safeFields?filter(f -> f.type == "Wrapper" && (f.primitiveType == "string" || f.primitiveType == "email" || f.primitiveType == "url"))?first!"">
+<#-- the listing search matches any text column (a status, a name…), not just the first one -->
+<#assign searchFields = safeFields?filter(f -> f.type == "Wrapper" && (f.primitiveType == "string" || f.primitiveType == "email" || f.primitiveType == "url"))>
 <#function selectColumns fields>
   <#assign cols = "">
   <#list fields as f>
@@ -98,8 +100,9 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
 
     private boolean matchesSearch(${aggregate.name}Entity entity, String searchText) {
         var lower = searchText.toLowerCase();
-        return <#if firstStringField?is_hash>entity.get${firstStringField.name?cap_first}() != null
-                && entity.get${firstStringField.name?cap_first}().toLowerCase().contains(lower)<#else>entity.getId().toString().contains(lower)</#if>;
+        return <#if searchFields?has_content><#list searchFields as f>(entity.get${f.name?cap_first}() != null
+                && entity.get${f.name?cap_first}().toLowerCase().contains(lower))<#sep>
+                || </#sep></#list><#else>entity.getId().toString().contains(lower)</#if>;
     }
 
 }
@@ -180,8 +183,15 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
         var where = new StringBuilder();
         var params = new ArrayList<Object>();
         if (searchText != null && !searchText.isBlank()) {
-            where.append(" WHERE lower(CAST(${firstStringField?is_hash?then(firstStringField.columnName, "id")} AS varchar)) LIKE ?");
+<#if searchFields?has_content>
+            where.append(" WHERE <#list searchFields as f>lower(CAST(${f.columnName} AS varchar)) LIKE ?<#sep> OR </#sep></#list>");
+<#list searchFields as f>
             params.add("%" + searchText.toLowerCase() + "%");
+</#list>
+<#else>
+            where.append(" WHERE lower(CAST(id AS varchar)) LIKE ?");
+            params.add("%" + searchText.toLowerCase() + "%");
+</#if>
         }
         var total = jdbc.queryForObject("SELECT COUNT(*) FROM ${aggregate.tableName}" + where,
                 Integer.class, params.toArray());

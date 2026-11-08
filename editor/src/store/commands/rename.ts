@@ -64,6 +64,7 @@ const TOP_LEVEL: Record<string, TopLevel> = {
   'subscription': { type: 'subscriptions' },
   'notification': { type: 'notifications' },
   'process': { type: 'processes' },
+  'scheduled-trigger': { type: 'scheduledTriggers' },
 };
 
 /**

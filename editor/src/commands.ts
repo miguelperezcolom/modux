@@ -753,6 +753,12 @@ export type ModuxCommand =
       description?: string;
     }
   | {
+      /** When a scheduled trigger fires (Spring cron, six fields). */
+      kind: 'set-scheduled-trigger-cron';
+      id: string;
+      cronExpression: string;
+    }
+  | {
       /** Change what an element is, within a family (see store/commands/retype.ts); blocked while referenced. */
       kind: 'change-element-type';
       id: string;

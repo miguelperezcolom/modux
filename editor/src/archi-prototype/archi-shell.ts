@@ -99,6 +99,8 @@ const BOUND_CREATE: Record<string, (id: string, name: string) => Record<string, 
   aggregate: (id, name) => ({ kind: 'add-aggregate', id, name }),
   // a domain event: dropped inside a context it joins it (BOUND_CONTEXT_TYPE)
   event: (id, name) => ({ kind: 'add-domain-event', id, name }),
+  // a cron that fires a use case: dropped in a context it joins it, a line to a use case aims it
+  scheduler: (id, name) => ({ kind: 'add-scheduled-trigger', id, name }),
   entity: (id, name) => ({ kind: 'add-entity', id, name }),
   'value-object': (id, name) => ({ kind: 'add-value-object', id, name }),
   person: (id, name) => ({ kind: 'add-actor', id, name }),
@@ -138,6 +140,7 @@ const CATALOG_KIND_LABEL: Record<string, string> = {
 /** Palette kind → store type, for a freshly minted element that is not in the projection yet. */
 const BOUND_CONTEXT_TYPE: Record<string, string> = {
   aggregate: 'aggregates', usecase: 'useCases', policy: 'useCases', event: 'domainEvents',
+  scheduler: 'scheduledTriggers',
 };
 
 /** The size a kind is placed at: its palette tool's, or a plain box for catalog-only kinds. */
@@ -152,7 +155,7 @@ const RENAME_TYPE: Record<string, string> = {
   person: 'actor', usecase: 'use-case', workflow: 'workflow', api: 'api', 'proxy-api': 'proxy-api',
   'external-system': 'external-system', 'ai-agent': 'ai-agent', 'mcp-gateway': 'mcp-gateway', rag: 'rag',
   'ui-app': 'ui-app', page: 'page', 'read-model': 'read-model', 'integration-event': 'integration-event',
-  event: 'domain-event', policy: 'use-case',
+  event: 'domain-event', policy: 'use-case', scheduler: 'scheduled-trigger',
 };
 
 /**
@@ -868,6 +871,10 @@ export class ArchiShell extends LitElement {
       const agg = S === 'aggregate' ? src : T === 'aggregate' ? tgt : null;
       const mem = ['entity', 'value-object'].includes(S) ? src : ['entity', 'value-object'].includes(T) ? tgt : null;
       if (S === 'component' && T === 'component') cmd({ kind: 'add-relation', sourceId: src.id, targetId: tgt.id, type: 'CUSTOMER_SUPPLIER' });
+      else if (S === 'scheduler' && (T === 'usecase' || T === 'policy')) {
+        cmd({ kind: 'set-scheduled-trigger-target', id: src.id, targetUseCaseId: tgt.id });
+        this.flash(`«${src.label}» dispara «${tgt.label}»`);
+      }
       else if (agg && mem) cmd({ kind: mem.kind === 'entity' ? 'set-entity-aggregate' : 'set-value-object-aggregate', id: mem.id, aggregateId: agg.id });
       else {
         // Everything else means what the editor's gesture vocabulary says it means — the same
@@ -1292,9 +1299,16 @@ export class ArchiShell extends LitElement {
       const setContext = (e: Event) => this.emit('modux-command', { command: {
         kind: 'set-element-context', type: entry.contextType, id: entry.id,
         boundedContextId: (e.target as HTMLSelectElement).value || undefined } });
+      const trigger = entry.kind === 'scheduler'
+        ? m.boundedContexts.flatMap((c) => c.scheduledTriggers ?? []).find((t) => t.id === entry.id) : undefined;
+      const setCron = (e: Event) => this.emit('modux-command', { command: {
+        kind: 'set-scheduled-trigger-cron', id: entry.id, cronExpression: (e.target as HTMLInputElement).value } });
       return html`<div class="form">
         <label>Nombre</label><input .value=${entry.label} @input=${rename} />
         ${this.typeField(entry.id, CATALOG_KIND_LABEL[entry.kind] ?? entry.kind)}
+        ${entry.kind === 'scheduler' ? html`<label>Cron</label>
+          <input title="Cron de Spring: segundo minuto hora día mes día-semana" .value=${trigger?.cronExpression ?? ''} @change=${setCron} />
+          <label>Dispara</label><div class="ro">${m.boundedContexts.flatMap((c) => c.useCases ?? []).find((u) => u.id === trigger?.useCaseId)?.name ?? '— traza una línea a un caso de uso —'}</div>` : nothing}
         ${entry.contextType ? html`<label>Contexto</label>
           <select .value=${entry.ownerId ?? ''} @change=${setContext}>
             <option value="">— sin contexto —</option>

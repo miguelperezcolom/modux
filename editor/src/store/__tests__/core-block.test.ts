@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { apply, applyAll, CommandError, supports } from '../apply.js';
 import { crudApiId, crudUseCaseIds, lifecycleEvents, listingQueryId } from '../scaffold.js';
 import { ModelStore, type Element } from '../store.js';
+import { project } from '../project.js';
 
 /** A model with one context, one aggregate in it, and one service. */
 function model(extra: Record<string, Element[]> = {}): ModelStore {
@@ -294,6 +295,21 @@ describe('what things do', () => {
 
     expect((store.get('aggregates', 'agg-reserva')!.operations as Element[])[0].emits)
       .toBe('Otro,ReservaCreada');
+  });
+
+  it('aims a scheduled trigger with the field the generator reads, on a Spring cron', () => {
+    const store = model({ useCases: [{ id: 'uc-detectar', name: 'DetectarRetrasos' }] });
+    apply(store, { kind: 'add-scheduled-trigger', id: 'st-1', name: 'Diario' } as never);
+    apply(store, { kind: 'set-element-context', type: 'scheduledTriggers', id: 'st-1', boundedContextId: 'bc-res' } as never);
+    apply(store, { kind: 'set-scheduled-trigger-target', id: 'st-1', targetUseCaseId: 'uc-detectar' } as never);
+    expect(store.get('scheduledTriggers', 'st-1')).toMatchObject({ useCaseId: 'uc-detectar', cronExpression: '0 0 0 * * *' });
+    expect(store.get('scheduledTriggers', 'st-1')?.targetUseCaseId).toBeUndefined();
+    expect(store.get('boundedContexts', 'bc-res')?.scheduledTriggerIds).toEqual(['st-1']);
+    expect(() => apply(store, { kind: 'set-scheduled-trigger-cron', id: 'st-1', cronExpression: '0 6 * * *' } as never))
+      .toThrow(/seis campos/);
+    apply(store, { kind: 'set-scheduled-trigger-cron', id: 'st-1', cronExpression: '0 0 6 * * *' } as never);
+    expect(project(store).boundedContexts.find((c) => c.id === 'bc-res')?.scheduledTriggers)
+      .toEqual([{ id: 'st-1', name: 'Diario', cronExpression: '0 0 6 * * *', useCaseId: 'uc-detectar' }]);
   });
 
   it('lets a use case publish a domain event as a step, and takes it back', () => {
