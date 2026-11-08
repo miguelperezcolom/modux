@@ -1,6 +1,9 @@
 <#assign useFlyway = (project.dbMigrationTool!'Flyway') != 'None'>
 server:
     port: ${(service.port!8080)?c}
+    # A rejected request says why (a business rule's message), not just its status.
+    error:
+        include-message: always
 
 spring:
     application:
