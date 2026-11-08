@@ -1,0 +1,69 @@
+# A headless service whose aggregate is consumed over REST: the shape the IDE plugin produces when
+# an external system is connected to an aggregate (derived CRUD trio + API + lifecycle events).
+projects:
+- id: "biblioteca"
+  name: "Biblioteca"
+  outputPath: "generated"
+  packageName: "es.biblioteca"
+  headless: true
+boundedContexts:
+- id: "bc-prestamos"
+  name: "Prestamos"
+  aggregateIds: ["agg-libro"]
+  useCaseIds: ["uc-crearAgg-libro", "uc-actualizarAgg-libro", "uc-eliminarAgg-libro"]
+  domainEventIds: ["ev-agg-libroCreado", "ev-agg-libroModificado", "ev-agg-libroEliminado"]
+modules:
+- {id: "bc-prestamos-main", name: "Prestamos", boundedContextId: "bc-prestamos", main: true}
+aggregates:
+- id: "agg-libro"
+  name: "Libro"
+  modelId: "model-libro"
+models:
+- id: "model-libro"
+  name: "Libro"
+  fields:
+  - {id: "f-isbn", name: "isbn", basicType: true, type: "string"}
+  - {id: "f-titulo", name: "titulo", basicType: true, type: "string"}
+domainEvents:
+- {id: "ev-agg-libroCreado", name: "LibroCreado"}
+- {id: "ev-agg-libroModificado", name: "LibroModificado"}
+- {id: "ev-agg-libroEliminado", name: "LibroEliminado"}
+useCases:
+- id: "uc-crearAgg-libro"
+  name: "CrearLibro"
+  transactional: true
+  inputModelId: "model-libro"
+  steps:
+  - {id: "step-save", name: "saveLibro", type: "SaveAggregate", aggregateId: "agg-libro"}
+  - {id: "step-publish", name: "publishLibroCreado", type: "PublishDomainEvent", domainEventId: "ev-agg-libroCreado"}
+- id: "uc-actualizarAgg-libro"
+  name: "ActualizarLibro"
+  transactional: true
+  inputModelId: "model-libro"
+  steps:
+  - {id: "step-read", name: "readLibro", type: "ReadAggregate", aggregateId: "agg-libro"}
+  - {id: "step-save", name: "saveLibro", type: "SaveAggregate", aggregateId: "agg-libro"}
+  - {id: "step-publish", name: "publishLibroModificado", type: "PublishDomainEvent", domainEventId: "ev-agg-libroModificado"}
+- id: "uc-eliminarAgg-libro"
+  name: "EliminarLibro"
+  transactional: true
+  steps:
+  - {id: "step-delete", name: "deleteLibro", type: "Custom", aggregateId: "agg-libro"}
+  - {id: "step-publish", name: "publishLibroEliminado", type: "PublishDomainEvent", domainEventId: "ev-agg-libroEliminado"}
+queryServices:
+- id: "qs-crud-agg-libro"
+  name: "LibroQueries"
+  boundedContextId: "bc-prestamos"
+  operations:
+  - {id: "qs-crud-agg-libro-list", name: "list", responseModelId: "model-libro", cardinality: "Page"}
+apis:
+- id: "api-crud-agg-libro"
+  name: "LibroAPI"
+  operations:
+  - {id: "api-crud-agg-libro-create", name: "CrearLibro", httpMethod: "POST", path: "/libro", targetBoundedContextId: "bc-prestamos", targetUseCaseId: "uc-crearAgg-libro", requestModelId: "model-libro"}
+  - {id: "api-crud-agg-libro-update", name: "ActualizarLibro", httpMethod: "PUT", path: "/libro/{id}", targetBoundedContextId: "bc-prestamos", targetUseCaseId: "uc-actualizarAgg-libro", requestModelId: "model-libro"}
+  - {id: "api-crud-agg-libro-delete", name: "EliminarLibro", httpMethod: "DELETE", path: "/libro/{id}", targetBoundedContextId: "bc-prestamos", targetUseCaseId: "uc-eliminarAgg-libro"}
+  - {id: "api-crud-agg-libro-list", name: "ListarLibro", httpMethod: "GET", path: "/libro", targetBoundedContextId: "bc-prestamos", targetQueryServiceId: "qs-crud-agg-libro", targetQueryOperationId: "qs-crud-agg-libro-list"}
+  implementedByBoundedContextIds: ["bc-prestamos"]
+externalSystems:
+- {id: "ext-mostrador", name: "Mostrador", dependsOnApiIds: ["api-crud-agg-libro"]}

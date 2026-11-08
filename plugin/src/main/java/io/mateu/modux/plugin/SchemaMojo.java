@@ -30,7 +30,7 @@ public class SchemaMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException {
         try {
-            var target = Path.of(modelPath).resolve(SCHEMA_FILE);
+            var target = ModuxModel.locate(modelPath).resolve(SCHEMA_FILE);
             var schema = new ModelJsonSchemaGenerator().fullSchema();
             var json = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(schema);
 

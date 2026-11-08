@@ -22,6 +22,21 @@ final class ModuxModel {
     /** Where a project keeps its model, relative to the module the build runs in. */
     static final String DEFAULT_PATH = "modux";
 
+    /** The catalog directory the IDE plugin creates (its name is the marker, §12.3). */
+    static final String CATALOG_DIR = ".modux";
+
+    /**
+     * The model directory a build should read. The parameter defaults to {@code modux/}, but a
+     * repository initialised from the IDE plugin keeps its catalog in {@code .modux/}: when the
+     * default is absent and the catalog is there, that is the model.
+     */
+    static Path locate(String configured) {
+        var path = Path.of(configured);
+        if (Files.exists(path) || !DEFAULT_PATH.equals(String.valueOf(path.getFileName()))) return path;
+        var catalog = path.resolveSibling(CATALOG_DIR);
+        return Files.isDirectory(catalog) ? catalog : path;
+    }
+
     private final Path root;
     private final AllData data;
 
@@ -35,7 +50,7 @@ final class ModuxModel {
         if (!Files.exists(path)) {
             throw new IllegalStateException(
                     "No hay modelo en " + path.toAbsolutePath()
-                            + ". Un repositorio es un proyecto: el modelo va en " + DEFAULT_PATH + "/.");
+                            + ". Un repositorio es un proyecto: el modelo va en " + CATALOG_DIR + "/ (o " + DEFAULT_PATH + "/).");
         }
         var granular = new GranularYamlStorageFormat();
         var data = granular.handles(path)

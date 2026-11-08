@@ -37,6 +37,12 @@ public record ProjectEntity(
          * procedure, falling back to JDBC — the default when unset). Overridable per aggregate.
          */
         String dataAccess,
+        /**
+         * A headless project generates no Mateu UI of its own — no CRUD pages, no menus, no Home:
+         * its aggregates reach the outside only through their APIs (an external system's or
+         * another context's CRUD, use cases exposed as REST). Unset means the default, a UI.
+         */
+        Boolean headless,
 
         // ---- LEGACY: read by the migration on load, never by anything else -----------------
         // Each of these became its own element type so it stops sharing a file — and a git

@@ -30,7 +30,9 @@ public final class CrudApi {
         var ids = CrudUseCases.idsOf(aggregate.id());
         var apiId = apiId(aggregate.id());
         var model = aggregate.modelId();
-        var base = "/" + aggregate.id();
+        // the path is public contract: it reads after the aggregate's NAME, not its id (an
+        // editor-minted id is a timestamp). Mirrored in editor/src/store/scaffold.ts.
+        var base = "/" + pathSegment(aggregate.name(), aggregate.id());
         var qsId = queryServiceId(aggregate.id());
         var create = op(apiId + "-create", "Crear" + cap(aggregate.name()), "POST", base,
                 boundedContextId, ids.get(0), model, model, null, null);
@@ -73,5 +75,14 @@ public final class CrudApi {
 
     private static String cap(String s) {
         return s == null || s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
+    }
+
+    /** Lower-case, accent-free, dash-separated; falls back to the id when the name gives nothing. */
+    static String pathSegment(String name, String fallback) {
+        var slug = name == null ? "" : java.text.Normalizer.normalize(name.toLowerCase(), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("^-+|-+$", "");
+        return slug.isEmpty() ? fallback : slug;
     }
 }

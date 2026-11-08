@@ -24,7 +24,21 @@ public class ${api.className}Controller {
 
 <#list writeOps as op>
     @${op.mappingAnn}("${op.path}")
-<#if op.hasOutput>
+<#if op.trio?? && op.trio == "create">
+    public ResponseEntity<String> ${op.method}(@RequestBody ${op.ucClass}Command command) {
+        return ResponseEntity.ok(${op.ucField}.handle(command));
+    }
+<#elseif op.trio?? && op.trio == "update">
+    public ResponseEntity<Void> ${op.method}(@PathVariable String id, @RequestBody ${op.ucClass}Command command) {
+        ${op.ucField}.handle(command.withId(id));
+        return ResponseEntity.ok().build();
+    }
+<#elseif op.trio?? && op.trio == "delete">
+    public ResponseEntity<Void> ${op.method}(@PathVariable String id) {
+        ${op.ucField}.handle(new ${op.ucClass}Command(id));
+        return ResponseEntity.ok().build();
+    }
+<#elseif op.hasOutput>
     public ResponseEntity<${op.ucClass}Result> ${op.method}(@RequestBody ${op.ucClass}Command command) {
         return ResponseEntity.ok(${op.ucField}.handle(command));
     }
@@ -39,8 +53,11 @@ public class ${api.className}Controller {
 <#if read??>
     @GetMapping("${read.path}")
     public ResponseEntity<io.mateu.uidl.data.ListingData<${read.rowType}>> ${read.method}(
-            @RequestParam(required = false) String search) {
-        return ResponseEntity.ok(${read.qsField}.findAll(search, null, null));
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(${read.qsField}.findAll(search, null,
+                new io.mateu.uidl.data.Pageable(page, size, java.util.List.of())));
     }
 </#if>
 }

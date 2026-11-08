@@ -20,6 +20,10 @@ import { snapValue } from '../snap.js';
 type ViewMembers = { members: { id: string; x: number; y: number; w: number; h: number }[] };
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
+import { connectionOptions, type GestureHost } from '../gestures.js';
+
+/** A meaning the traced line can take in the model (from the editor's gesture vocabulary). */
+interface ConnectOption { id: string; label: string; hint: string; apply(): void }
 
 interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; group: string; }
 /** Element palette groups, in display order — new (high-level) groups slot in here. */
@@ -258,6 +262,8 @@ export class ArchiShell extends LitElement {
 
   @state() private tool: Tool = { kind: 'select' };
   @state() private menu: { x: number; y: number; src: SceneNode; tgt: SceneNode; opts: RelOption[] } | null = null;
+  /** Bound mode: several model meanings fit the traced line — pick one. */
+  @state() private connectMenu: { x: number; y: number; src: SceneNode; tgt: SceneNode; options: ConnectOption[] } | null = null;
   @state() private createMenu: { x: number; y: number; src: SceneNode; sx: number; sy: number } | null = null;
   @state() private createExpand: string | null = null;
   @state() private toast: string | null = null;
@@ -411,7 +417,7 @@ export class ArchiShell extends LitElement {
   private onMultiToggle = (e: Event) => this.toggleSel((e as CustomEvent).detail.id);
   private onBoxed = (e: Event) => { const ids = (e as CustomEvent).detail.ids as string[]; this.selectedIds = ids; this.selectedId = ids[0] ?? null; };
   private onSelCleared = () => { this.selectedIds = []; this.selectedId = null; };
-  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; this.ctx = null; this.painter = null; }
+  private resetTool() { this.tool = { kind: 'select' }; this.menu = null; this.connectMenu = null; this.createMenu = null; this.createExpand = null; this.sticky = false; this.ctx = null; this.painter = null; }
   /** Select a palette tool; Shift-click makes it sticky (stays active after one use). */
   private pickTool(t: Tool, e: MouseEvent) { this.sticky = e.shiftKey; this.tool = t; this.menu = null; this.createMenu = null; }
   private metaOf(id: string) { return this.meta[id] ?? { doc: '', props: [] }; }
@@ -474,8 +480,20 @@ export class ArchiShell extends LitElement {
   }
   private moveNodes(moves: { id: string; x: number; y: number }[]) {
     if (this.bound) {
-      const byId = new Map(moves.map((m) => [m.id, m]));
-      this.view = { members: this.view.members.map((mem) => byId.has(mem.id) ? { ...mem, x: byId.get(mem.id)!.x, y: byId.get(mem.id)!.y } : mem) };
+      const byId = new Map(moves.map((m) => [m.id, { x: m.x, y: m.y }]));
+      // A context carries what sits inside its box, as in free mode: otherwise moving it leaves
+      // its aggregates behind, still owned but drawn outside.
+      for (const mv of moves) {
+        const box = this.view.members.find((mem) => mem.id === mv.id);
+        if (!box || this.node(mv.id)?.kind !== 'component') continue;
+        const dx = mv.x - box.x, dy = mv.y - box.y;
+        if (!dx && !dy) continue;
+        for (const mem of this.view.members) {
+          if (byId.has(mem.id) || mem.id === box.id) continue;
+          if (Math.abs(mem.x - box.x) < box.w / 2 && Math.abs(mem.y - box.y) < box.h / 2) byId.set(mem.id, { x: mem.x + dx, y: mem.y + dy });
+        }
+      }
+      this.view = { members: this.view.members.map((mem) => byId.has(mem.id) ? { ...mem, ...byId.get(mem.id)! } : mem) };
       this.emit('view-changed', { view: this.view });
       return;
     }
@@ -525,12 +543,23 @@ export class ArchiShell extends LitElement {
    */
   private adoptIntoContext(id: string, x: number, y: number) {
     const entry = this.catalogById().get(id);
+    if ((entry?.kind ?? this.pendingKinds.get(id)) === 'module') { this.deployInto(id, x, y, entry?.label); return; }
     const contextType = entry?.contextType ?? BOUND_CONTEXT_TYPE[this.pendingKinds.get(id) ?? ''];
     if (!contextType) return;
     const ctx = this.contextAt(x, y, id);
     if (!ctx || entry?.ownerId === ctx.id) return;
     this.emit('modux-command', { command: { kind: 'set-element-context', type: contextType, id, boundedContextId: ctx.id } });
     this.flash(`«${entry?.label ?? this.node(id)?.label ?? id}» pasa a «${ctx.label}»`);
+  }
+  /** A module dropped inside a service (deployment) box is deployed by it — and only by it. */
+  private deployInto(id: string, x: number, y: number, label?: string) {
+    const svc = this.scene.nodes.find((c) => c.kind === 'deployment' && c.id !== id
+      && Math.abs(x - c.x) < c.w / 2 && Math.abs(y - c.y) < c.h / 2);
+    if (!svc) return;
+    const deployer = this.model?.services?.find((s) => (s.moduleIds ?? []).includes(id));
+    if (deployer?.id === svc.id) return;
+    this.emit('modux-command', { command: { kind: 'add-service-module', id: svc.id, targetId: id } });
+    this.flash(`«${label ?? id}» se despliega en «${svc.label}»`);
   }
   /** The innermost bounded context of this view whose box holds the point. */
   private contextAt(x: number, y: number, excludeId?: string): SceneNode | undefined {
@@ -576,7 +605,15 @@ export class ArchiShell extends LitElement {
     if (c) this.setParentId(id, c.id);
   }
   private onNodeResized = (e: Event) => {
-    const d = (e as CustomEvent).detail; this.commit();
+    const d = (e as CustomEvent).detail;
+    if (this.bound) {
+      // the scene is derived from the view: a resize has to land in the view, or the next
+      // projection puts the old size back
+      this.view = { members: this.view.members.map((mem) => (mem.id === d.id ? { ...mem, x: d.x, y: d.y, w: d.w, h: d.h } : mem)) };
+      this.emit('view-changed', { view: this.view });
+      return;
+    }
+    this.commit();
     this.patchNodes((n) => (n.id === d.id ? { ...n, x: d.x, y: d.y, w: d.w, h: d.h } : n));
   };
   private onNodeRenamed = (e: Event) => {
@@ -741,8 +778,10 @@ export class ArchiShell extends LitElement {
 
   private rename(name: string) {
     if (this.bound) {
-      const n = this.selectedNode();
-      if (n) this.emit('modux-command', { command: { kind: 'rename-element', type: this.modelType(n), id: n.id, name } });
+      // the selection may be a catalog row not drawn in this view: its type comes from the catalog
+      const id = this.selectedId, n = this.selectedNode();
+      const type = n ? this.modelType(n) : id ? this.catalogById().get(id)?.renameType : undefined;
+      if (id && type) this.emit('modux-command', { command: { kind: 'rename-element', type, id, name } });
       return;
     }
     const id = this.selectedId; if (!id) return;
@@ -803,14 +842,17 @@ export class ArchiShell extends LitElement {
     if (this.bound) {
       const S = src.kind, T = tgt.kind;
       const cmd = (command: unknown) => this.emit('modux-command', { command });
+      const agg = S === 'aggregate' ? src : T === 'aggregate' ? tgt : null;
+      const mem = ['entity', 'value-object'].includes(S) ? src : ['entity', 'value-object'].includes(T) ? tgt : null;
       if (S === 'component' && T === 'component') cmd({ kind: 'add-relation', sourceId: src.id, targetId: tgt.id, type: 'CUSTOMER_SUPPLIER' });
-      else if (S === 'aggregate' && T === 'component') cmd({ kind: 'set-aggregate-context', id: src.id, boundedContextId: tgt.id });
-      else if (S === 'component' && T === 'aggregate') cmd({ kind: 'set-aggregate-context', id: tgt.id, boundedContextId: src.id });
+      else if (agg && mem) cmd({ kind: mem.kind === 'entity' ? 'set-entity-aggregate' : 'set-value-object-aggregate', id: mem.id, aggregateId: agg.id });
       else {
-        const agg = S === 'aggregate' ? src : T === 'aggregate' ? tgt : null;
-        const mem = ['entity', 'value-object'].includes(S) ? src : ['entity', 'value-object'].includes(T) ? tgt : null;
-        if (agg && mem) cmd({ kind: mem.kind === 'entity' ? 'set-entity-aggregate' : 'set-value-object-aggregate', id: mem.id, aggregateId: agg.id });
-        else this.flash(`No sé conectar «${src.label}» con «${tgt.label}»`);
+        // Everything else means what the editor's gesture vocabulary says it means — the same
+        // rules the classic canvas applies (CRUD API, use case → aggregate, emissions, flows…).
+        const options = connectionOptions(this.gestureHost(), src.id, tgt.id) as ConnectOption[];
+        if (!options.length) this.flash(`No sé conectar «${src.label}» con «${tgt.label}»`);
+        else if (options.length === 1) this.applyConnect(options[0], src, tgt);
+        else { this.connectMenu = { x: d.x, y: d.y, src, tgt, options }; return; }
       }
       this.afterConnect();
       return;
@@ -936,7 +978,7 @@ export class ArchiShell extends LitElement {
   }
   private catalogRow(e: CatalogEntry, inView: boolean): TemplateResult {
     const sw = LAYER[kindLayer(e.kind)];
-    const sel = inView && (this.selectedIds.includes(e.id) || this.selectedId === e.id);
+    const sel = this.selectedIds.includes(e.id) || this.selectedId === e.id;
     return html`<div class="row child ${inView ? '' : 'absent'} ${sel ? 'sel' : ''}"
          title=${inView ? e.label : `${e.label} — arrastra al lienzo (o doble click) para añadirlo a la vista`}
          @pointerdown=${(ev: PointerEvent) => this.beginCatalogDrag(e, inView, ev)}
@@ -967,7 +1009,10 @@ export class ArchiShell extends LitElement {
     window.removeEventListener('pointermove', this.onCatalogDragMove);
     window.removeEventListener('pointerup', this.onCatalogDragUp);
     const d = this._catalogDrag; this._catalogDrag = null;
-    if (!d?.moved) return;                                   // a tap on an absent row does nothing
+    if (!d) return;
+    // A tap on an absent row selects it — the properties panel then shows THAT element. Doing
+    // nothing left the previous selection in the panel, and typing renamed the wrong thing.
+    if (!d.moved) { this.select(d.entry.id); return; }
     const c = this.canvasEl; if (!c) return;
     const r = c.getBoundingClientRect();
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
@@ -1228,6 +1273,35 @@ export class ArchiShell extends LitElement {
   }
 
   // ---- menus ---------------------------------------------------------------
+  private renderConnectMenu() {
+    if (!this.connectMenu) return nothing;
+    const m = this.connectMenu;
+    return html`<div class="menu" style="left:${m.x}px;top:${m.y}px">
+      <div class="mhead">${m.src.label} → ${m.tgt.label}</div>
+      ${m.options.map((o) => html`<div class="mi" title=${o.hint} @click=${() => { this.connectMenu = null; this.applyConnect(o, m.src, m.tgt); this.afterConnect(); }}><span>${o.label}</span></div>`)}
+    </div>`;
+  }
+  private applyConnect(o: ConnectOption, src: SceneNode, tgt: SceneNode) {
+    o.apply();
+    this.flash(`${o.label}: «${src.label}» → «${tgt.label}»`);
+  }
+  /**
+   * The slice of the classic editor's host the connection vocabulary needs: the model and a way
+   * to issue commands. The pickers and view plumbing it can also ask for have no counterpart in
+   * this canvas, so they are inert.
+   */
+  private gestureHost(): GestureHost {
+    const self = this;
+    const none = () => undefined;
+    return {
+      get model() { return self.model!; },
+      command: (c: unknown) => self.emit('modux-command', { command: c }),
+      emit: none, sceneFor: () => self.scene, owningProcessOf: none, owningUseCaseOf: none,
+      owningWorkflowOf: none, owningApiOf: none, menuEntryIn: () => null, newMenuItemId: (l: string) => l,
+      openExtDepPicker: none, openRelationPicker: none, openConnectPicker: none,
+      nodeClientRect: () => null, clearSelection: none, expandNode: none,
+    } as unknown as GestureHost;
+  }
   private renderMenu() {
     if (!this.menu) return nothing;
     const m = this.menu;
@@ -1336,7 +1410,7 @@ export class ArchiShell extends LitElement {
         <div class="body">${this.renderProps()}</div>
       </div>
 
-      ${this.renderMenu()}${this.renderCreateMenu()}
+      ${this.renderMenu()}${this.renderConnectMenu()}${this.renderCreateMenu()}
       ${this.ctx ? html`
         <div class="ctxback" @pointerdown=${() => (this.ctx = null)} @contextmenu=${(e: Event) => e.preventDefault()}></div>
         <div class="menu" style="left:${this.ctx.x}px;top:${this.ctx.y}px">
