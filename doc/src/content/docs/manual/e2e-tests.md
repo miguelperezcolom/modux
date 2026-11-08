@@ -1,9 +1,9 @@
 ---
 title: E2E Tests with Playwright
-description: How Modux generates end-to-end tests with Playwright for every aggregate
+description: How Modux generates end-to-end tests with Playwright for the aggregates a UI consumes
 ---
 
-Modux generates a complete Playwright E2E test suite alongside the production code. For every module you get an abstract base class, and for every aggregate you get a concrete test class with canned scenarios for the full CRUD lifecycle.
+Modux generates a complete Playwright E2E test suite alongside the production code. For every module you get an abstract base class, and for every aggregate with CRUD pages (one a UI consumes) you get a concrete test class with canned scenarios for the full CRUD lifecycle.
 
 ## Generated files
 

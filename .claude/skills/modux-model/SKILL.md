@@ -145,8 +145,12 @@ A step the generator can write for real is generated (publish an event, the CRUD
 Anything that needs a business decision becomes a **hook** in `{service}-custom`: a `Custom` step
 (its `intent` is the spec), and also an aggregate operation, saving an aggregate nothing loaded, or
 calling another use case. Reject from a hook with `BusinessRuleException.invalid/notFound/conflict`
-(400/404/409 with that message). `headless: true` on the project generates no Mateu UI: the
-aggregates are reached through APIs, and a use case an external system calls gets `POST /v1/{name}`.
+(400/404/409 with that message).
+
+**CRUD pages exist only if a UI consumes the aggregate**: an app with it in its menu
+(`menuItems[].aggregateId`), a page bound to it, or a UI shell federating its service. With no
+consumer there are no pages, menu or Home, and the aggregate is reached through its APIs (a use
+case an external system calls through an inbound ACL gets `POST /v1/{name}`).
 
 ## Do not edit generated code
 

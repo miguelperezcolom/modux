@@ -1,0 +1,32 @@
+# Which aggregates get CRUD pages: only those a UI consumes.
+projects:
+- id: "editorial"
+  name: "Editorial"
+  outputPath: "generated"
+  packageName: "es.editorial"
+  serviceIds: ["svc-editorial"]
+services:
+- {id: "svc-editorial", name: "Editorial", moduleIds: ["bc-catalogo-main"]}
+boundedContexts:
+- id: "bc-catalogo"
+  name: "Catalogo"
+  aggregateIds: ["agg-autor", "agg-tema", "agg-factura"]
+modules:
+- {id: "bc-catalogo-main", name: "Catalogo", boundedContextId: "bc-catalogo", main: true}
+aggregates:
+- {id: "agg-autor", name: "Autor", modelId: "model-autor"}    # in an app's menu
+- {id: "agg-tema", name: "Tema", modelId: "model-tema"}       # a page is bound to it
+- {id: "agg-factura", name: "Factura", modelId: "model-factura"}  # nothing consumes it
+models:
+- {id: "model-autor", name: "Autor", fields: [{id: "f-a", name: "nombre", basicType: true, type: "string"}]}
+- {id: "model-tema", name: "Tema", fields: [{id: "f-t", name: "nombre", basicType: true, type: "string"}]}
+- {id: "model-factura", name: "Factura", fields: [{id: "f-f", name: "numero", basicType: true, type: "string"}]}
+# what the plugin's app → aggregate gesture writes: a menu entry with an aggregateId, no service
+uiAdapters:
+- id: "app-backoffice"
+  name: "Backoffice"
+  title: "Backoffice"
+  menuItems:
+  - {id: "mi-autores", label: "Autores", aggregateId: "agg-autor"}
+pages:
+- {id: "pg-tema", name: "Temas", route: "/temas", type: "CRUD", aggregateId: "agg-tema", modelId: "model-tema"}

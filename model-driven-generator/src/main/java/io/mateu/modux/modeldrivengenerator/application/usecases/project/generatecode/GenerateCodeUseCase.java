@@ -328,7 +328,11 @@ public class GenerateCodeUseCase {
                 .flatMap(u -> u.appIds().stream())
                 .collect(java.util.stream.Collectors.toSet());
         repository.findAllOfType(UiAdapterEntity.class).stream()
-                .filter(a -> service.id().equals(a.serviceId()) || realizingAppIds.contains(a.id()))
+                .filter(a -> service.id().equals(a.serviceId()) || realizingAppIds.contains(a.id())
+                        // an app drawn with no service lives where the aggregates it manages are deployed
+                        || ((a.serviceId() == null || a.serviceId().isBlank()) && flattenMenu(a.menuItems()).stream()
+                                .anyMatch(it -> it.aggregateId() != null && deployedUnits(service).stream()
+                                        .anyMatch(unit -> unit.aggregateIds() != null && unit.aggregateIds().contains(it.aggregateId())))))
                 .forEach(adapter -> generateUiAdapter(project, service, serviceDir, adapter));
     }
 
@@ -405,8 +409,14 @@ public class GenerateCodeUseCase {
                     return m;
                 })
                 .toList();
-        if (!headless(project) && ((boundedContext.aggregateIds() != null && !boundedContext.aggregateIds().isEmpty())
-                || !uiUseCases.isEmpty())) {
+        var crudAggregateNames = (boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of()).stream()
+                .map(id -> repository.findById(id, AggregateEntity.class).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .filter(aggregate -> inScope(aggregate.id()) && hasCrudPages(service, aggregate))
+                .map(AggregateEntity::name)
+                .toList();
+        if (!crudAggregateNames.isEmpty() || !uiUseCases.isEmpty()) {
+            boundedContextModel.put("crudAggregateNames", crudAggregateNames);
             boundedContextModel.put("moduleMenuClassName", toTypeName(boundedContext.name()) + "Menu");
             boundedContextModel.put("uiUseCases", uiUseCases);
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/menu");
@@ -666,11 +676,13 @@ public class GenerateCodeUseCase {
                 });
 
         // One Home menu entry per deployed module (each pointing to that module's menu class).
-        // A module produces a menu if it packages aggregates (CRUDs) or exposedAsUi use
-        // cases (operation pages).
+        // A module produces a menu if a UI consumes one of its aggregates (CRUDs) or it has
+        // exposedAsUi use cases (operation pages).
         var menuBoundedContexts = new java.util.ArrayList<Map<String, Object>>();
         deployedUnits(service).stream()
-                .filter(m -> (m.aggregateIds() != null && !m.aggregateIds().isEmpty())
+                .filter(m -> (m.aggregateIds() != null && m.aggregateIds().stream()
+                                .map(id -> repository.findById(id, AggregateEntity.class).orElse(null))
+                                .anyMatch(a -> a != null && hasCrudPages(service, a)))
                         || (m.useCaseIds() != null && m.useCaseIds().stream()
                                 .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
                                 .anyMatch(UseCaseEntity::exposedAsUi)))
@@ -725,7 +737,8 @@ public class GenerateCodeUseCase {
         createDir(appDir, "src/main/java/" + packageDir + "/infra/in/rest");
         createFile(appDir, appModel, "business-rule-handler.ftl",
                 "src/main/java/" + packageDir + "/infra/in/rest/BusinessRuleExceptionHandler.java");
-        if (!uiCarriedByPage && !headless(project)) {
+        // A Home is a UI: with nothing to show there is none (the service is reached by its APIs).
+        if (!uiCarriedByPage && (declaredUi != null || !menuBoundedContexts.isEmpty())) {
             createFile(appDir, appModel, "home.ftl",
                     "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
         }
@@ -921,7 +934,8 @@ public class GenerateCodeUseCase {
                             + "/custom/Default" + aggregate.name() + "EventSourcing.java");
         }
 
-        if (!headless(project)) {
+        var crudPages = hasCrudPages(service, aggregate);
+        if (crudPages) {
         createDir(boundedContextDir,
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName);
 
@@ -934,13 +948,13 @@ public class GenerateCodeUseCase {
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "crud-viewmodel.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "ViewModel.java");
-        }
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "options-supplier.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdOptionsSupplier.java");
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "label-supplier.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers/"
                         + aggregate.name() + "IdLabelSupplier.java");
+        }
 
         // ─── Tests ────────────────────────────────────────────────────────────────
         createDir(boundedContextDir, "src/test/java/" + boundedContextPackageDir + "/domain/aggregates/" + aggregatePackageName);
@@ -972,9 +986,11 @@ public class GenerateCodeUseCase {
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "bdd-feature.ftl",
                 "src/test/resources/features/" + boundedContextSlug(boundedContext.name()) + "/" + aggregate.name() + ".feature");
 
-        // E2E test
-        createFile(boundedContextDir, project, service, boundedContext, aggregate, "e2e-aggregate.ftl",
-                "src/test/java/" + boundedContextPackageDir + "/e2e/" + aggregate.name() + "E2ETest.java");
+        // E2E test (it drives the aggregate's CRUD pages)
+        if (crudPages) {
+            createFile(boundedContextDir, project, service, boundedContext, aggregate, "e2e-aggregate.ftl",
+                    "src/test/java/" + boundedContextPackageDir + "/e2e/" + aggregate.name() + "E2ETest.java");
+        }
     }
 
     // ─── Use Cases ────────────────────────────────────────────────────────────
@@ -1038,7 +1054,7 @@ public class GenerateCodeUseCase {
 
         // exposedAsUi: a Mateu page whose fields are the command and whose primary action
         // executes the use case (view model only; menu wiring happens with the module menu).
-        if (useCase.exposedAsUi() && !headless(project)) {
+        if (useCase.exposedAsUi()) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug);
 
             // Array fields backed by a model become inline-editable grids: resolve each
@@ -1105,9 +1121,21 @@ public class GenerateCodeUseCase {
                 .anyMatch(a -> a.translatedUseCaseIds() != null && a.translatedUseCaseIds().contains(useCase.id()));
     }
 
-    /** See {@link ProjectEntity#headless()}: no Mateu UI of its own. */
-    private static boolean headless(ProjectEntity project) {
-        return Boolean.TRUE.equals(project.headless());
+    /**
+     * Whether a UI consumes this aggregate's CRUD, which is what its pages are the surface of (an
+     * actor only gets permissions, an external system or another context the REST API): an app
+     * that has it in its menu, a page bound to it, or a UI shell federating its service.
+     */
+    private boolean hasCrudPages(ServiceEntity service, AggregateEntity aggregate) {
+        var slug = aggregate.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        return repository.findAllOfType(UiShellEntity.class).stream()
+                        .anyMatch(sh -> sh.serviceIds() != null && sh.serviceIds().contains(service.id()))
+                || repository.findAllOfType(PageEntity.class).stream()
+                        .anyMatch(p -> aggregate.id().equals(p.aggregateId()))
+                || repository.findAllOfType(UiAdapterEntity.class).stream()
+                        .flatMap(a -> flattenMenu(a.menuItems()).stream())
+                        .anyMatch(it -> aggregate.id().equals(it.aggregateId())
+                                || (it.route() != null && it.route().toLowerCase().replaceAll("[^a-z0-9]", "").equals(slug)));
     }
 
     /** One of an aggregate's derived CRUD use cases, and which of the three it is. */
@@ -2777,6 +2805,26 @@ public class GenerateCodeUseCase {
                         .toList());
             }
         }
+
+        // Menu entries targeting an AGGREGATE open its CRUD (what the app → aggregate gesture writes).
+        model.put("menuCruds", flattenMenu(adapter.menuItems()).stream()
+                .filter(it -> it.aggregateId() != null && !it.aggregateId().isBlank()
+                        && (it.pageId() == null || it.pageId().isBlank())
+                        && (it.route() == null || it.route().isBlank()))
+                .map(it -> {
+                    var aggregate = repository.findById(it.aggregateId(), AggregateEntity.class).orElse(null);
+                    var unit = deployedUnits(service).stream()
+                            .filter(u -> u.aggregateIds() != null && u.aggregateIds().contains(it.aggregateId()))
+                            .findFirst().orElse(null);
+                    if (aggregate == null || unit == null) return null;
+                    return Map.of(
+                            "name", aggregate.name(),
+                            "slug", aggregate.name().toLowerCase(),
+                            "moduleSlug", boundedContextSlug(unit.name()),
+                            "field", fieldNameFromLabel(it.label(), aggregate.name().toLowerCase() + "Crud"));
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList());
 
         // Menu entries pointing at USE CASES resolve to their exposed UI pages
         // (aggregate-slug entries keep their own path; pageId entries use menuPages).

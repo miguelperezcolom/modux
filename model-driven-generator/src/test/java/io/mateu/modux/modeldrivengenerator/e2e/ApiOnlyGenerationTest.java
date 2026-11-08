@@ -16,16 +16,16 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * A headless service consumed over REST — the shape the IDE plugin draws when an external system is
+ * A service no UI consumes, reached over REST — the shape the IDE plugin draws when an external system is
  * connected to an aggregate. Generation-only (no compile/boot): the generated sources are inspected.
  * Each assertion is a defect found building a system with the plugin (docs/specs/biblioteca-prestamos.md).
  */
 @SpringBootTest
-class HeadlessCrudGenerationTest {
+class ApiOnlyGenerationTest {
 
     static {
         System.setProperty("modux.model-file",
-                new java.io.File("src/test/resources/examples/headless-crud-store.yaml").getAbsolutePath());
+                new java.io.File("src/test/resources/examples/api-only-store.yaml").getAbsolutePath());
     }
 
     @Autowired
@@ -38,21 +38,21 @@ class HeadlessCrudGenerationTest {
 
     @BeforeAll
     static void out() throws Exception {
-        output = Files.createTempDirectory("modux-headless-gen");
+        output = Files.createTempDirectory("modux-api-only-gen");
     }
 
     private Path generate() throws Exception {
-        repository.loadFrom(Path.of("src/test/resources/examples/headless-crud-store.yaml").toAbsolutePath().toString());
+        repository.loadFrom(Path.of("src/test/resources/examples/api-only-store.yaml").toAbsolutePath().toString());
         generateCodeUseCase.handle(new GenerateCodeCommand("biblioteca", output.toString(), null, true));
         return output;
     }
 
     @Test
-    void a_headless_service_generates_no_mateu_ui() throws Exception {
+    void with_no_ui_consumer_there_are_no_crud_pages_menus_or_home() throws Exception {
         var out = generate();
-        assertFalse(file(out, "LibroCrudOrchestrator.java").isPresent(), "CRUD pages generated for a headless service");
-        assertFalse(file(out, "PrestamosMenu.java").isPresent(), "a module menu generated for a headless service");
-        assertFalse(file(out, "Home.java").isPresent(), "a Home generated for a headless service");
+        assertFalse(file(out, "LibroCrudOrchestrator.java").isPresent(), "CRUD pages generated with no UI consuming them");
+        assertFalse(file(out, "PrestamosMenu.java").isPresent(), "a module menu generated with nothing to list");
+        assertFalse(file(out, "Home.java").isPresent(), "a Home generated with nothing to show");
         assertTrue(file(out, "LibroAPIController.java").isPresent(), "the REST contract was not generated");
     }
 

@@ -184,7 +184,7 @@ cd {service-name}
 mvn spring-boot:run
 ```
 
-The application starts at `http://localhost:{port}` with a fully working CRUD UI for all your aggregates.
+The application starts at `http://localhost:{port}`. Aggregates a UI consumes (an app's menu, a bound page, a UI shell) get working CRUD pages; the rest are reached through their APIs.
 
 ## Re-generating after changes
 
@@ -199,7 +199,7 @@ Recommended workflow:
 
 ## E2E tests with Playwright
 
-Every aggregate gets a `BaseE2ETest` (per module) and a concrete `{Aggregate}E2ETest` with canned CRUD scenarios. E2E tests are tagged `e2e` and excluded from the normal build — run them explicitly against a live app:
+Every module gets a `BaseE2ETest`, and every aggregate with CRUD pages a concrete `{Aggregate}E2ETest` with canned CRUD scenarios. E2E tests are tagged `e2e` and excluded from the normal build — run them explicitly against a live app:
 
 ```bash
 # Start the app, then in another terminal:

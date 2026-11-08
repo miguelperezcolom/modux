@@ -8,7 +8,7 @@ Guidance for AI coding agents working in this repository.
 systems. Users define a domain model as YAML (aggregates, entities, value objects,
 events, operations, sagas, projections…) and Modux generates a production-ready
 Spring Boot application from it: domain/application/infrastructure layers following
-Hexagonal Architecture, CRUD UIs (Vaadin / Mateu UIDL), database migrations, and
+Hexagonal Architecture, CRUD UIs for the aggregates a UI consumes (Vaadin / Mateu UIDL), database migrations, and
 DevOps artifacts (Dockerfile, docker-compose, Kubernetes manifests, Terraform
 skeleton, GitHub Actions workflow, JaCoCo).
 

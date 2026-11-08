@@ -14,7 +14,7 @@ You write a YAML specification describing your domain (aggregates, entities, val
 - Domain layer: aggregate roots, entities, value objects, domain events
 - Application layer: use cases (create/update/delete), query services, DTOs
 - Infrastructure layer: JPA entities, Spring Data repositories, DB implementations
-- UI layer: auto-generated CRUD pages (Vaadin / Mateu UIDL)
+- UI layer: CRUD pages (Vaadin / Mateu UIDL) for the aggregates a UI consumes
 - Database migrations: DDL files, foreign key scripts
 - DevOps artifacts: Dockerfile, Docker Compose, Kubernetes manifests, Terraform skeleton, CI workflow (GitHub Actions), JaCoCo coverage
 
