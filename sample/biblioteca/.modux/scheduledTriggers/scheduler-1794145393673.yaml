@@ -1,0 +1,4 @@
+id: scheduler-1794145393673
+name: DiarioRetrasos
+cronExpression: 0 0 6 * * *
+useCaseId: usecase-1794145395456

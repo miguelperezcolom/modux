@@ -11,11 +11,10 @@ source. There is no server to call and no tool surface in front of the files.
 
 ```
 mi-proyecto/
-├── modux/                          ← the model
-│   ├── index.yaml                  ← marker + counts per type. Its presence is what makes
-│   │                                 this directory a modux project.
+├── .modux/                         ← the model. The directory's name is what makes this a
+│   │                                 modux project (`mvn modux:*` also accepts `modux/`).
 │   ├── model-driven-store-schema.json
-│   ├── project.yaml
+│   ├── projects/{id}.yaml
 │   ├── boundedContexts/{id}.yaml
 │   ├── aggregates/{id}.yaml
 │   └── …                           ← one directory per element type
@@ -26,7 +25,7 @@ mi-proyecto/
 
 ## Start here: the schema is the metamodel
 
-`modux/model-driven-store-schema.json` defines every element type and every field — what
+`.modux/model-driven-store-schema.json` defines every element type and every field — what
 can be said at all. **Read it before inventing a field**; a field that is not in the schema
 does not exist, and the generator will ignore it silently.
 
@@ -139,6 +138,15 @@ mvn -q test            # the generated code has to build
 
 `modux:validate` reports every dangling reference with the element and field that carries it.
 Fix the model, not the generated code.
+
+## Use cases: what becomes code, what becomes a hook
+
+A step the generator can write for real is generated (publish an event, the CRUD of an aggregate).
+Anything that needs a business decision becomes a **hook** in `{service}-custom`: a `Custom` step
+(its `intent` is the spec), and also an aggregate operation, saving an aggregate nothing loaded, or
+calling another use case. Reject from a hook with `BusinessRuleException.invalid/notFound/conflict`
+(400/404/409 with that message). `headless: true` on the project generates no Mateu UI: the
+aggregates are reached through APIs, and a use case an external system calls gets `POST /v1/{name}`.
 
 ## Do not edit generated code
 

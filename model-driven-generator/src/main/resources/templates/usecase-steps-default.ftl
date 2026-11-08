@@ -26,6 +26,7 @@ public class Default${usecase.className}Steps implements ${usecase.className}Ste
 <#if step.intent?? && step.intent?has_content>
         // Intended behaviour: ${step.intent}
         // Tip: `mvn modux:ai-complete` proposes an implementation from that intent (AI-PROPOSALS.md).
+        // Reject with BusinessRuleException.conflict/notFound/invalid("why"): the caller gets that status and message.
         throw new UnsupportedOperationException(
             "Pendiente de implementar «${step.name}» (${usecase.name}): ${step.intent?j_string}");
 <#else>

@@ -1,0 +1,9 @@
+# Only the model and the developer-owned custom zone are versioned; the rest is regenerated.
+generated/*
+!generated/biblioteca/
+!generated/avisos/
+generated/*/*
+!generated/biblioteca/biblioteca-custom/
+!generated/avisos/avisos-custom/
+generated/*/*-custom/*
+!generated/*/*-custom/src/

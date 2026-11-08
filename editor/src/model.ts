@@ -46,9 +46,15 @@ export interface UseCaseRef {
     applicationEventId?: string;
     externalUseCaseId?: string;
     modelMappingId?: string;
+    /** Custom step: what it has to do (the spec of its hook). */
+    intent?: string;
   }[];
   /** The request/command model this use case receives. */
   inputModelId?: string;
+  /** The result model it returns. */
+  outputModelId?: string;
+  /** Answers over REST (POST /v1/{name}). */
+  exposedAsRest?: boolean;
 }
 
 export interface DomainEventRef {

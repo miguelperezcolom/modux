@@ -196,9 +196,47 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
     const id = String(command.id);
     const steps = nested(useCase.steps);
     if (steps.some((step) => step.id === id)) return;
+    // before any trailing publish: an event goes out with what the steps before it decided
+    let at = steps.length;
+    while (at > 0 && String(steps[at - 1].type).startsWith('Publish')) at--;
+    const step = { id, name: command.name, type: 'Custom', ...(command.intent ? { intent: command.intent } : {}) };
+    store.patch('useCases', useCase.id, { steps: [...steps.slice(0, at), step, ...steps.slice(at)] });
+  },
+
+  /** What a custom step has to do: the spec of its hook in the developer-owned module. */
+  'set-use-case-step-intent': (store, command) => {
+    const useCase = mustGet(store, 'useCases', command.useCaseId, 'Caso de uso');
+    const text = String(command.intent ?? '').trim();
     store.patch('useCases', useCase.id, {
-      steps: [...steps, { id, name: command.name, type: 'Custom' }],
+      steps: nested(useCase.steps).map((step) =>
+        (step.id === command.stepId ? { ...step, intent: text || null } : step)),
     });
+  },
+
+  /** Order is meaningful within a use case: move a step up (-1) or down (+1). */
+  'move-use-case-step': (store, command) => {
+    const useCase = mustGet(store, 'useCases', command.useCaseId, 'Caso de uso');
+    const steps = [...nested(useCase.steps)];
+    const from = steps.findIndex((step) => step.id === command.stepId);
+    const to = from + Number(command.delta ?? 0);
+    if (from < 0 || to < 0 || to >= steps.length) return;
+    const [step] = steps.splice(from, 1);
+    steps.splice(to, 0, step);
+    store.patch('useCases', useCase.id, { steps });
+  },
+
+  /** The use case's contract: what it takes, what it returns, whether it answers over REST. */
+  'set-use-case-contract': (store, command) => {
+    const useCase = mustGet(store, 'useCases', command.id, 'Caso de uso');
+    const patch: Record<string, unknown> = {};
+    for (const key of ['inputModelId', 'outputModelId'] as const) {
+      if (!(key in command)) continue;
+      const modelId = command[key] ? String(command[key]) : null;
+      if (modelId && !store.has('models', modelId)) throw new CommandError(`Modelo desconocido: ${modelId}`);
+      patch[key] = modelId;
+    }
+    if ('exposedAsRest' in command) patch.exposedAsRest = command.exposedAsRest === true;
+    store.patch('useCases', useCase.id, patch);
   },
 
   'remove-use-case-step': (store, command) => {

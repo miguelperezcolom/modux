@@ -1,0 +1,6 @@
+id: external-system-1794139124424
+name: Mostrador
+dependsOnApiIds:
+  - api-crud-aggregate-1794138423702
+  - api-crud-aggregate-1794138562900
+  - api-crud-aggregate-1794141968222

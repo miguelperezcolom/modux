@@ -1,0 +1,51 @@
+id: component-1794138396807
+name: Prestamos
+subdomainType: GENERIC
+aggregateIds:
+  - aggregate-1794138423702
+  - aggregate-1794138562900
+  - aggregate-1794141968222
+useCaseIds:
+  - uc-crearAggregate-1794138423702
+  - uc-actualizarAggregate-1794138423702
+  - uc-eliminarAggregate-1794138423702
+  - uc-crearAggregate-1794138562900
+  - uc-actualizarAggregate-1794138562900
+  - uc-eliminarAggregate-1794138562900
+  - usecase-1794141969971
+  - usecase-1794144290555
+  - usecase-1794145395456
+  - uc-crearAggregate-1794141968222
+  - uc-actualizarAggregate-1794141968222
+  - uc-eliminarAggregate-1794141968222
+domainEventIds:
+  - ev-aggregate-1794138423702Creado
+  - ev-aggregate-1794138423702Modificado
+  - ev-aggregate-1794138423702Eliminado
+  - ev-aggregate-1794138562900Creado
+  - ev-aggregate-1794138562900Modificado
+  - ev-aggregate-1794138562900Eliminado
+  - event-1794144292289
+  - event-1794145397368
+  - ev-aggregate-1794141968222Creado
+  - ev-aggregate-1794141968222Modificado
+  - ev-aggregate-1794141968222Eliminado
+acls:
+  - id: acl-external-system-1794139124424-component-1794138396807
+    name: AclMostrador
+    externalSystem: external-system-1794139124424
+    direction: INBOUND
+    translatedUseCaseIds:
+      - uc-crearAggregate-1794138423702
+      - uc-actualizarAggregate-1794138423702
+      - uc-eliminarAggregate-1794138423702
+      - uc-crearAggregate-1794138562900
+      - uc-actualizarAggregate-1794138562900
+      - uc-eliminarAggregate-1794138562900
+      - usecase-1794141969971
+      - usecase-1794144290555
+      - uc-crearAggregate-1794141968222
+      - uc-actualizarAggregate-1794141968222
+      - uc-eliminarAggregate-1794141968222
+scheduledTriggerIds:
+  - scheduler-1794145393673

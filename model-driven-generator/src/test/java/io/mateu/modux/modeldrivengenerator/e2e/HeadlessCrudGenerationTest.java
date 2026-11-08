@@ -125,6 +125,14 @@ class HeadlessCrudGenerationTest {
         assertTrue(read(out, "BibliotecaApplication.java").contains("WRITE_DATES_AS_TIMESTAMPS"), "dates must travel as ISO");
     }
 
+    @Test
+    void a_business_rejection_has_its_exception_and_its_http_answer() throws Exception {
+        var out = generate();
+        assertTrue(read(out, "BusinessRuleException.java").contains("public static BusinessRuleException conflict(String message)"));
+        var handler = read(out, "BusinessRuleExceptionHandler.java");
+        assertTrue(handler.contains("case CONFLICT -> HttpStatus.CONFLICT"), handler);
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

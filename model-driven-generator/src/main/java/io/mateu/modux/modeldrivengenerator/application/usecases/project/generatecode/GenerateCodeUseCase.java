@@ -366,6 +366,8 @@ public class GenerateCodeUseCase {
         // Base interfaces at project package level, shared by all aggregate repositories and query services
         createFile(boundedContextDir, boundedContextModel, "repository.ftl",
                 "src/main/java/" + packageDir + "/application/out/Repository.java");
+        createFile(boundedContextDir, boundedContextModel, "business-rule-exception.ftl",
+                "src/main/java/" + packageDir + "/application/BusinessRuleException.java");
         createDir(boundedContextDir, "src/main/java/" + packageDir + "/application/query");
         createFile(boundedContextDir, boundedContextModel, "queryservice.ftl",
                 "src/main/java/" + packageDir + "/application/query/QueryService.java");
@@ -720,6 +722,9 @@ public class GenerateCodeUseCase {
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
         createFile(appDir, appModel, "application.ftl",
                 "src/main/java/" + packageDir + "/" + toClassName(service.name()) + "Application.java");
+        createDir(appDir, "src/main/java/" + packageDir + "/infra/in/rest");
+        createFile(appDir, appModel, "business-rule-handler.ftl",
+                "src/main/java/" + packageDir + "/infra/in/rest/BusinessRuleExceptionHandler.java");
         if (!uiCarriedByPage && !headless(project)) {
             createFile(appDir, appModel, "home.ftl",
                     "src/main/java/" + packageDir + "/infra/in/ui/Home.java");

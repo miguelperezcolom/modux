@@ -1,0 +1,8 @@
+id: aggregate-1794138562900
+name: Socio
+modelId: model-aggregate-1794138562900
+invariants:
+- id: inv-socio-carnet
+  name: CarnetObligatorio
+  conditions:
+  - {id: inv-socio-carnet-c1, expression: "carnet != null && !carnet.isBlank()", custom: false, errorMessage: "El número de carné es obligatorio"}

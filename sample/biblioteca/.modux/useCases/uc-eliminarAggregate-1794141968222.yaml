@@ -1,0 +1,13 @@
+id: uc-eliminarAggregate-1794141968222
+name: EliminarPrestamo
+transactional: true
+steps:
+  - id: step-delete
+    name: deletePrestamo
+    type: Custom
+    aggregateId: aggregate-1794141968222
+    description: Elimina el agregado Prestamo
+  - id: step-publish-ev-aggregate-1794141968222Eliminado
+    name: publishPrestamoEliminado
+    type: PublishDomainEvent
+    domainEventId: ev-aggregate-1794141968222Eliminado

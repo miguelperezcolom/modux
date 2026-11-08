@@ -143,6 +143,9 @@ const BOUND_CONTEXT_TYPE: Record<string, string> = {
   scheduler: 'scheduledTriggers',
 };
 
+/** The basic field types a model field can take in the properties panel. */
+const FIELD_TYPES = ['string', 'integer', 'number', 'money', 'bool', 'date', 'time', 'dateTime'];
+
 /** The size a kind is placed at: its palette tool's, or a plain box for catalog-only kinds. */
 function defaultSize(kind: string): { w: number; h: number } {
   const tool = ELEMENT_TOOLS.find((t) => t.kind === kind);
@@ -294,7 +297,7 @@ export class ArchiShell extends LitElement {
     if (e.key === 'Escape') { this.resetTool(); return; }
     const path = e.composedPath();
     const tag = (path[0] as HTMLElement | undefined)?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     // Copy/paste: the canvas doesn't handle these, so act regardless of focus.
     if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) { this.copy(); return; }
     if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); this.paste(); return; }
@@ -386,6 +389,14 @@ export class ArchiShell extends LitElement {
     .form input, .form textarea, .form .ro, .form select { font: inherit; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px; background: #fff; color: #1e293b; }
     .form .ro { background: #f1f5f9; color: #475569; }
     .form textarea { resize: vertical; min-height: 46px; }
+    .form .sec { grid-column: 1 / -1; margin-top: 6px; padding-top: 8px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .form .sec button, .form .rowx button { border: 1px solid #cbd5e1; background: #fff; border-radius: 5px; font: inherit; font-size: 12px; padding: 1px 7px; cursor: pointer; color: #475569; }
+    .form .rowx { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 110px auto; gap: 6px; align-items: center; }
+    .form .rowx.step { grid-template-columns: 1fr auto auto auto; }
+    .form .rowx textarea { grid-column: 1 / -1; min-height: 34px; }
+    .form .rowx .kind { color: #94a3b8; font-size: 11px; margin-left: 6px; }
+    .form .hintx { grid-column: 1 / -1; color: #94a3b8; font-size: 12px; }
+    .form .check { display: flex; align-items: center; gap: 6px; color: #1e293b; }
     .empty { padding: 22px; color: #94a3b8; }
     .colorrow { display: flex; align-items: center; gap: 8px; }
     .colorrow input[type=color] { width: 34px; height: 26px; padding: 0; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; }
@@ -1229,6 +1240,72 @@ export class ArchiShell extends LitElement {
     return html`<label>Descripción</label>
       <textarea placeholder="Qué es, en lenguaje del dominio…" .value=${this.model?.descriptions?.[id] ?? ''} @change=${set}></textarea>`;
   }
+  private cmd(command: unknown) { this.emit('modux-command', { command }); }
+  /** The fields of a model: what an aggregate's state, a command or a result is made of. */
+  private renderFields(modelId: string) {
+    const model = (this.model?.models ?? []).find((x) => x.id === modelId);
+    if (!model) return nothing;
+    const set = (fieldId: string, name: string, type: string) =>
+      this.cmd({ kind: 'set-model-field', modelId, fieldId, name, type });
+    return html`<div class="sec"><span>Campos</span><button @click=${() => this.cmd({
+        kind: 'add-model-field', modelId, fieldId: `f-${Date.now()}`, name: `campo${(model.fields?.length ?? 0) + 1}`, type: 'string' })}>+ campo</button></div>
+      ${(model.fields ?? []).map((f) => html`<div class="rowx">
+        <input .value=${f.name} @change=${(e: Event) => set(f.id, (e.target as HTMLInputElement).value, f.type ?? 'string')} />
+        <select @change=${(e: Event) => set(f.id, f.name, (e.target as HTMLSelectElement).value)}>
+          ${FIELD_TYPES.map((t) => html`<option value=${t} ?selected=${t === (f.type ?? 'string')}>${t}</option>`)}
+        </select>
+        <button title="Quitar campo" @click=${() => this.cmd({ kind: 'remove-model-field', modelId, fieldId: f.id })}>✕</button></div>`)}
+      ${model.fields?.length ? nothing : html`<div class="hintx">Sin campos todavía.</div>`}`;
+  }
+  /** Named rules of an aggregate; their code goes in its Invariants hook (custom module). */
+  private renderInvariants(aggregateId: string, invariants: { id: string; name: string }[]) {
+    const nameIt = () => {
+      const input = this.renderRoot.querySelector('#new-invariant') as HTMLInputElement | null;
+      const name = input?.value.trim(); if (!input || !name) return;
+      this.cmd({ kind: 'add-invariant', ownerId: aggregateId, id: `inv-${Date.now()}`, name });
+      input.value = '';
+    };
+    return html`<div class="sec"><span>Invariantes</span></div>
+      ${invariants.map((i) => html`<div class="rowx" style="grid-template-columns:1fr auto"><div class="ro">${i.name}</div>
+        <button title="Quitar invariante" @click=${() => this.cmd({ kind: 'remove-invariant', id: i.id })}>✕</button></div>`)}
+      <div class="rowx" style="grid-template-columns:1fr auto"><input id="new-invariant" placeholder="Nueva regla, p. ej. IsbnObligatorio" @keydown=${(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') nameIt(); }} />
+        <button @click=${nameIt}>+</button></div>`;
+  }
+  /** A use case's contract and pipeline: what it takes, what it returns, what it does. */
+  private renderUseCaseContract(id: string) {
+    const m = this.model!;
+    const uc = [...m.boundedContexts.flatMap((c) => c.useCases ?? []), ...(m.looseUseCases ?? [])].find((u) => u.id === id);
+    if (!uc) return nothing;
+    const models = m.models ?? [];
+    const pick = (key: 'inputModelId' | 'outputModelId', current: string | undefined, suffix: string, label: string) => html`
+      <label>${label}</label>
+      <span class="colorrow"><select style="flex:1" @change=${(e: Event) => this.cmd({ kind: 'set-use-case-contract', id, [key]: (e.target as HTMLSelectElement).value || null })}>
+        <option value="" ?selected=${!current}>— ninguno —</option>
+        ${models.map((x) => html`<option value=${x.id} ?selected=${x.id === current}>${x.name}</option>`)}
+      </select>
+      ${current
+        ? html`<button class="addprop" style="margin:0" title="Editar sus campos" @click=${() => this.select(current)}>Campos</button>`
+        : html`<button class="addprop" style="margin:0" title="Crear un modelo nuevo y editar sus campos" @click=${() => {
+            const modelId = `model-${id}-${suffix}`;
+            this.cmd({ kind: 'add-model', id: modelId, name: `${uc.name}${suffix === 'in' ? 'Input' : 'Result'}` });
+            this.cmd({ kind: 'set-use-case-contract', id, [key]: modelId });
+            this.select(modelId);
+          }}>Crear</button>`}</span>`;
+    const steps = uc.steps ?? [];
+    return html`${pick('inputModelId', uc.inputModelId, 'in', 'Entrada')}${pick('outputModelId', uc.outputModelId, 'out', 'Resultado')}
+      <label>REST</label>
+      <label class="check"><input type="checkbox" .checked=${uc.exposedAsRest === true} @change=${(e: Event) => this.cmd({ kind: 'set-use-case-contract', id, exposedAsRest: (e.target as HTMLInputElement).checked })} /> Expuesto (POST /v1/${uc.name.toLowerCase()})</label>
+      <div class="sec"><span>Pasos</span><button @click=${() => this.cmd({ kind: 'add-use-case-step', useCaseId: id, id: `step-${Date.now()}`, name: `paso${steps.length + 1}` })}>+ paso custom</button></div>
+      ${steps.map((st, i) => html`<div class="rowx step">
+        <div class="ro">${st.name ?? st.id}<span class="kind">${st.type ?? ''}</span></div>
+        <button title="Subir" ?disabled=${i === 0} @click=${() => this.cmd({ kind: 'move-use-case-step', useCaseId: id, stepId: st.id, delta: -1 })}>↑</button>
+        <button title="Bajar" ?disabled=${i === steps.length - 1} @click=${() => this.cmd({ kind: 'move-use-case-step', useCaseId: id, stepId: st.id, delta: 1 })}>↓</button>
+        <button title="Quitar paso" @click=${() => this.cmd({ kind: 'remove-use-case-step', useCaseId: id, id: st.id })}>✕</button>
+        ${st.type === 'Custom' ? html`<textarea placeholder="Qué tiene que hacer (se convierte en el gancho a implementar)…" .value=${st.intent ?? ''}
+          @change=${(e: Event) => this.cmd({ kind: 'set-use-case-step-intent', useCaseId: id, stepId: st.id, intent: (e.target as HTMLTextAreaElement).value })}></textarea>` : nothing}
+      </div>`)}
+      ${steps.length ? nothing : html`<div class="hintx">Sin pasos: traza líneas a agregados o eventos, o añade un paso custom.</div>`}`;
+  }
   /** Bound mode, Apariencia: the fill this view gives the element (presentation only). */
   private renderBoundAppearance(id: string | null) {
     const mem = id ? this.view.members.find((m) => m.id === id) : undefined;
@@ -1266,7 +1343,6 @@ export class ArchiShell extends LitElement {
     if (agg) {
       const ents = (m.entities ?? []).filter((x) => x.aggregateId === agg.id).length;
       const vos = (m.valueObjects ?? []).filter((x) => x.aggregateId === agg.id).length;
-      const invs = (agg.invariants ?? []).length;
       return html`<div class="form">
         <label>Nombre</label><input .value=${agg.name} @input=${rename} />
         ${this.typeField(agg.id, 'Agregado')}
@@ -1276,8 +1352,9 @@ export class ArchiShell extends LitElement {
         </select>
         <label>Entidades</label><div class="ro">${ents}</div>
         <label>Value objects</label><div class="ro">${vos}</div>
-        <label>Invariantes</label><div class="ro">${invs}</div>
-        ${this.describeField(agg.id)}</div>`;
+        ${this.describeField(agg.id)}
+        ${agg.modelId ? this.renderFields(agg.modelId) : nothing}
+        ${this.renderInvariants(agg.id, agg.invariants ?? [])}</div>`;
     }
     const ent = (m.entities ?? []).find((x) => x.id === id);
     const vo = (m.valueObjects ?? []).find((x) => x.id === id);
@@ -1315,6 +1392,8 @@ export class ArchiShell extends LitElement {
             ${m.boundedContexts.map((c) => html`<option value=${c.id} ?selected=${c.id === entry.ownerId}>${c.name}</option>`)}
           </select>` : nothing}
         ${this.describeField(entry.id)}
+        ${entry.kind === 'model' ? this.renderFields(entry.id) : nothing}
+        ${entry.kind === 'usecase' || entry.kind === 'policy' ? this.renderUseCaseContract(entry.id) : nothing}
       </div>`;
     }
     return html`<div class="empty">Selecciona un elemento del modelo.</div>`;

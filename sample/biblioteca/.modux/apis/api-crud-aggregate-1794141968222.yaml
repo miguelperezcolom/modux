@@ -1,0 +1,46 @@
+id: api-crud-aggregate-1794141968222
+name: PrestamoAPI
+description: CRUD del agregado Prestamo.
+operations:
+  - id: api-crud-aggregate-1794141968222-create
+    name: CrearPrestamo
+    httpMethod: POST
+    path: /prestamo
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-crearAggregate-1794141968222
+    requestModelId: model-aggregate-1794141968222
+    responseModelId: model-aggregate-1794141968222
+  - id: api-crud-aggregate-1794141968222-update
+    name: ActualizarPrestamo
+    httpMethod: PUT
+    path: /prestamo/{id}
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-actualizarAggregate-1794141968222
+    requestModelId: model-aggregate-1794141968222
+    responseModelId: model-aggregate-1794141968222
+  - id: api-crud-aggregate-1794141968222-delete
+    name: EliminarPrestamo
+    httpMethod: DELETE
+    path: /prestamo/{id}
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-eliminarAggregate-1794141968222
+  - id: api-crud-aggregate-1794141968222-list
+    name: ListarPrestamo
+    httpMethod: GET
+    path: /prestamo
+    targetBoundedContextId: component-1794138396807
+    responseModelId: model-aggregate-1794141968222
+    targetQueryServiceId: qs-crud-aggregate-1794141968222
+    targetQueryOperationId: qs-crud-aggregate-1794141968222-list
+implementedByBoundedContextIds:
+  - component-1794138396807
+operationImplementations:
+  - apiOperationId: api-crud-aggregate-1794141968222-create
+    boundedContextId: component-1794138396807
+    useCaseId: uc-crearAggregate-1794141968222
+  - apiOperationId: api-crud-aggregate-1794141968222-update
+    boundedContextId: component-1794138396807
+    useCaseId: uc-actualizarAggregate-1794141968222
+  - apiOperationId: api-crud-aggregate-1794141968222-delete
+    boundedContextId: component-1794138396807
+    useCaseId: uc-eliminarAggregate-1794141968222

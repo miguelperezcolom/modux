@@ -1,0 +1,17 @@
+id: usecase-1794144290555
+name: DevolverLibro
+description: El socio devuelve el libro en el mostrador.
+transactional: true
+inputModelId: model-devolver-libro
+outputModelId: model-libro-devuelto
+steps:
+  - id: step-devolver
+    name: devolver
+    type: Custom
+    intent: >-
+      Cierra el préstamo ABIERTO del libro (pasa a DEVUELTO) y deja el libro DISPONIBLE. Indica si
+      llegó con retraso (devuelto después de la fecha de vencimiento).
+  - id: step-publish-event-1794144292289
+    name: publishLibroDevuelto
+    type: PublishDomainEvent
+    domainEventId: event-1794144292289

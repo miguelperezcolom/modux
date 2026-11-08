@@ -259,8 +259,11 @@ function useCase(uc: Element): UseCaseRef {
       applicationEventId: str(s.applicationEventId),
       externalUseCaseId: str(s.externalUseCaseId),
       modelMappingId: str(s.modelMappingId),
+      intent: str(s.intent),
     })),
     inputModelId: str(uc.inputModelId),
+    outputModelId: str(uc.outputModelId),
+    exposedAsRest: uc.exposedAsRest === true,
   };
 }
 

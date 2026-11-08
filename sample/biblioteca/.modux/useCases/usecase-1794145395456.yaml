@@ -1,0 +1,12 @@
+id: usecase-1794145395456
+name: DetectarRetrasos
+description: Cada día marca los préstamos vencidos y avisa de cada uno.
+transactional: true
+outputModelId: model-retrasos-detectados
+steps:
+  - id: step-detectar
+    name: detectar
+    type: Custom
+    intent: >-
+      Marca como RETRASADO cada préstamo ABIERTO cuya fecha de vencimiento ya pasó, y publica
+      PrestamoRetrasado por cada uno (con los días de retraso).

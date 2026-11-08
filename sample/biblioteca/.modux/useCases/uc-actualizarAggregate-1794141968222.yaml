@@ -1,0 +1,17 @@
+id: uc-actualizarAggregate-1794141968222
+name: ActualizarPrestamo
+transactional: true
+inputModelId: model-aggregate-1794141968222
+steps:
+  - id: step-read
+    name: readPrestamo
+    type: ReadAggregate
+    aggregateId: aggregate-1794141968222
+  - id: step-save
+    name: savePrestamo
+    type: SaveAggregate
+    aggregateId: aggregate-1794141968222
+  - id: step-publish-ev-aggregate-1794141968222Modificado
+    name: publishPrestamoModificado
+    type: PublishDomainEvent
+    domainEventId: ev-aggregate-1794141968222Modificado

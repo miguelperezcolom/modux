@@ -1,0 +1,46 @@
+id: api-crud-aggregate-1794138423702
+name: LibroAPI
+description: CRUD del agregado Libro.
+operations:
+  - id: api-crud-aggregate-1794138423702-create
+    name: CrearLibro
+    httpMethod: POST
+    path: /libro
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-crearAggregate-1794138423702
+    requestModelId: model-aggregate-1794138423702
+    responseModelId: model-aggregate-1794138423702
+  - id: api-crud-aggregate-1794138423702-update
+    name: ActualizarLibro
+    httpMethod: PUT
+    path: /libro/{id}
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-actualizarAggregate-1794138423702
+    requestModelId: model-aggregate-1794138423702
+    responseModelId: model-aggregate-1794138423702
+  - id: api-crud-aggregate-1794138423702-delete
+    name: EliminarLibro
+    httpMethod: DELETE
+    path: /libro/{id}
+    targetBoundedContextId: component-1794138396807
+    targetUseCaseId: uc-eliminarAggregate-1794138423702
+  - id: api-crud-aggregate-1794138423702-list
+    name: ListarLibro
+    httpMethod: GET
+    path: /libro
+    targetBoundedContextId: component-1794138396807
+    responseModelId: model-aggregate-1794138423702
+    targetQueryServiceId: qs-crud-aggregate-1794138423702
+    targetQueryOperationId: qs-crud-aggregate-1794138423702-list
+implementedByBoundedContextIds:
+  - component-1794138396807
+operationImplementations:
+  - apiOperationId: api-crud-aggregate-1794138423702-create
+    boundedContextId: component-1794138396807
+    useCaseId: uc-crearAggregate-1794138423702
+  - apiOperationId: api-crud-aggregate-1794138423702-update
+    boundedContextId: component-1794138396807
+    useCaseId: uc-actualizarAggregate-1794138423702
+  - apiOperationId: api-crud-aggregate-1794138423702-delete
+    boundedContextId: component-1794138396807
+    useCaseId: uc-eliminarAggregate-1794138423702

@@ -1,0 +1,5 @@
+id: model-prestamo-registrado
+name: PrestamoRegistrado
+fields:
+- {id: f-pr-id, name: prestamoId, basicType: true, type: string}
+- {id: f-pr-vence, name: fechaVencimiento, basicType: true, type: date}

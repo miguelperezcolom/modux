@@ -1,0 +1,10 @@
+id: usecase-1794145713045
+name: RegistrarAviso
+description: Cuando un préstamo se retrasa, deja constancia del aviso al socio y lo envía.
+transactional: true
+inputModelId: model-prestamo-retrasado
+steps:
+  - id: step-registrar
+    name: registrar
+    type: Custom
+    intent: Registra un Aviso para el socio del préstamo retrasado y lo envía por email.

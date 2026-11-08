@@ -1,0 +1,13 @@
+id: uc-eliminarAggregate-1794138423702
+name: EliminarLibro
+transactional: true
+steps:
+  - id: step-delete
+    name: deleteLibro
+    type: Custom
+    aggregateId: aggregate-1794138423702
+    description: Elimina el agregado Libro
+  - id: step-publish-ev-aggregate-1794138423702Eliminado
+    name: publishLibroEliminado
+    type: PublishDomainEvent
+    domainEventId: ev-aggregate-1794138423702Eliminado

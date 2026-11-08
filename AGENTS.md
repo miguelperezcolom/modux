@@ -45,7 +45,8 @@ There is **no root Maven aggregator POM**; each module is built separately.
 | `figma-maven-plugin/` | Maven plugin generating Mateu views (Java/C#/Python) from Figma files. |
 | `sample/hla-booking/` | Hand-authored example spec (`model-driven-store.yaml` + JSON schema). Versioned. |
 | `sample/patterns/` | Hand-authored didactic pattern stores (BFF, ACL, CQRS, event-driven, saga, event sourcing, human process). Versioned; seeded to `~/.modux/examples` by `install.sh`. |
-| `sample/hotel-checkin/` | Generated sample application (multi-module). **Not versioned** — `sample/*` is git-ignored except `sample/hla-booking/` and `sample/patterns/`. |
+| `sample/biblioteca/` | A system built end to end with the IntelliJ plugin (model in `.modux/`, view, custom zone; two services). Versioned without its generated code. |
+| `sample/hotel-checkin/` | Generated sample application (multi-module). **Not versioned** — `sample/*` is git-ignored except `sample/hla-booking/`, `sample/patterns/` and `sample/biblioteca/`. |
 | `doc/` | Astro Starlight documentation site (npm). |
 | `docs/design/` | Design RFCs (Spanish), e.g. `two-zone-codegen.md`, `storage-ports.md`. |
 | `docs/specs/` | Business specs used as examples (Spanish). |
