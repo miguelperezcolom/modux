@@ -124,7 +124,7 @@ projects:
   - id: "proj-1"
     name: "Booking Platform"
     packageName: "com.example.booking"
-    version: "0.1.0"
+    version: "0.2.0"
     outputPath: "/workspace/generated"
     serviceIds:
       - "svc-1"

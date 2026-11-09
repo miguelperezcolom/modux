@@ -227,7 +227,7 @@ Key architectural concepts to respect:
   enabled by default; disable with `--set postgresql.enabled=false` and set
   `externalDatabase.jdbcUrl` for an external DB). Full instructions in
   `deploy/README.md` (Spanish).
-- There is **no CI configuration in this repo** (`.github` does not exist); the
+- `.github/workflows/release.yml` publishes a version when a `vX.Y.Z` tag is pushed (see the file for the secrets each channel needs); the
   generated projects include their own GitHub Actions workflow
   (`templates/ci-workflow.ftl`).
 - Publishing to Maven Central is wired in the POM (`central-publishing-maven-plugin`

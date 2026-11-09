@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.1.2"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -41,6 +41,10 @@ intellijPlatform {
     // boots a headless IDE to find that out.
     buildSearchableOptions = false
 
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_TOKEN")
+    }
+
     pluginConfiguration {
         name = "Modux"
         ideaVersion {
@@ -54,13 +58,11 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
-            <h4>0.1.2</h4>
-            <p>First release. The modux model editor, inside the IDE.</p>
+            <h4>0.2.0</h4>
             <ul>
-              <li>Graphical editor over the YAML model in your repository — no server to run.</li>
-              <li>Edits are plain file changes: what you see is what git sees.</li>
-              <li>Diagram geometry is versioned with the model, not stored elsewhere.</li>
-              <li>References to other modux projects resolve from the git URL alone.</li>
+              <li>Line width stays constant with the zoom, and trackpad pinch is usable.</li>
+              <li>The panel edits fields, invariants, use cases, operations and the service port.</li>
+              <li>Connectors offer what each pair of elements allows.</li>
             </ul>
             <p>Code generation is the <code>modux-maven-plugin</code>, a separate artifact.</p>
         """.trimIndent()
