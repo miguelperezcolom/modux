@@ -161,6 +161,9 @@ calling another use case. Reject from a hook with `BusinessRuleException.invalid
 consumer there are no pages, menu or Home, and the aggregate is reached through its APIs (a use
 case an external system calls through an inbound ACL gets `POST /v1/{name}`).
 
+`mvn modux:hla` writes `HLA.generated.md`, the design document derived from the model; declare
+the project's `objective` so its first section says what the system is for.
+
 ## Do not edit generated code
 
 Generation has two zones (see `docs/design/two-zone-codegen.md`):

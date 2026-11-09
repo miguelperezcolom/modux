@@ -43,6 +43,9 @@ public class ${aggregate.name}ViewModel implements Identifiable {
     <#if field.label?has_content>
     @io.mateu.uidl.annotations.Label("${field.label}")
     </#if>
+    <#if (field.primitiveType!"") == "json">
+    @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.textarea)
+    </#if>
     <#if lookups?? && lookups[field.name]??>
     <@lookup field/>
 

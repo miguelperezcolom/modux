@@ -11,6 +11,9 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProcessEnt
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 
+import io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudUseCases;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -39,6 +42,7 @@ public final class HlaDocumentRenderer {
         decisions(md, m);
         structuralView(md, m, project);
         responsibilities(md, m, project);
+        contextDetails(md, m);
         processes(md, m);
         lifecycles(md, m);
         transversals(md, m, project);
@@ -100,6 +104,12 @@ public final class HlaDocumentRenderer {
                 md.append("    ").append(id(boundedContextId)).append("[\"").append(label).append("\"]\n");
             }
             md.append("  end\n");
+        }
+        for (var app : m.uiAdapters()) {
+            md.append("  ").append(id(app.id())).append("[/\"app ").append(app.name()).append("\"/]\n");
+            menuOf(app.menuItems()).stream().map(item -> boundedContextOfMenuItem(m, item))
+                    .filter(java.util.Objects::nonNull).distinct()
+                    .forEach(bc -> md.append("  ").append(id(app.id())).append(" --> ").append(id(bc.id())).append("\n"));
         }
         for (var external : m.externalSystems()) {
             md.append("  ").append(id(external.id())).append("[[\"").append(external.name()).append("\"]]\n");
@@ -275,6 +285,17 @@ public final class HlaDocumentRenderer {
 
     private static void contracts(StringBuilder md, ModelSnapshot m) {
         md.append("## 8. Contratos expuestos\n\n");
+        for (var app : m.uiAdapters()) {
+            md.append("### Aplicación ").append(app.name()).append("\n\n");
+            menuOf(app.menuItems()).forEach(item -> md.append("- ").append(nvl(item.label())).append("\n"));
+            md.append("\n");
+        }
+        for (var api : m.apis()) {
+            md.append("### API ").append(api.name()).append("\n\n| Método | Ruta | Operación |\n|---|---|---|\n");
+            nvlList(api.operations()).forEach(op -> md.append("| ").append(nvl(op.httpMethod())).append(" | `")
+                    .append(nvl(op.path())).append("` | ").append(nvl(op.name())).append(" |\n"));
+            md.append("\n");
+        }
         for (var boundedContext : m.boundedContexts()) {
             for (var bff : nvlList(boundedContext.bffs())) {
                 md.append("### ").append(bff.name()).append(" (").append(nvl(bff.basePath())).append(")\n\n");
@@ -314,6 +335,59 @@ public final class HlaDocumentRenderer {
     }
 
     // --- helpers ----------------------------------------------------------------
+
+    private static void contextDetails(StringBuilder md, ModelSnapshot m) {
+        for (var boundedContext : m.boundedContexts()) {
+            md.append("### ").append(boundedContext.name()).append("\n\n");
+            var aggregates = nvlList(boundedContext.aggregateIds()).stream()
+                    .map(id -> m.aggregates().stream().filter(a -> a.id().equals(id)).findFirst().orElse(null))
+                    .filter(java.util.Objects::nonNull).toList();
+            if (!aggregates.isEmpty()) {
+                md.append("**Agregados**\n\n");
+                aggregates.forEach(a -> md.append("- **").append(a.name()).append("**: ").append(fieldsOf(m, a.modelId())).append("\n"));
+                md.append("\n");
+            }
+            var scaffolded = aggregates.stream().flatMap(a -> CrudUseCases.idsOf(a.id()).stream()).toList();
+            var useCases = nvlList(boundedContext.useCaseIds()).stream()
+                    .filter(id -> !scaffolded.contains(id)).map(id -> useCaseById(m, id))
+                    .filter(java.util.Objects::nonNull).toList();
+            if (!useCases.isEmpty()) {
+                md.append("**Casos de uso** (además del CRUD de cada agregado)\n\n| Caso de uso | Qué hace |\n|---|---|\n");
+                useCases.forEach(uc -> md.append("| ").append(uc.name()).append(" | ").append(behaviourOf(uc)).append(" |\n"));
+                md.append("\n");
+            }
+        }
+    }
+
+    private static String fieldsOf(ModelSnapshot m, String modelId) {
+        return m.models().stream().filter(model -> model.id().equals(modelId)).findFirst()
+                .map(model -> nvlList(model.fields()).stream().map(f -> f.name()).collect(java.util.stream.Collectors.joining(", ")))
+                .orElse("—");
+    }
+
+    /** What the use case is for: its description, or else the intent modelled on its steps. */
+    private static String behaviourOf(UseCaseEntity useCase) {
+        if (useCase.description() != null && !useCase.description().isBlank()) return oneLine(useCase.description());
+        var intents = nvlList(useCase.steps()).stream().map(step -> step.intent())
+                .filter(intent -> intent != null && !intent.isBlank()).map(HlaDocumentRenderer::oneLine)
+                .collect(java.util.stream.Collectors.joining(" "));
+        return intents.isEmpty() ? "—" : intents;
+    }
+
+    private static String oneLine(String text) {
+        return text.replaceAll("\\s+", " ").replace("|", "\\|").trim();
+    }
+
+    private static List<UiMenuItemEntity> menuOf(List<UiMenuItemEntity> items) {
+        return nvlList(items).stream().flatMap(item -> java.util.stream.Stream.concat(
+                java.util.stream.Stream.of(item), menuOf(item.children()).stream())).toList();
+    }
+
+    private static BoundedContextEntity boundedContextOfMenuItem(ModelSnapshot m, UiMenuItemEntity item) {
+        if (item.aggregateId() != null) return boundedContextOfAggregate(m, item.aggregateId());
+        return item.useCaseId() == null ? null : m.boundedContexts().stream()
+                .filter(bc -> nvlList(bc.useCaseIds()).contains(item.useCaseId())).findFirst().orElse(null);
+    }
 
     private static BoundedContextEntity boundedContextById(ModelSnapshot m, String id) {
         return m.boundedContexts().stream().filter(mod -> mod.id().equals(id)).findFirst().orElse(null);
