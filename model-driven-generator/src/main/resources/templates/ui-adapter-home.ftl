@@ -85,6 +85,9 @@ public class Home<#if homePage??> extends ${homePage.className}</#if><#if idp??>
 <#if menuUseCases?? && menuUseCases?has_content>
 <#list menuUseCases as pg>
     @Menu
+<#if pg.roles?has_content>
+    @io.mateu.uidl.annotations.EyesOnly(roles = {<#list pg.roles as role>"${role}"<#sep>, </#sep></#list>})
+</#if>
     ${pg.className} ${pg.field};
 
 </#list>

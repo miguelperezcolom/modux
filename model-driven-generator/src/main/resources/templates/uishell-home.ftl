@@ -7,11 +7,13 @@ import io.mateu.uidl.annotations.PageTitle;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
 import io.mateu.uidl.data.RemoteMenu;
+<#if idp?? || (project.objective?? && project.objective?has_content)>
+import io.mateu.uidl.data.Text;
+</#if>
 <#if idp??>
 import io.mateu.uidl.annotations.KeycloakSecured;
 import io.mateu.uidl.data.Anchor;
 import io.mateu.uidl.data.Popover;
-import io.mateu.uidl.data.Text;
 import io.mateu.uidl.data.VerticalLayout;
 import io.mateu.uidl.fluent.Component;
 import io.mateu.uidl.interfaces.HttpRequest;

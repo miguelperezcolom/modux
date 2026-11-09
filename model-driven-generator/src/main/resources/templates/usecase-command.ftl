@@ -46,7 +46,7 @@ public record ${usecase.className}Command(
     /** JSON array of ${field.modelId!'?'} items. */
     String ${field.name}<#sep>,</#sep>
 <#else>
-    String ${field.name}Id<#sep>,</#sep>
+    String ${field.name}<#if !(field.enumId?has_content)>Id</#if><#sep>,</#sep>
 </#if>
 </#list>
 <#else>

@@ -27,6 +27,9 @@ public class Create${aggregate.name}UseCase {
 </#if>
 
     @Transactional
+<#if aggregate.crudRoles?? && aggregate.crudRoles.create?has_content>
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole(${aggregate.crudRoles.create?map(r -> "'" + r + "'")?join(", ")})")
+</#if>
     public String handle(Create${aggregate.name}Command command) {
         var aggregate = ${aggregate.name}.of(
 <#list safeFields as field>

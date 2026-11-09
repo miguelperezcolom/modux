@@ -86,6 +86,9 @@ public class ${usecase.className}UseCase {
 <#if usecase.needsStreamBridge>
     final StreamOperations streamBridge;
 </#if>
+<#list (usecase.steps![])?filter(s -> s.integrationClass??) as step>
+    final ${project.packageName}.${module.slug}.application.out.integration.${step.integrationClass}Publisher ${step.integrationClass?uncap_first}Publisher;
+</#list>
 <#if usecase.steps?has_content && usecase.steps?filter(s -> s.type == "Custom")?has_content>
     final ${usecase.className}Steps steps;
 </#if>
@@ -128,7 +131,11 @@ public class ${usecase.className}UseCase {
         // TODO: call gateway ${step.gateway.className?uncap_first}Gateway (operation not resolved)
 </#if>
 <#elseif step.type == "PublishDomainEvent" && step.domainEvent??>
+<#if step.integrationClass??>
+        ${step.integrationClass?uncap_first}Publisher.publish(new ${project.packageName}.${module.slug}.application.out.integration.${step.integrationClass}(<#if step.argFields??><#list step.argFields as a><#if a.expr??>${a.expr}<#elseif a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if><#sep>, </#sep></#list></#if>));
+<#else>
         streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.className}Event(<#if step.aggregateIdExpr??>String.valueOf(${step.aggregateIdExpr})<#else>null /* TODO: aggregateId */</#if><#if step.argFields??><#list step.argFields as a>, <#if a.expr??>${a.expr}<#elseif a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if></#list></#if>));
+</#if>
 <#elseif step.type == "CallUseCase" && step.useCase??>
         ${step.useCase.className?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.className}Command */);
 <#elseif step.type == "ApplyModelMapping">

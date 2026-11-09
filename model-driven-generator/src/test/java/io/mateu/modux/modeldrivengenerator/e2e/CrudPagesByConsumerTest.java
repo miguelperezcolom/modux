@@ -116,6 +116,28 @@ class CrudPagesByConsumerTest {
         assertTrue(adapter.contains("EliminarAutorCommand"), adapter);
     }
 
+    @Test
+    void an_event_another_service_consumes_is_sent_through_its_publisher() throws Exception {
+        var store = Files.createTempFile("ui-crud-event", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]",
+                        "aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]\n  useCaseIds: [\"uc-avisar\"]\n  domainEventIds: [\"ev-avisado\"]\n  integrationEventIds: [\"ie-avisado\"]")
+                + """
+                domainEvents:
+                - {id: "ev-avisado", name: "Avisado"}
+                integrationEvents:
+                - {id: "ie-avisado", name: "Avisado", topicName: "editorial.catalogo.avisado"}
+                useCases:
+                - id: "uc-avisar"
+                  name: "Avisar"
+                  steps:
+                  - {id: "s1", name: "publishAvisado", type: "PublishDomainEvent", domainEventId: "ev-avisado"}
+                """);
+        var useCase = read(generate(store.toString()), "AvisarUseCase.java");
+        assertTrue(useCase.contains("avisadoPublisher.publish("), useCase);
+        assertFalse(useCase.contains("streamBridge.send"), "a local channel no subscriber listens on: " + useCase);
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

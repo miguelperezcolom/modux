@@ -26,6 +26,9 @@ public class Update${aggregate.name}UseCase {
 </#if>
 
     @Transactional
+<#if aggregate.crudRoles?? && aggregate.crudRoles.update?has_content>
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole(${aggregate.crudRoles.update?map(r -> "'" + r + "'")?join(", ")})")
+</#if>
     public void handle(Update${aggregate.name}Command command) {
         var entity = repository.findById(new ${aggregate.name}Id(Long.valueOf(command.id()))).orElseThrow();
         entity.update(
