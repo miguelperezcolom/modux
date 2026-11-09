@@ -161,6 +161,8 @@ calling another use case. Reject from a hook with `BusinessRuleException.invalid
 consumer there are no pages, menu or Home, and the aggregate is reached through its APIs (a use
 case an external system calls through an inbound ACL gets `POST /v1/{name}`).
 
+`mvn modux:ai-complete` implements the pending hooks of the custom zone from each step's `intent`, with the local `claude` CLI. Write intents that say the rule, the outcome and where each value comes from.
+
 `mvn modux:hla` writes `HLA.generated.md`, the design document derived from the model; declare
 the project's `objective` so its first section says what the system is for.
 

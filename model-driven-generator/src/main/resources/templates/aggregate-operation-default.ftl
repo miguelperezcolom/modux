@@ -88,7 +88,7 @@ public class Default${operation.name?cap_first}${aggregate.name}Operation implem
         // then remove the throw below:
 <@outline steps=steps indent=""/>
 </#if>
-        // Tip: `mvn modux:ai-complete` proposes an implementation from the model (AI-PROPOSALS.md).
+        // Tip: `mvn modux:ai-complete` implements this hook from the model.
         throw new UnsupportedOperationException(
 <#if operation.intent?? && operation.intent?has_content>
             "Pendiente de implementar la operación «${operation.name}» de ${aggregate.name}: ${operation.intent?j_string}");
