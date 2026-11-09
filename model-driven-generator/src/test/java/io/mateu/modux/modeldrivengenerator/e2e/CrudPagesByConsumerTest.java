@@ -138,6 +138,39 @@ class CrudPagesByConsumerTest {
         assertFalse(useCase.contains("streamBridge.send"), "a local channel no subscriber listens on: " + useCase);
     }
 
+    @Test
+    void a_projection_is_wired_to_its_event_and_a_query_in_the_menu_gets_a_listing() throws Exception {
+        var store = Files.createTempFile("ui-crud-readmodel", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]",
+                        "aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]\n  domainEventIds: [\"ev-alta\"]\n  readModelIds: [\"rm-log\"]\n  projectionIds: [\"pr-log\"]")
+                .replace("  - {id: \"mi-autores\",", "  - {id: \"mi-log\", label: \"Altas\", queryServiceId: \"qs-log\"}\n  - {id: \"mi-autores\",")
+                .replace("models:\n", "models:\n- {id: \"model-log\", name: \"Log\", fields: [{id: \"f-l\", name: \"autor\", basicType: true, type: string}]}\n")
+                + """
+                domainEvents:
+                - {id: "ev-alta", name: "Alta", modelId: "model-log"}
+                readModels:
+                - {id: "rm-log", name: "LogView", boundedContextId: "bc-catalogo", modelId: "model-log"}
+                projections:
+                - id: "pr-log"
+                  name: "Log"
+                  readModelId: "rm-log"
+                  handlers:
+                  - {id: "h", name: "onAlta", domainEventId: "ev-alta", type: "Create"}
+                queryServices:
+                - id: "qs-log"
+                  name: "LogQueries"
+                  boundedContextId: "bc-catalogo"
+                  operations:
+                  - {id: "op", name: "list", outputModelId: "model-log", cardinality: "Page"}
+                """);
+        var out = generate(store.toString());
+        assertTrue(read(out, "application.yaml").contains("logProjectionOnAlta-in-0"), "the projection never receives its events");
+        assertTrue(read(out, "LogProjection.java").contains("randomUUID"), "every event of an append-only view is its own row");
+        assertTrue(file(out, "LogViewListing.java").isPresent());
+        assertTrue(read(out, "Home.java").contains("LogViewListing"));
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

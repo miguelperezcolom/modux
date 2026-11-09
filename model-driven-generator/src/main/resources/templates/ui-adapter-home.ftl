@@ -110,6 +110,12 @@ public class Home<#if homePage??> extends ${homePage.className}</#if><#if idp??>
 </#if>
 </#list>
 </#if>
+<#list menuListings![] as listing>
+    @Menu
+    @io.mateu.uidl.annotations.Label("${listing.label}")
+    ${project.packageName}.${listing.moduleSlug}.infra.in.ui.pages.${listing.slug}.${listing.className} ${listing.field};
+
+</#list>
 <#list menuCruds![] as crud>
     @Menu
 <#if crud.label?has_content>
