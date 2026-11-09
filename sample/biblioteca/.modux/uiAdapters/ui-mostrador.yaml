@@ -1,0 +1,10 @@
+id: ui-mostrador
+name: Mostrador
+title: Biblioteca · Mostrador
+appType: APP
+menuItems:
+  - {id: mi-prestar, label: Prestar, useCaseId: usecase-1794141969971}
+  - {id: mi-devolver, label: Devolver, useCaseId: usecase-1794144290555}
+  - {id: mi-libros, label: Libros, aggregateId: aggregate-1794138423702}
+  - {id: mi-socios, label: Socios, aggregateId: aggregate-1794138562900}
+  - {id: mi-prestamos, label: Préstamos, aggregateId: aggregate-1794141968222}

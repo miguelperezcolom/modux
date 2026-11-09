@@ -1,5 +1,7 @@
 id: usecase-1794144290555
 name: DevolverLibro
+title: Devolver un libro
+exposedAsUi: true
 description: El socio devuelve el libro en el mostrador.
 transactional: true
 inputModelId: model-devolver-libro

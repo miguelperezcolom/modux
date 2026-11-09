@@ -60,3 +60,20 @@ Verificación: un préstamo con vencimiento pasado aparece en la consulta tras l
 - Se despliega como servicio independiente.
 
 Verificación: forzar un retraso y ver el aviso registrado en el servicio de avisos.
+
+## Iteración 6 — El mostrador
+
+Hasta aquí todo se usa por API. El bibliotecario necesita pantallas.
+
+- Una aplicación, **Mostrador**, con entradas para **Prestar**, **Devolver**, **Libros**,
+  **Socios** y **Préstamos**. Es lo primero que se ve al abrir el sistema.
+- **Libros**, **Socios** y **Préstamos**: listar, buscar, dar de alta, ver, modificar y borrar.
+- **Prestar** y **Devolver**: libro y socio se eligen de una lista, nunca escribiendo un id.
+- Los estados se eligen de los valores definidos en el lenguaje; no se puede escribir otro.
+- El ISBN y el número de carné son obligatorios también en pantalla.
+- Una regla incumplida se le explica al bibliotecario con su motivo.
+- Recargar cualquier pantalla, o entrar por su URL, abre esa misma pantalla.
+
+Verificación, en un navegador y sin usar la API: dar de alta un libro y un socio, prestar el
+libro y verlo `PRESTADO` y el préstamo `ABIERTO`; intentar prestarlo otra vez y leer por qué no se
+puede; devolverlo y verlo `DISPONIBLE`.

@@ -1,3 +1,4 @@
+<#macro lookup field><#if lookups?? && lookups[field.name]??><#assign sup = lookups[field.name].suppliers>@io.mateu.uidl.annotations.Lookup(search = ${sup}IdOptionsSupplier.class, label = ${sup}IdLabelSupplier.class)</#if></#macro>
 <#assign ucSlug = usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
 <#assign ucClass = usecase.className>
 <#function isGrid field><#return !(field.basicType?? && field.basicType) && (field.type!"") == "array" && field.modelId?? && gridClasses?? && gridClasses[field.modelId]??></#function>
@@ -113,7 +114,9 @@ ${req}    ${lbl}LocalDateTime ${field.name};
 ${req}    ${lbl}@Stereotype(FieldStereotype.textarea)
     String ${field.name};
     <#else>
-${req}    ${lbl}String ${field.name};
+${req}    ${lbl}<@lookup field/><#if lookups?? && lookups[field.name]??>
+
+    </#if>String ${field.name};
     </#if>
 <#elseif isGrid(field)>
 ${req}    ${lbl}@InlineEditing

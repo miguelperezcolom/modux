@@ -117,8 +117,7 @@ The same binary runs against your disk or against a database — see
   `MODUX_HOME` to vary).
 - `./install.sh --docker` builds the runtime image instead and the launcher runs
   the container with `~/.modux` mounted as home. The [`Dockerfile`](Dockerfile)
-  is runtime-only: the jar is built on the host, because the mateu
-  `0.0.1-MATEU` artifacts are not published yet.
+  is runtime-only: the jar is built on the host.
 - The Helm chart [`deploy/chart/modux`](deploy/chart/modux) deploys modux
   together with Bitnami PostgreSQL (`postgresql.enabled=false` plus
   `externalDatabase.jdbcUrl` to point at an external database). The first boot

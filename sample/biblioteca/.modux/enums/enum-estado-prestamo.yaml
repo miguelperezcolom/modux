@@ -1,0 +1,5 @@
+id: enum-estado-prestamo
+values:
+  - {id: ABIERTO, name: ABIERTO}
+  - {id: RETRASADO, name: RETRASADO}
+  - {id: DEVUELTO, name: DEVUELTO}

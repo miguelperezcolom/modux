@@ -13,6 +13,7 @@
         <java.version>21</java.version>
         <cucumber.version>7.20.0</cucumber.version>
         <playwright.version>1.49.0</playwright.version>
+        <e2e.excluded>e2e</e2e.excluded>
     </properties>
     <dependencies>
         <dependency>
@@ -114,9 +115,24 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <excludedGroups>e2e</excludedGroups>
+                    <excludedGroups>${r"${e2e.excluded}"}</excludedGroups>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <!-- `mvn test -Dgroups=e2e` runs the browser tests the default build leaves out -->
+        <profile>
+            <id>e2e</id>
+            <activation>
+                <property>
+                    <name>groups</name>
+                    <value>e2e</value>
+                </property>
+            </activation>
+            <properties>
+                <e2e.excluded></e2e.excluded>
+            </properties>
+        </profile>
+    </profiles>
 </project>

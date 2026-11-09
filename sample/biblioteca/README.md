@@ -25,6 +25,12 @@ Sin Docker, un servicio arranca solo con H2 y los eventos van al log:
 
 ## Probarlo
 
+**En el navegador:** abre http://localhost:8080. El Mostrador tiene Prestar, Devolver, Libros, Socios
+y Préstamos. Los tests de esas pantallas se lanzan con el sistema arrancado:
+`(cd generated/biblioteca/prestamos && mvn test -Dgroups=e2e)`.
+
+**Por API:**
+
 ```bash
 B=http://localhost:8080; J='Content-Type: application/json'
 curl -X POST $B/libro -H "$J" -d '{"isbn":"i1","titulo":"Niebla","autor":"Unamuno","estado":"DISPONIBLE"}'

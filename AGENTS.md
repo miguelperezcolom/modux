@@ -63,19 +63,17 @@ There is **no root Maven aggregator POM**; each module is built separately.
   for code generation; generated code is formatted with **google-java-format**.
 - **Jackson (YAML)** for model serialization; **victools jsonschema-generator** for
   the store JSON schema; **swagger-parser** for OpenAPI import.
-- **Mateu** (`io.mateu:*:0.0.1-MATEU`: `mvc-core`, `annotation-processor-mvc`,
-  `vaadin-lit`, `agent-cli`) for the UI layer and the in-app chat.
+- **Mateu** (`io.mateu:*`, from Maven Central): the UI layer of the *generated* applications.
 - Persistence: file+git on local disk, or JDBC (**H2 / PostgreSQL**) for the
   `DATABASE` repository type.
 - Editor: **Lit 3**, **d3-zoom**, **elkjs**, **Vite 6**, **Vitest**, TypeScript 5.7.
 - Tests: **JUnit 5**, **Testcontainers** (PostgreSQL, Kafka) for e2e.
 
-### Critical build caveat
+### Mateu is a dependency of the generated code, not of modux
 
-The `io.mateu:*:0.0.1-MATEU` artifacts are **not published** to any public
-repository — they must exist in the local `~/.m2`. This is why the Docker image is
-runtime-only and the jar is always built on the host first. If the build fails
-resolving `io.mateu` dependencies, that environment cannot build modux.
+Modux itself does not depend on Mateu: it emits source code that runs on it. Generated projects
+use the release pinned in the `*pom*.ftl` templates, resolved from Maven Central. When bumping it,
+compile a generated project with a UI: Mateu's API moves between betas.
 
 ## Build and run commands
 

@@ -1,7 +1,7 @@
 id: model-aggregate-1794138423702
 name: Libro
 fields:
-- {id: f-libro-isbn, name: isbn, basicType: true, type: string}
-- {id: f-libro-titulo, name: titulo, basicType: true, type: string}
+- {id: f-libro-isbn, name: isbn, label: ISBN, basicType: true, type: string, validations: [{id: v-libro-isbn, type: NotEmpty}]}
+- {id: f-libro-titulo, name: titulo, label: Título, basicType: true, type: string}
 - {id: f-libro-autor, name: autor, basicType: true, type: string}
-- {id: f-libro-estado, name: estado, basicType: true, type: string}
+- {id: f-libro-estado, name: estado, basicType: false, enumId: enum-estado-libro, validations: [{id: v-libro-estado, type: NotNull}]}

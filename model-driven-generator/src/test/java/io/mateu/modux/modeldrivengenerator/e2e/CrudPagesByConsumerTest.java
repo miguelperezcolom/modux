@@ -89,6 +89,15 @@ class CrudPagesByConsumerTest {
         assertTrue(home.contains("@io.mateu.uidl.annotations.Label(\"Autor\")"), "the menu keeps the modelled label: " + home);
     }
 
+    @Test
+    void a_field_named_after_an_aggregate_with_pages_is_a_lookup() throws Exception {
+        var store = Files.createTempFile("ui-crud-lookup", ".yaml");
+        Files.writeString(store, Files.readString(STORE).replace("{id: \"f-t\",",
+                "{id: \"f-ref\", name: \"autorId\", basicType: true, type: string}, {id: \"f-t\","));
+        var viewModel = read(generate(store.toString()), "TemaViewModel.java");
+        assertTrue(viewModel.contains("AutorIdOptionsSupplier.class"), viewModel);
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

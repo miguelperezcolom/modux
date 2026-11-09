@@ -79,6 +79,15 @@ The schema guards shape. These are the ones that break a model while still valid
    generates nothing at all. `triggerEvent` alone is NOT enough: it says what starts the
    workflow, not from where.
 
+## Fields that become selectors on a screen
+
+- **A state with fixed values is an enum**: `basicType: false` plus `enumId` naming an `enums/`
+  element. The screen shows a select and the domain gets a Java enum. The enum constants come from
+  each value's `id`.
+- **A field named `{aggregate}Id` picks an instance of that aggregate** (`libroId` is a Libro) when
+  the aggregate is in the same context and has CRUD pages. The screen shows a searchable list.
+- **`validations` make a field required on screen**: `NotEmpty` for text, `NotNull` otherwise.
+
 ## Workflows speak EventConductor's language
 
 A workflow is run by [EventConductor](https://eventconductor.mateu.io/), and modux generates its
