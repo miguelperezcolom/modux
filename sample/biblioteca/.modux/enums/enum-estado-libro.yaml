@@ -1,0 +1,5 @@
+id: enum-estado-libro
+values:
+  - {id: DISPONIBLE, name: DISPONIBLE}
+  - {id: PRESTADO, name: PRESTADO}
+  - {id: BAJA, name: BAJA}

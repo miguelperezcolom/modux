@@ -1,5 +1,4 @@
-# Imagen runtime de modux. El jar se construye en el HOST (los artefactos de
-# mateu 0.0.1-MATEU viven en tu ~/.m2, aún sin publicar):
+# Imagen runtime de modux. El jar se construye en el HOST:
 #
 #   mvn -f model-driven-generator/pom.xml package -DskipTests
 #   docker build -t modux:dev .

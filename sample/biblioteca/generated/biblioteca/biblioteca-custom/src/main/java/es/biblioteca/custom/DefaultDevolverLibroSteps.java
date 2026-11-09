@@ -29,15 +29,15 @@ public class DefaultDevolverLibroSteps implements DevolverLibroSteps {
         var libro = libros.findById(new LibroId(Long.valueOf(command.libroId())))
                 .orElseThrow(() -> BusinessRuleException.notFound("No existe el libro " + command.libroId()));
         var prestamo = prestamos.findAll().stream()
-                .filter(p -> command.libroId().equals(p.getLibroId()) && ("ABIERTO".equals(p.getEstado()) || "RETRASADO".equals(p.getEstado())))
+                .filter(p -> command.libroId().equals(p.getLibroId()) && (p.getEstado() == es.biblioteca.prestamos.domain.aggregates.prestamo.vo.Estado.ABIERTO || p.getEstado() == es.biblioteca.prestamos.domain.aggregates.prestamo.vo.Estado.RETRASADO))
                 .findFirst()
                 .orElseThrow(() -> BusinessRuleException.conflict("El libro «" + libro.getTitulo() + "» no tiene ningún préstamo abierto"));
 
         var hoy = LocalDate.now();
         prestamo.update(prestamo.getLibroId(), prestamo.getSocioId(), prestamo.getFechaPrestamo(),
-                prestamo.getFechaVencimiento(), "DEVUELTO");
+                prestamo.getFechaVencimiento(), es.biblioteca.prestamos.domain.aggregates.prestamo.vo.Estado.DEVUELTO);
         prestamos.save(prestamo);
-        libro.update(libro.getIsbn(), libro.getTitulo(), libro.getAutor(), "DISPONIBLE");
+        libro.update(libro.getIsbn(), libro.getTitulo(), libro.getAutor(), es.biblioteca.prestamos.domain.aggregates.libro.vo.Estado.DISPONIBLE);
         libros.save(libro);
 
         var conRetraso = hoy.isAfter(prestamo.getFechaVencimiento());

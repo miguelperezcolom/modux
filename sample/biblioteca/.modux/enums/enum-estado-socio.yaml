@@ -1,0 +1,4 @@
+id: enum-estado-socio
+values:
+  - {id: ACTIVO, name: ACTIVO}
+  - {id: SUSPENDIDO, name: SUSPENDIDO}

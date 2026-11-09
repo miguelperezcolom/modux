@@ -1,4 +1,4 @@
 id: model-devolver-libro
 name: DevolverLibroInput
 fields:
-- {id: f-dl-libro, name: libroId, basicType: true, type: string}
+- {id: f-dl-libro, name: libroId, label: Libro, basicType: true, type: string, validations: [{id: v-dl-libro, type: NotEmpty}]}

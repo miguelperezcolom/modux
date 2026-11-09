@@ -947,7 +947,9 @@ public class GenerateCodeUseCase {
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "crud-orchestrator.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "CrudOrchestrator.java");
-        createFile(boundedContextDir, project, service, boundedContext, aggregate, "crud-viewmodel.ftl",
+        var viewModel = aggregateModel(project, service, boundedContext, aggregate);
+        viewModel.put("lookups", lookupsOf(project, service, boundedContext));
+        createFile(boundedContextDir, viewModel, "crud-viewmodel.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "ViewModel.java");
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "options-supplier.ftl",
@@ -990,7 +992,10 @@ public class GenerateCodeUseCase {
 
         // E2E test (it drives the aggregate's CRUD pages)
         if (crudPages) {
-            createFile(boundedContextDir, project, service, boundedContext, aggregate, "e2e-aggregate.ftl",
+            var e2eModel = aggregateModel(project, service, boundedContext, aggregate);
+            e2eModel.put("lookups", lookupsOf(project, service, boundedContext));
+            e2eModel.put("e2eListUrl", crudRouteOf(aggregate));
+            createFile(boundedContextDir, e2eModel, "e2e-aggregate.ftl",
                     "src/test/java/" + boundedContextPackageDir + "/e2e/" + aggregate.name() + "E2ETest.java");
         }
     }
@@ -1083,6 +1088,7 @@ public class GenerateCodeUseCase {
                 });
             }
             model.put("gridClasses", gridClasses);
+            model.put("lookups", lookupsOf(project, service, boundedContext));
 
             createFile(boundedContextDir, model, "usecase-page.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug
@@ -1138,6 +1144,23 @@ public class GenerateCodeUseCase {
                         .flatMap(a -> flattenMenu(a.menuItems()).stream())
                         .anyMatch(it -> aggregate.id().equals(it.aggregateId())
                                 || (it.route() != null && it.route().toLowerCase().replaceAll("[^a-z0-9]", "").equals(slug)));
+    }
+
+    /**
+     * The fields that pick an instance of an aggregate, by name: {@code libroId} is a Libro. Only
+     * the aggregates of this context with CRUD pages count, since those are the ones that get the
+     * option and label suppliers a lookup needs. Field name → the suppliers' package and prefix.
+     */
+    private Map<String, Map<String, String>> lookupsOf(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext) {
+        var lookups = new HashMap<String, Map<String, String>>();
+        for (var id : boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of()) {
+            repository.findById(id, AggregateEntity.class)
+                    .filter(aggregate -> hasCrudPages(service, aggregate))
+                    .ifPresent(aggregate -> lookups.put(uncapitalize(aggregate.name()) + "Id", Map.of(
+                            "suppliers", project.packageName() + "." + boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "")
+                                    + ".infra.in.ui.suppliers." + aggregate.name())));
+        }
+        return lookups;
     }
 
     /** One of an aggregate's derived CRUD use cases, and which of the three it is. */
@@ -2748,6 +2771,16 @@ public class GenerateCodeUseCase {
         return field.equalsIgnoreCase(restPath) ? field + "s" : field;
     }
 
+    /** Where the CRUD lives: the app menu entry that opens it, or else the module menu's plural. */
+    private String crudRouteOf(AggregateEntity aggregate) {
+        return "/" + repository.findAllOfType(UiAdapterEntity.class).stream()
+                .flatMap(adapter -> flattenMenu(adapter.menuItems()).stream())
+                .filter(item -> aggregate.id().equals(item.aggregateId()))
+                .findFirst()
+                .map(item -> crudMenuField(item.label(), aggregate))
+                .orElse(aggregate.name().toLowerCase() + "s");
+    }
+
     /** The app's menu tree flattened, document order. */
     private List<UiMenuItemEntity> flattenMenu(List<UiMenuItemEntity> items) {
         if (items == null) return List.of();
@@ -3717,7 +3750,8 @@ public class GenerateCodeUseCase {
                             fieldMap.put("basicType", f.basicType());
                             fieldMap.put("searchable", true);
                             fieldMap.put("visible", true);
-                            fieldMap.put("mandatory", false);
+                            fieldMap.put("mandatory", f.validations() != null && f.validations().stream()
+                                    .anyMatch(v -> List.of("NotNull", "NotEmpty", "NotBlank").contains(String.valueOf(v.type()))));
                             fieldMap.put("readonly", false);
                             fieldMap.put("label", f.label());
                             fieldMap.put("priority", f.priority());

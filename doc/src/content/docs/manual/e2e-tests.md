@@ -129,7 +129,7 @@ mvn exec:java -e -D exec.mainClass=com.microsoft.playwright.CLI \
 
 ## Completing the generated tests
 
-The generated tests contain `// TODO` comments where selectors depend on the rendered UI. Open the browser in headed mode to discover the right locators:
+The generated tests drive each CRUD for real: they create a record with a unique value, find it by searching and delete it. An aggregate with a required date or with references to other aggregates only gets the listing and form tests, because creating one depends on data the test cannot assume. For flows that span several screens, write your own tests; headed mode helps to find the selectors:
 
 ```bash
 mvn test -Dgroups=e2e -De2e.headed=true -De2e.base-url=http://localhost:8080

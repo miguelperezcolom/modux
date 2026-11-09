@@ -29,8 +29,8 @@ public class DefaultDetectarRetrasosSteps implements DetectarRetrasosSteps {
         var hoy = LocalDate.now();
         var nuevos = 0;
         for (var p : prestamos.findAll()) {
-            if (!"ABIERTO".equals(p.getEstado()) || !hoy.isAfter(p.getFechaVencimiento())) continue;
-            p.update(p.getLibroId(), p.getSocioId(), p.getFechaPrestamo(), p.getFechaVencimiento(), "RETRASADO");
+            if (p.getEstado() != es.biblioteca.prestamos.domain.aggregates.prestamo.vo.Estado.ABIERTO || !hoy.isAfter(p.getFechaVencimiento())) continue;
+            p.update(p.getLibroId(), p.getSocioId(), p.getFechaPrestamo(), p.getFechaVencimiento(), es.biblioteca.prestamos.domain.aggregates.prestamo.vo.Estado.RETRASADO);
             prestamos.save(p);
             var id = String.valueOf(p.getId().value());
             events.publish(new PrestamoRetrasado(PrestamoRetrasado.CURRENT_SCHEMA_VERSION, id, p.getLibroId(), p.getSocioId(),

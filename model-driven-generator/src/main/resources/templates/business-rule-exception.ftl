@@ -2,9 +2,10 @@ package ${project.packageName}.application;
 
 /**
  * A business rule said no. Throw it from the custom zone (invariants, use-case steps): the service
- * answers with the matching HTTP status and this message, and the transaction rolls back.
+ * answers with the matching HTTP status and this message, and the transaction rolls back. On a
+ * screen the user reads this same message, which is why it is user-facing for Mateu.
  */
-public class BusinessRuleException extends RuntimeException {
+public class BusinessRuleException extends io.mateu.uidl.UserFacingException {
 
     public enum Kind { INVALID, NOT_FOUND, CONFLICT }
 

@@ -1,8 +1,8 @@
 id: model-aggregate-1794141968222
 name: Prestamo
 fields:
-- {id: f-prestamo-libro, name: libroId, basicType: true, type: string}
-- {id: f-prestamo-socio, name: socioId, basicType: true, type: string}
-- {id: f-prestamo-fecha, name: fechaPrestamo, basicType: true, type: date}
-- {id: f-prestamo-vence, name: fechaVencimiento, basicType: true, type: date}
-- {id: f-prestamo-estado, name: estado, basicType: true, type: string}
+- {id: f-prestamo-libro, name: libroId, label: Libro, basicType: true, type: string, validations: [{id: v-prestamo-libro, type: NotEmpty}]}
+- {id: f-prestamo-socio, name: socioId, label: Socio, basicType: true, type: string, validations: [{id: v-prestamo-socio, type: NotEmpty}]}
+- {id: f-prestamo-fecha, name: fechaPrestamo, label: Fecha de préstamo, basicType: true, type: date}
+- {id: f-prestamo-vence, name: fechaVencimiento, label: Vencimiento, basicType: true, type: date}
+- {id: f-prestamo-estado, name: estado, basicType: false, enumId: enum-estado-prestamo, validations: [{id: v-prestamo-estado, type: NotNull}]}

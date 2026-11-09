@@ -1,5 +1,7 @@
 id: usecase-1794141969971
 name: PrestarLibro
+title: Prestar un libro
+exposedAsUi: true
 transactional: true
 inputModelId: model-prestar-libro
 outputModelId: model-prestamo-registrado

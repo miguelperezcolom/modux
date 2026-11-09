@@ -51,4 +51,20 @@ public abstract class BaseE2ETest {
         page.navigate(path);
         page.waitForLoadState();
     }
+
+    protected com.microsoft.playwright.Locator saveButton() {
+        return page.getByRole(com.microsoft.playwright.options.AriaRole.BUTTON,
+                new Page.GetByRoleOptions().setName(java.util.regex.Pattern.compile("^(Save|Create)$"))).first();
+    }
+
+    protected com.microsoft.playwright.Locator cellWith(String text) {
+        return page.locator("vaadin-grid-cell-content",
+                new Page.LocatorOptions().setHasText(text));
+    }
+
+    protected void chooseFirstOption(String label) {
+        page.locator("vaadin-select").filter(
+                new com.microsoft.playwright.Locator.FilterOptions().setHasText(label)).first().click();
+        page.locator("vaadin-select-item:visible").first().click();
+    }
 }

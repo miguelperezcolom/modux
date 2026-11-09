@@ -17,7 +17,7 @@ modux                   # → http://localhost:8192   (MODUX_PORT / MODUX_HOME p
 
 ## Imagen Docker
 
-El jar se construye en el host (los artefactos de mateu `0.0.1-MATEU` aún viven en tu `~/.m2`):
+El jar se construye en el host:
 
 ```bash
 mvn -f model-driven-generator/pom.xml package -DskipTests
