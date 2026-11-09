@@ -13,6 +13,9 @@ public class Delete${aggregate.name}UseCase {
     final ${aggregate.name}Repository repository;
 
     @Transactional
+<#if aggregate.crudRoles?? && aggregate.crudRoles.delete?has_content>
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole(${aggregate.crudRoles.delete?map(r -> "'" + r + "'")?join(", ")})")
+</#if>
     public void handle(Delete${aggregate.name}Command command) {
         repository.deleteAllById(command.ids().stream()
                 .map(Long::valueOf)

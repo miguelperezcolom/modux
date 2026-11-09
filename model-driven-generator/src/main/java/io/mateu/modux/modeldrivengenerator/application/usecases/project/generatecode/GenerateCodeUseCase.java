@@ -1089,6 +1089,7 @@ public class GenerateCodeUseCase {
             }
             model.put("gridClasses", gridClasses);
             model.put("lookups", lookupsOf(project, service, boundedContext));
+            model.put("enumOptions", enumOptionsOf(useCase));
 
             createFile(boundedContextDir, model, "usecase-page.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug
@@ -1175,6 +1176,20 @@ public class GenerateCodeUseCase {
                 .findFirst()
                 .flatMap(bc -> repository.findById(deleteId, UseCaseEntity.class)
                         .filter(useCase -> crudTrioOf(bc, useCase) == null));
+    }
+
+    /** The input fields with fixed values: field name → the constants its select offers. */
+    private Map<String, List<String>> enumOptionsOf(UseCaseEntity useCase) {
+        var options = new HashMap<String, List<String>>();
+        if (useCase.inputModelId() == null || useCase.inputModelId().isBlank()) return options;
+        repository.findById(useCase.inputModelId(), ModelEntity.class).ifPresent(input -> {
+            for (var field : input.fields() != null ? input.fields() : List.<ModelFieldEntity>of()) {
+                if (field.enumId() == null || field.enumId().isBlank()) continue;
+                repository.findById(field.enumId(), EnumEntity.class).ifPresent(e ->
+                        options.put(field.name(), e.values().stream().map(v -> toEnumConstant(v.id())).toList()));
+            }
+        });
+        return options;
     }
 
     /** One of an aggregate's derived CRUD use cases, and which of the three it is. */
@@ -1337,7 +1352,7 @@ public class GenerateCodeUseCase {
                 }
 
                 enrichedSteps.add(stepMap);
-                if ("PublishDomainEvent".equals(stepMap.get("type"))) {
+                if ("PublishDomainEvent".equals(stepMap.get("type")) && !stepMap.containsKey("integrationClass")) {
                     needsStreamBridge = true;
                 }
             }
@@ -2908,6 +2923,7 @@ public class GenerateCodeUseCase {
                     return Map.of(
                             "label", item.label() != null ? item.label() : uc.name(),
                             "className", toTypeName(uc.name()) + "Page",
+                            "roles", uc.allowedRoles() != null ? uc.allowedRoles() : List.<String>of(),
                             "field", fieldNameFromLabel(item.label(), ucSlug + "Page"),
                             "moduleSlug", moduleSlug,
                             "pageSlug", ucSlug);
@@ -3398,7 +3414,15 @@ public class GenerateCodeUseCase {
             case "PublishDomainEvent" -> {
                 if (domainEventId != null) {
                     var event = repository.findById(domainEventId, DomainEventEntity.class).orElse(null);
-                    if (event != null) stepMap.put("domainEvent", named(fromJson(toJson(event)), event.name()));
+                    if (event != null) {
+                        stepMap.put("domainEvent", named(fromJson(toJson(event)), event.name()));
+                        // an event another service consumes travels by its integration publisher:
+                        // that one writes to the topic the subscribers listen on
+                        if (repository.findAllOfType(IntegrationEventEntity.class).stream()
+                                .anyMatch(integration -> event.name().equals(integration.name()))) {
+                            stepMap.put("integrationClass", toTypeName(event.name()));
+                        }
+                    }
                 }
             }
             case "CallUseCase" -> {
@@ -3795,6 +3819,15 @@ public class GenerateCodeUseCase {
             map.put("fields", List.of());
         }
 
+        // the screens' create/update/delete honour the roles modelled on the aggregate's CRUD use cases
+        var crudIds = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudUseCases.idsOf(aggregate.id());
+        var crudRoles = new HashMap<String, List<String>>();
+        for (var i = 0; i < 3; i++) {
+            var role = List.of("create", "update", "delete").get(i);
+            crudRoles.put(role, repository.findById(crudIds.get(i), UseCaseEntity.class)
+                    .map(UseCaseEntity::allowedRoles).orElse(null) instanceof List<String> roles ? roles : List.of());
+        }
+        map.put("crudRoles", crudRoles);
         customDeleteOf(aggregate).ifPresent(useCase -> map.put("customDelete", Map.of(
                 "className", toTypeName(useCase.name()),
                 "slug", useCase.name().toLowerCase().replaceAll("[^a-z0-9]", ""))));

@@ -16,6 +16,11 @@
         <e2e.excluded>e2e</e2e.excluded>
     </properties>
     <dependencies>
+        <!-- use cases restricted to a role carry @PreAuthorize -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>

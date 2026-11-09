@@ -118,6 +118,8 @@ ${req}    ${lbl}<@lookup field/><#if lookups?? && lookups[field.name]??>
 
     </#if>String ${field.name};
     </#if>
+<#elseif enumOptions?? && enumOptions[field.name]??>
+${req}    ${lbl}${field.name?cap_first}Option ${field.name};
 <#elseif isGrid(field)>
 ${req}    ${lbl}@InlineEditing
     @Stereotype(FieldStereotype.grid)
@@ -130,6 +132,14 @@ ${req}    ${lbl}String ${field.name}Id;
     Long id;
 </#if>
 
+<#if inputModel?? && inputModel.fields?has_content>
+<#list inputModel.fields as field>
+<#if enumOptions?? && enumOptions[field.name]??>
+    public enum ${field.name?cap_first}Option { <#list enumOptions[field.name] as constant>${constant}<#sep>, </#sep></#list> }
+
+</#if>
+</#list>
+</#if>
     @Notice(theme = "success", fullWidth = true)
     String resultado = "";
 
@@ -173,7 +183,7 @@ ${req}    ${lbl}String ${field.name}Id;
         }
 </#if>
 </#if>
-<#assign args><#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#elseif isGrid(field)>objectMapper.writeValueAsString(${field.name})<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if></#assign>
+<#assign args><#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#elseif enumOptions?? && enumOptions[field.name]??>${field.name} != null ? ${field.name}.name() : null<#elseif isGrid(field)>objectMapper.writeValueAsString(${field.name})<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if></#assign>
 <#if outputModel??>
         ${ucClass}Result result = useCase.handle(new ${ucClass}Command(${args}));
         resultado = <#list outputModel.fields![] as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array">Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if>;
