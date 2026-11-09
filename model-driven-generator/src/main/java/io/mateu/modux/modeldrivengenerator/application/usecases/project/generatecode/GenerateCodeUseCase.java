@@ -729,6 +729,23 @@ public class GenerateCodeUseCase {
                         });
             }
         }
+        for (var bc : deployedUnits(service)) {
+            for (var projectionId : bc.projectionIds() != null ? bc.projectionIds() : List.<String>of()) {
+                var projection = repository.findById(projectionId, ProjectionEntity.class).orElseThrow();
+                if (projection.handlers() == null) continue;
+                for (var handler : projection.handlers()) {
+                    var event = handler.domainEventId() == null ? null
+                            : repository.findById(handler.domainEventId(), DomainEventEntity.class).orElse(null);
+                    if (event == null) continue;
+                    Map<String, Object> c = new HashMap<>();
+                    c.put("function", uncapitalize(projectionClassName(projection))
+                            + capitalize(handler.name()).replaceAll("[^a-zA-Z0-9]", ""));
+                    c.put("topic", event.name().toLowerCase().replaceAll("[^a-z0-9]", "-"));
+                    c.put("group", serviceName + "-" + projection.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+                    consumers.add(c);
+                }
+            }
+        }
         appModel.put("consumers", consumers);
 
         idpFor(project).ifPresent(idp -> appModel.put("idp", idp));
@@ -1190,6 +1207,23 @@ public class GenerateCodeUseCase {
             }
         });
         return options;
+    }
+
+    private String projectionClassName(ProjectionEntity projection) {
+        var rawName = capitalize(projection.name());
+        return rawName.endsWith("Projection") ? rawName : rawName + "Projection";
+    }
+
+    /** The read model a menu entry's query answers with, if it answers with one. */
+    private java.util.Optional<ReadModelEntity> readModelOfMenuItem(UiMenuItemEntity item) {
+        if (item.queryServiceId() == null || item.queryServiceId().isBlank()) return java.util.Optional.empty();
+        return repository.findById(item.queryServiceId(), QueryServiceEntity.class)
+                .flatMap(qs -> qs.operations() == null ? java.util.Optional.empty() : qs.operations().stream()
+                        .filter(op -> item.queryOperationId() == null || item.queryOperationId().equals(op.id()))
+                        .findFirst())
+                .flatMap(op -> repository.findAllOfType(ReadModelEntity.class).stream()
+                        .filter(rm -> rm.modelId() != null && rm.modelId().equals(op.outputModelId()))
+                        .findFirst());
     }
 
     /** One of an aggregate's derived CRUD use cases, and which of the three it is. */
@@ -2931,6 +2965,33 @@ public class GenerateCodeUseCase {
                 .filter(java.util.Objects::nonNull)
                 .toList());
 
+        // Menu entries pointing at a query: a read-only listing of its read model
+        model.put("menuListings", flattenMenu(adapter.menuItems()).stream()
+                .map(item -> readModelOfMenuItem(item).map(rm -> {
+                    var unit = deployedUnits(service).stream()
+                            .filter(u -> u.readModelIds() != null && u.readModelIds().contains(rm.id()))
+                            .findFirst().orElse(null);
+                    if (unit == null) return null;
+                    var className = toTypeName(rm.name()).replaceAll("ReadModel$", "");
+                    var moduleSlug = boundedContextSlug(unit.name());
+                    Map<String, Object> listing = new HashMap<>();
+                    listing.put("className", className + "Listing");
+                    listing.put("moduleSlug", moduleSlug);
+                    listing.put("slug", className.toLowerCase());
+                    listing.put("label", item.label() != null ? item.label() : rm.name());
+                    listing.put("field", fieldNameFromLabel(item.label(), className.toLowerCase()));
+                    var listingModel = buildBaseModel(project, service, unit);
+                    listingModel.put("className", className);
+                    listingModel.put("title", listing.get("label"));
+                    var unitDir = serviceDir + "/" + boundedContextSlug(unit.name());
+                    var pagesDir = "src/main/java/" + packageDir + "/" + moduleSlug + "/infra/in/ui/pages/" + className.toLowerCase();
+                    createDir(unitDir, pagesDir);
+                    createFile(unitDir, listingModel, "readmodel-listing.ftl", pagesDir + "/" + className + "Listing.java");
+                    return listing;
+                }).orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .toList());
+
         // Overwrite Home.java with UIAdapter-driven version
         createFile(appDir, model, "ui-adapter-home.ftl",
                 "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
@@ -3281,9 +3342,11 @@ public class GenerateCodeUseCase {
         Map<String, Object> model = buildBaseModel(project, service, boundedContext);
         model.put("projection", fromJson(toJson(projection)));
 
-        var rawName = capitalize(projection.name());
-        var className = rawName.endsWith("Projection") ? rawName : rawName + "Projection";
+        var className = projectionClassName(projection);
         model.put("className", className);
+        // only ever appended to, like a history: every event is a row of its own
+        model.put("appendOnly", projection.handlers() != null && projection.handlers().stream()
+                .allMatch(h -> h.type() != null && "Create".equals(h.type().name())));
 
         ModelEntity rmModelEntity = null;
         if (projection.readModelId() != null && !projection.readModelId().isBlank()) {

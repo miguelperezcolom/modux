@@ -66,7 +66,7 @@ public class ${className} {
                         ? repository.findById(id).orElseGet(${readModel.entityClassName}::new)
                         : new ${readModel.entityClassName}();
 </#if>
-                entity.setId(id);
+                entity.setId(<#if appendOnly>java.util.UUID.randomUUID().toString()<#else>id</#if>);
 <#if handler.matchedFields??>
 <#list handler.matchedFields as f>
 <#if f.basicType>
