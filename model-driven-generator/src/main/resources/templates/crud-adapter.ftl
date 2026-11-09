@@ -21,6 +21,9 @@ public class ${aggregate.name}CrudAdapter {
 
     final ${aggregate.name}ViewModel viewModel;
     final Delete${aggregate.name}UseCase delete${aggregate.name}UseCase;
+<#if aggregate.customDelete??>
+    final ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.customDelete.slug}.${aggregate.customDelete.className}UseCase customDeleteUseCase;
+</#if>
     final ${aggregate.name}QueryService queryService;
 
     public ListingData<${aggregate.name}Row> search(String searchText, NoFilters filters, Pageable pageable, HttpRequest httpRequest) {
@@ -28,7 +31,14 @@ public class ${aggregate.name}CrudAdapter {
     }
 
     public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
+<#if aggregate.customDelete??>
+        // the model adds rules to this delete: the screen has to go through them
+        for (var id : selectedIds) {
+            customDeleteUseCase.handle(new ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.customDelete.slug}.${aggregate.customDelete.className}Command(Long.valueOf(id)));
+        }
+<#else>
         delete${aggregate.name}UseCase.handle(new Delete${aggregate.name}Command(selectedIds));
+</#if>
     }
 
     public ${aggregate.name}ViewModel getView(String id, HttpRequest httpRequest) {

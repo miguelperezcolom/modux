@@ -109,6 +109,9 @@ public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r')
 
         final ${aggregate.name}ViewModel viewModel;
         final Delete${aggregate.name}UseCase delete${aggregate.name}UseCase;
+<#if aggregate.customDelete??>
+        final ${project.packageName}.${moduleSlugVal}.application.usecases.${aggregate.customDelete.slug}.${aggregate.customDelete.className}UseCase customDeleteUseCase;
+</#if>
         final ${aggregate.name}QueryService queryService;
 
         public ListingData<${aggregate.name}Row> search(String searchText, NoFilters filters, Pageable pageable, HttpRequest httpRequest) {
@@ -116,7 +119,14 @@ public class ${pageClassName!(page.name?cap_first?replace("[^a-zA-Z0-9]","",'r')
         }
 
         public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
+<#if aggregate.customDelete??>
+            // the model adds rules to this delete: the screen has to go through them
+            for (var id : selectedIds) {
+                customDeleteUseCase.handle(new ${project.packageName}.${moduleSlugVal}.application.usecases.${aggregate.customDelete.slug}.${aggregate.customDelete.className}Command(Long.valueOf(id)));
+            }
+<#else>
             delete${aggregate.name}UseCase.handle(new Delete${aggregate.name}Command(selectedIds));
+</#if>
         }
 
         public ${aggregate.name}ViewModel getView(String id, HttpRequest httpRequest) {

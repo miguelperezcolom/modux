@@ -1163,6 +1163,20 @@ public class GenerateCodeUseCase {
         return lookups;
     }
 
+    /**
+     * The modelled delete of this aggregate when someone added rules to it. A screen has to run
+     * that one: the plain delete behind the CRUD pages knows nothing about those rules.
+     */
+    private java.util.Optional<UseCaseEntity> customDeleteOf(AggregateEntity aggregate) {
+        var deleteId = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudUseCases
+                .idsOf(aggregate.id()).get(2);
+        return repository.findAllOfType(BoundedContextEntity.class).stream()
+                .filter(bc -> bc.useCaseIds() != null && bc.useCaseIds().contains(deleteId))
+                .findFirst()
+                .flatMap(bc -> repository.findById(deleteId, UseCaseEntity.class)
+                        .filter(useCase -> crudTrioOf(bc, useCase) == null));
+    }
+
     /** One of an aggregate's derived CRUD use cases, and which of the three it is. */
     private record CrudTrio(AggregateEntity aggregate, String role) {}
 
@@ -2502,6 +2516,7 @@ public class GenerateCodeUseCase {
             case "date" -> "date";
             case "time" -> "time";
             case "datetime" -> "timestamp";
+            case "json" -> "text";
             default -> "varchar(255)";
         };
     }
@@ -3756,9 +3771,13 @@ public class GenerateCodeUseCase {
                             fieldMap.put("label", f.label());
                             fieldMap.put("priority", f.priority());
                             fieldMap.put("identifier", Boolean.TRUE.equals(f.identifier()));
-                            if (f.basicType()) {
+                            // a list of another model has no class of its own: the aggregate keeps it as JSON,
+                            // which is what the form's inline grid hands the command
+                            var jsonList = !f.basicType() && f.modelId() != null && !f.modelId().isBlank()
+                                    && f.type() == FieldDataType.array;
+                            if (f.basicType() || jsonList) {
                                 fieldMap.put("type", "Wrapper");
-                                fieldMap.put("primitiveType", mapFieldDataType(f.type()));
+                                fieldMap.put("primitiveType", jsonList ? "json" : mapFieldDataType(f.type()));
                             } else {
                                 fieldMap.put("type", "ValueObject");
                                 fieldMap.put("primitiveType", null);
@@ -3776,6 +3795,9 @@ public class GenerateCodeUseCase {
             map.put("fields", List.of());
         }
 
+        customDeleteOf(aggregate).ifPresent(useCase -> map.put("customDelete", Map.of(
+                "className", toTypeName(useCase.name()),
+                "slug", useCase.name().toLowerCase().replaceAll("[^a-z0-9]", ""))));
         map.put("tableName", aggregateTableName(aggregate));
 
         return map;

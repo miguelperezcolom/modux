@@ -98,6 +98,24 @@ class CrudPagesByConsumerTest {
         assertTrue(viewModel.contains("AutorIdOptionsSupplier.class"), viewModel);
     }
 
+    @Test
+    void a_delete_with_modelled_rules_is_the_one_the_screen_runs() throws Exception {
+        var store = Files.createTempFile("ui-crud-delete", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]",
+                        "aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]\n  useCaseIds: [\"uc-eliminarAgg-autor\"]")
+                + """
+                useCases:
+                - id: "uc-eliminarAgg-autor"
+                  name: "EliminarAutor"
+                  steps:
+                  - {id: "s1", name: "comprobar", type: "Custom", intent: "Rechaza si tiene libros"}
+                  - {id: "s2", name: "deleteAutor", type: "Custom", aggregateId: "agg-autor"}
+                """);
+        var adapter = read(generate(store.toString()), "AutorCrudAdapter.java");
+        assertTrue(adapter.contains("EliminarAutorCommand"), adapter);
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();
