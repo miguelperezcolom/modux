@@ -213,15 +213,11 @@ See [E2E Tests with Playwright](/manual/e2e-tests/) for the full guide.
 
 ## AI-assisted completion
 
-The generator produces skeletons with `// TODO` comments in places where domain logic cannot be derived from the spec alone: invariant bodies, operation preconditions, and BDD step implementations.
-
-Run `mvn modux:ai-complete` after generation to get AI-generated proposals for those gaps:
+`mvn modux:ai-complete` implements the hooks still pending in the custom zone, from the intent the model wrote on them, using your local AI command line (no API key):
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-mvn modux:generate -Dmodux.projectId=my-project-id
-mvn modux:ai-complete -Dmodux.projectId=my-project-id
-# → generated/proposals/{boundedContext}/AI-PROPOSALS.md
+mvn modux:generate
+mvn modux:ai-complete
 ```
 
 See [AI-Assisted Code Completion](/manual/ai-completion/) for the full guide.

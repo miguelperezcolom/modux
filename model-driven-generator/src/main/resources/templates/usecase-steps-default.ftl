@@ -25,7 +25,7 @@ public class Default${usecase.className}Steps implements ${usecase.className}Ste
     public <#if returnsResult>${usecase.className}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.className}Command command) {
 <#if step.intent?? && step.intent?has_content>
         // Intended behaviour: ${step.intent}
-        // Tip: `mvn modux:ai-complete` proposes an implementation from that intent (AI-PROPOSALS.md).
+        // Tip: `mvn modux:ai-complete` implements this hook from that intent.
         // Reject with BusinessRuleException.conflict/notFound/invalid("why"): the caller gets that status and message.
         throw new UnsupportedOperationException(
             "Pendiente de implementar «${step.name}» (${usecase.name}): ${step.intent?j_string}");

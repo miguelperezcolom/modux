@@ -1,6 +1,6 @@
 package io.mateu.modux.plugin;
 
-import io.mateu.modux.modeldrivengenerator.application.usecases.project.aicomplete.AiCompleteCodeUseCase;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatehla.GenerateHlaUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importasyncapi.ImportAsyncApiUseCase;
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.importopenapi.ImportOpenApiUseCase;
@@ -26,7 +26,7 @@ class ModuxContextTest {
             assertNotNull(ctx.getBean(GenerateCodeUseCase.class));
             assertNotNull(ctx.getBean(ImportOpenApiUseCase.class));
             assertNotNull(ctx.getBean(ImportAsyncApiUseCase.class));
-            assertNotNull(ctx.getBean(AiCompleteCodeUseCase.class));
+            assertNotNull(ctx.getBean(GenerateHlaUseCase.class));
         } finally {
             Files.deleteIfExists(store);
         }
