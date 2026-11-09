@@ -3,8 +3,6 @@ package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'
 
 import io.mateu.uidl.annotations.HiddenInCreate;
 import io.mateu.uidl.annotations.ReadOnly;
-import io.mateu.uidl.interfaces.CrudCreationForm;
-import io.mateu.uidl.interfaces.CrudEditorForm;
 import io.mateu.uidl.interfaces.HttpRequest;
 import io.mateu.uidl.interfaces.Identifiable;
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Dto;
@@ -25,7 +23,7 @@ import org.springframework.stereotype.Service;
 </#if>@Service
 @Scope("prototype")
 @RequiredArgsConstructor
-public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<String>, CrudCreationForm<String> {
+public class ${aggregate.name}ViewModel implements Identifiable {
 
     @HiddenInCreate
     @ReadOnly
@@ -64,7 +62,6 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
     final Create${aggregate.name}UseCase create${aggregate.name}UseCase;
     final Update${aggregate.name}UseCase update${aggregate.name}UseCase;
 
-    @Override
     public String create(HttpRequest httpRequest) {
         return create${aggregate.name}UseCase.handle(new Create${aggregate.name}Command(
 <#list safeFields as field>
@@ -73,7 +70,6 @@ public class ${aggregate.name}ViewModel implements Identifiable, CrudEditorForm<
         ));
     }
 
-    @Override
     public void save(HttpRequest httpRequest) {
         update${aggregate.name}UseCase.handle(new Update${aggregate.name}Command(
                 id<#if safeFields?has_content>,</#if>

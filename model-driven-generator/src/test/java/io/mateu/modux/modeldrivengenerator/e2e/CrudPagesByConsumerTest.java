@@ -78,6 +78,17 @@ class CrudPagesByConsumerTest {
         assertTrue(file(generate(store.toString()), "FacturaCrudOrchestrator.java").isPresent());
     }
 
+    @Test
+    void a_crud_route_never_collides_with_its_rest_listing() throws Exception {
+        // labelled like the aggregate, the route would be /autor: the REST listing's path, so a
+        // reload of the screen would show its JSON
+        var store = Files.createTempFile("ui-crud-collision", ".yaml");
+        Files.writeString(store, Files.readString(STORE).replace("label: \"Autores\"", "label: \"Autor\""));
+        var home = read(generate(store.toString()), "Home.java");
+        assertTrue(home.contains("AutorCrudOrchestrator autors;"), home);
+        assertTrue(home.contains("@io.mateu.uidl.annotations.Label(\"Autor\")"), "the menu keeps the modelled label: " + home);
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

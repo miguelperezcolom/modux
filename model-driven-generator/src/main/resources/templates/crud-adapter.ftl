@@ -3,7 +3,6 @@ package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'
 import io.mateu.uidl.data.ListingData;
 import io.mateu.uidl.data.NoFilters;
 import io.mateu.uidl.data.Pageable;
-import io.mateu.uidl.interfaces.CrudAdapter;
 import io.mateu.uidl.interfaces.HttpRequest;
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.${aggregate.name}QueryService;
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Row;
@@ -18,38 +17,28 @@ import java.util.List;
 @Service
 @Scope("prototype")
 @RequiredArgsConstructor
-public class ${aggregate.name}CrudAdapter implements CrudAdapter<
-        ${aggregate.name}ViewModel,
-        ${aggregate.name}ViewModel,
-        NoFilters,
-        ${aggregate.name}Row,
-        String> {
+public class ${aggregate.name}CrudAdapter {
 
     final ${aggregate.name}ViewModel viewModel;
     final Delete${aggregate.name}UseCase delete${aggregate.name}UseCase;
     final ${aggregate.name}QueryService queryService;
 
-    @Override
     public ListingData<${aggregate.name}Row> search(String searchText, NoFilters filters, Pageable pageable, HttpRequest httpRequest) {
         return queryService.findAll(searchText, filters, pageable);
     }
 
-    @Override
     public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) {
         delete${aggregate.name}UseCase.handle(new Delete${aggregate.name}Command(selectedIds));
     }
 
-    @Override
     public ${aggregate.name}ViewModel getView(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService.getById(id).orElseThrow());
     }
 
-    @Override
     public ${aggregate.name}ViewModel getEditor(String id, HttpRequest httpRequest) {
         return viewModel.load(queryService.getById(id).orElseThrow());
     }
 
-    @Override
     public ${aggregate.name}ViewModel getCreationForm(HttpRequest httpRequest) {
         return viewModel;
     }

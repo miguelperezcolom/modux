@@ -400,6 +400,8 @@ public class GenerateCodeUseCase {
         var uiUseCases = (boundedContext.useCaseIds() != null ? boundedContext.useCaseIds() : List.<String>of()).stream()
                 .map(id -> repository.findById(id, UseCaseEntity.class).orElseThrow())
                 .filter(UseCaseEntity::exposedAsUi)
+                // a scaffolded create/update/delete has no page of its own: the aggregate's CRUD is its page
+                .filter(uc -> crudTrioOf(boundedContext, uc) == null)
                 .map(uc -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("className", toTypeName(uc.name()) + "Page");
@@ -2735,6 +2737,17 @@ public class GenerateCodeUseCase {
         return Character.isJavaIdentifierStart(name.charAt(0)) ? name : "m" + name;
     }
 
+    /**
+     * The menu field names the CRUD's route, and a route equal to the aggregate's REST path would
+     * lose to the REST listing on a reload or a direct visit: the browser would get its JSON.
+     */
+    private static String crudMenuField(String label, AggregateEntity aggregate) {
+        var field = fieldNameFromLabel(label, aggregate.name().toLowerCase() + "Crud");
+        var restPath = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudApi
+                .pathSegment(aggregate.name(), aggregate.id());
+        return field.equalsIgnoreCase(restPath) ? field + "s" : field;
+    }
+
     /** The app's menu tree flattened, document order. */
     private List<UiMenuItemEntity> flattenMenu(List<UiMenuItemEntity> items) {
         if (items == null) return List.of();
@@ -2821,7 +2834,8 @@ public class GenerateCodeUseCase {
                             "name", aggregate.name(),
                             "slug", aggregate.name().toLowerCase(),
                             "moduleSlug", boundedContextSlug(unit.name()),
-                            "field", fieldNameFromLabel(it.label(), aggregate.name().toLowerCase() + "Crud"));
+                            "label", it.label() != null ? it.label() : "",
+                            "field", crudMenuField(it.label(), aggregate));
                 })
                 .filter(java.util.Objects::nonNull)
                 .toList());
@@ -2837,6 +2851,7 @@ public class GenerateCodeUseCase {
                     var uc = e.getValue();
                     var moduleSlug = deployedUnits(service).stream()
                             .filter(unit -> unit.useCaseIds() != null && unit.useCaseIds().contains(uc.id()))
+                            .filter(unit -> crudTrioOf(unit, uc) == null)
                             .findFirst()
                             .map(unit -> boundedContextSlug(unit.name()))
                             .orElse(null);
