@@ -1,0 +1,94 @@
+# Publica una versión al empujar un tag vX.Y.Z.
+#
+# Sin secretos crea igualmente la release de GitHub con sus binarios. Cada canal se activa al
+# configurar los suyos en Settings → Secrets and variables → Actions:
+#   Maven Central:         CENTRAL_USERNAME, CENTRAL_TOKEN, GPG_PRIVATE_KEY, GPG_PASSPHRASE
+#   JetBrains Marketplace: JETBRAINS_TOKEN
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      VERSION: ${{ github.ref_name }}
+      PUBLISH_CENTRAL: ${{ secrets.CENTRAL_TOKEN != '' && secrets.GPG_PRIVATE_KEY != '' }}
+      PUBLISH_MARKETPLACE: ${{ secrets.JETBRAINS_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          server-id: central
+          server-username: CENTRAL_USERNAME
+          server-password: CENTRAL_TOKEN
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: editor/package-lock.json
+
+      - name: El tag coincide con las versiones del repositorio
+        run: |
+          expected="${VERSION#v}"
+          for pom in model-driven-generator/pom.xml plugin/pom.xml; do
+            actual=$(mvn -q -f "$pom" help:evaluate -Dexpression=project.version -DforceStdout)
+            [ "$actual" = "$expected" ] || { echo "::error::$pom está en $actual y el tag dice $expected"; exit 1; }
+          done
+          grep -q "^version = \"$expected\"" intellij-plugin/build.gradle.kts \
+            || { echo "::error::intellij-plugin/build.gradle.kts no está en $expected"; exit 1; }
+
+      - name: Editor
+        working-directory: editor
+        run: |
+          npm ci
+          npm run copy
+
+      - name: Generador y plugin de Maven (con tests)
+        run: |
+          mvn -B -Dgpg.skip=true -f model-driven-generator/pom.xml install
+          mvn -B -Dgpg.skip=true -f plugin/pom.xml install
+
+      - name: Plugin de IntelliJ
+        working-directory: intellij-plugin
+        run: ./gradlew --no-daemon buildPlugin
+
+      - name: Release de GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            gh release upload "$VERSION" intellij-plugin/build/distributions/*.zip --clobber
+          else
+            gh release create "$VERSION" intellij-plugin/build/distributions/*.zip --title "$VERSION" --generate-notes
+          fi
+
+      - name: Maven Central
+        if: env.PUBLISH_CENTRAL == 'true'
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_TOKEN: ${{ secrets.CENTRAL_TOKEN }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          mvn -B -DskipTests -f model-driven-generator/pom.xml deploy
+          mvn -B -DskipTests -f plugin/pom.xml deploy
+
+      - name: JetBrains Marketplace
+        if: env.PUBLISH_MARKETPLACE == 'true'
+        working-directory: intellij-plugin
+        env:
+          JETBRAINS_TOKEN: ${{ secrets.JETBRAINS_TOKEN }}
+        run: ./gradlew --no-daemon publishPlugin
