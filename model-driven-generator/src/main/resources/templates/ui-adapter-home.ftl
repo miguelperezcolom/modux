@@ -109,6 +109,9 @@ public class Home<#if homePage??> extends ${homePage.className}</#if><#if idp??>
 </#if>
 <#list menuCruds![] as crud>
     @Menu
+<#if crud.label?has_content>
+    @io.mateu.uidl.annotations.Label("${crud.label}")
+</#if>
     ${crud.name}CrudOrchestrator ${crud.field};
 
 </#list>

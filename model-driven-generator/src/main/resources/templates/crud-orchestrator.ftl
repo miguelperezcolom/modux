@@ -5,14 +5,15 @@ import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${action.slug}.${action.className}UseCase;
 </#list>
 import io.mateu.core.infra.declarative.orchestrators.crud.Crud;
+import io.mateu.core.infra.declarative.orchestrators.crud.CrudAdapterHelper;
 <#if aggregate.rowActionUseCases?has_content>
 import io.mateu.uidl.annotations.Label;
 import io.mateu.uidl.annotations.ListToolbarButton;
 </#if>
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.NoFilters;
-import io.mateu.uidl.data.Pageable;
-import io.mateu.uidl.interfaces.CrudAdapter;
+import io.mateu.uidl.data.ListingData;
+import io.mateu.uidl.data.SearchRequest;
 import io.mateu.uidl.interfaces.HttpRequest;
 import ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.query.dto.${aggregate.name}Row;
 import lombok.RequiredArgsConstructor;
@@ -51,21 +52,8 @@ public io.mateu.uidl.data.Message ${action.fieldName}(java.util.List<${aggregate
 </#list>
 
 @Override
-public CrudAdapter<${aggregate.name}ViewModel,
-${aggregate.name}ViewModel,
-NoFilters, ${aggregate.name}Row, String> adapter() {
-return adapter;
-}
-
-@Override
-public String toId(String s) {
-return s;
-}
-
-@Override
-@SuppressWarnings("unchecked")
-public Object search(String searchText, Object filters, Pageable pageable, HttpRequest httpRequest) {
-return ((CrudAdapter) adapter()).search(searchText, filters, pageable, httpRequest);
+public ListingData<${aggregate.name}Row> search(SearchRequest request, HttpRequest httpRequest) {
+return adapter.search(request.searchText(), filters(request), request.pageable(), httpRequest);
 }
 
 @Override
@@ -74,28 +62,34 @@ return "id";
 }
 
 @Override
-public Object saveNew(HttpRequest httpRequest) {
-return adapter.getCreationForm(httpRequest).create(httpRequest);
+public ${aggregate.name}ViewModel view(String id, HttpRequest httpRequest) {
+return adapter.getView(id, httpRequest);
 }
 
 @Override
-public Object save(HttpRequest httpRequest) {
-var id = httpRequest.getString(getIdFieldForRow());
-adapter.getEditor(toId(id), httpRequest).save(httpRequest);
-return id;
+public ${aggregate.name}ViewModel edit(String id, HttpRequest httpRequest) {
+return adapter.getEditor(id, httpRequest);
 }
 
 @Override
-@SuppressWarnings({"rawtypes", "unchecked"})
-public Class editorClass() {
-return io.mateu.uidl.reflection.GenericClassProvider.getGenericClass(
-this.getClass(), io.mateu.core.infra.declarative.orchestrators.crud.Crud.class, "Editor");
+public ${aggregate.name}ViewModel creationForm(HttpRequest httpRequest) {
+return adapter.getCreationForm(httpRequest);
 }
 
 @Override
-@SuppressWarnings({"rawtypes", "unchecked"})
-public Class creationFormClass() {
-return io.mateu.uidl.reflection.GenericClassProvider.getGenericClass(
-this.getClass(), io.mateu.core.infra.declarative.orchestrators.crud.Crud.class, "CreationForm");
+public void deleteAllById(java.util.List<String> selectedIds, HttpRequest httpRequest) {
+adapter.deleteAllById(selectedIds, httpRequest);
+}
+
+@Override
+public String create(HttpRequest httpRequest) {
+return CrudAdapterHelper.toView(httpRequest, ${aggregate.name}ViewModel.class).create(httpRequest);
+}
+
+@Override
+public String save(HttpRequest httpRequest) {
+var form = CrudAdapterHelper.toView(httpRequest, ${aggregate.name}ViewModel.class);
+form.save(httpRequest);
+return form.id();
 }
 }

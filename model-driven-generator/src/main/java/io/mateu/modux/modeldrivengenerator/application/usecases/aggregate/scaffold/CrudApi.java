@@ -78,7 +78,7 @@ public final class CrudApi {
     }
 
     /** Lower-case, accent-free, dash-separated; falls back to the id when the name gives nothing. */
-    static String pathSegment(String name, String fallback) {
+    public static String pathSegment(String name, String fallback) {
         var slug = name == null ? "" : java.text.Normalizer.normalize(name.toLowerCase(), java.text.Normalizer.Form.NFD)
                 .replaceAll("\\p{M}", "")
                 .replaceAll("[^a-z0-9]+", "-")

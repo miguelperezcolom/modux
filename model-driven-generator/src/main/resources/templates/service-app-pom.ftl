@@ -29,7 +29,7 @@
         <dependency>
             <groupId>io.mateu</groupId>
             <artifactId>annotation-processor-mvc</artifactId>
-            <version>0.0.1-MATEU</version>
+            <version>3.0-beta.53</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -105,7 +105,7 @@
                         <path>
                             <groupId>io.mateu</groupId>
                             <artifactId>annotation-processor-mvc</artifactId>
-                            <version>0.0.1-MATEU</version>
+                            <version>3.0-beta.53</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
