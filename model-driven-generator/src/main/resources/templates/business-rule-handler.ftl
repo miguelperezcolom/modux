@@ -16,6 +16,7 @@ public class BusinessRuleExceptionHandler {
             case INVALID -> HttpStatus.BAD_REQUEST;
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CONFLICT -> HttpStatus.CONFLICT;
+            case FORBIDDEN -> HttpStatus.FORBIDDEN;
         };
         return ProblemDetail.forStatusAndDetail(status, e.getMessage());
     }

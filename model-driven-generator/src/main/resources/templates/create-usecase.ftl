@@ -29,6 +29,7 @@ public class Create${aggregate.name}UseCase {
     @Transactional
 <#if aggregate.crudRoles?? && aggregate.crudRoles.create?has_content>
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole(${aggregate.crudRoles.create?map(r -> "'" + r + "'")?join(", ")})")
+    @org.springframework.security.authorization.method.HandleAuthorizationDenied(handlerClass = ${project.packageName}.application.Forbidden.class)
 </#if>
     public String handle(Create${aggregate.name}Command command) {
         var aggregate = ${aggregate.name}.of(
