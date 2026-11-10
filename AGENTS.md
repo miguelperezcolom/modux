@@ -227,6 +227,8 @@ Key architectural concepts to respect:
   enabled by default; disable with `--set postgresql.enabled=false` and set
   `externalDatabase.jdbcUrl` for an external DB). Full instructions in
   `deploy/README.md` (Spanish).
+- `.github/workflows/ci.yml` builds and tests the editor, the generator and the Maven plugin on
+  every PR and push to `main` (e2e excluded).
 - `.github/workflows/release.yml` publishes a version when a `vX.Y.Z` tag is pushed (see the file for the secrets each channel needs); the
   generated projects include their own GitHub Actions workflow
   (`templates/ci-workflow.ftl`).

@@ -75,12 +75,35 @@ class ${usecase.className}UseCaseTest {
     StreamOperations streamBridge;
 
 </#if>
+<#list (usecase.steps![])?filter(s -> s.integrationClass??) as step>
+    @Mock
+    ${project.packageName}.${module.slug}.application.out.integration.${step.integrationClass}Publisher ${step.integrationClass?uncap_first}Publisher;
+
+</#list>
     @InjectMocks
     ${usecase.className}UseCase useCase;
 
+<#assign reads = (usecase.steps![])?filter(s -> s.type == "ReadAggregate" && s.idField??)>
+<#if reads?has_content>
+<#assign firstRead = reads[0]>
+    @Test
+    void rejects_an_unknown_${firstRead.aggregate.name?lower_case}() {
+        // the repository mock knows no ${firstRead.aggregate.name}: the use case must say so, not fail
+        var command = new ${usecase.className}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.name == firstRead.idField><#if field.basicType?? && field.basicType && field.type == "integer">1<#elseif field.basicType?? && field.basicType && (field.type == "string" || field.type == "")>"1"<#elseif !(field.basicType?? && field.basicType)>"1"<#else>1L</#if><#else>null</#if><#sep>, </#sep></#list><#else>1L</#if>);
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ${project.packageName}.application.BusinessRuleException.class, () -> useCase.handle(command));
+    }
+<#else>
     @Test
     void should_execute_successfully() {
         var command = new ${usecase.className}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field>null<#sep>, </#sep></#list><#else>null</#if>);
+<#assign customs = (usecase.steps![])?filter(s -> s.type == "Custom")>
+<#if outputModel?? && customs?has_content>
+        // the last custom step decides the result the later steps read
+        org.mockito.Mockito.when(steps.${customs?last.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new ${usecase.className}Result(<#list (outputModel.fields![]) as f>null<#sep>, </#sep></#list>));
+</#if>
         assertDoesNotThrow(() -> useCase.handle(command));
     }
+</#if>
 }

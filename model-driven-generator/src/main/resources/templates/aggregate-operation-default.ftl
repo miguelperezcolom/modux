@@ -74,7 +74,7 @@ public class Default${operation.name?cap_first}${aggregate.name}Operation implem
     /** Intent (from the model): ${operation.intent} */
 </#if>
     @Override
-    public void execute(${aggregate.name}OperationContext context) {
+    public void execute(${aggregate.name}OperationContext context<#if operationInput?? && operationInput.fields?has_content>, ${operation.name?cap_first}${aggregate.name}Operation.Input input</#if>) {
 <#if operation.intent?? && operation.intent?has_content>
         // Intended behaviour: ${operation.intent}
 </#if>

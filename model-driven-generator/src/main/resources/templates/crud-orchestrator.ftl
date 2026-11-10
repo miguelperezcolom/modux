@@ -66,6 +66,14 @@ public ${aggregate.name}ViewModel view(String id, HttpRequest httpRequest) {
 return adapter.getView(id, httpRequest);
 }
 
+<#if aggregate.behavioural!false>
+/** ${aggregate.name} changes through its operations, not by editing its fields. */
+@Override
+public boolean canEdit() {
+return false;
+}
+
+</#if>
 @Override
 public ${aggregate.name}ViewModel edit(String id, HttpRequest httpRequest) {
 return adapter.getEditor(id, httpRequest);

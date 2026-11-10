@@ -30,6 +30,15 @@ class Update${aggregate.name}UseCaseTest {
     @InjectMocks
     Update${aggregate.name}UseCase useCase;
 
+<#if aggregate.behavioural!false>
+    @Test
+    void is_refused_because_it_changes_through_its_operations() {
+        var command = new Update${aggregate.name}Command("1"<#list safeFields as field>, null</#list>);
+        org.junit.jupiter.api.Assertions.assertThrows(
+                ${project.packageName}.application.BusinessRuleException.class, () -> useCase.handle(command));
+        org.mockito.Mockito.verifyNoInteractions(repository);
+    }
+<#else>
     @Test
     void should_update_and_persist() {
         var existing = new ${aggregate.name}();
@@ -38,4 +47,5 @@ class Update${aggregate.name}UseCaseTest {
         useCase.handle(command);
         verify(repository).save(existing);
     }
+</#if>
 }

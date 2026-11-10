@@ -82,6 +82,7 @@ p.checkInvariants();
 return p;
 }
 
+<#if !(aggregate.behavioural!false)>
 public void update(
 <#list safeFields as field>
     <#if field.type == "ValueObject">
@@ -114,16 +115,18 @@ public void update(
 </#list>
 checkInvariants();
 }
+</#if>
 
 <#list aggregate.operations as operation>
     <#assign operationName = operation.name?uncap_first>
     <#assign operationNameCap = operation.name?cap_first>
 
     <#if operation.type == "CUSTOM">
-        public void ${operationName}(${operationNameCap}${aggregate.name}Operation operation) {
+        <#assign withInput = (operation.hasInput!false)>
+        public void ${operationName}(${operationNameCap}${aggregate.name}Operation operation<#if withInput>, ${operationNameCap}${aggregate.name}Operation.Input input</#if>) {
         check${operationNameCap}Preconditions();
 
-        operation.execute(new Default${aggregate.name}OperationContext());
+        operation.execute(new Default${aggregate.name}OperationContext()<#if withInput>, input</#if>);
 
         checkInvariants();
         }
