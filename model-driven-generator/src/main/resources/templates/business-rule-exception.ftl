@@ -7,7 +7,7 @@ package ${project.packageName}.application;
  */
 public class BusinessRuleException extends io.mateu.uidl.UserFacingException {
 
-    public enum Kind { INVALID, NOT_FOUND, CONFLICT }
+    public enum Kind { INVALID, NOT_FOUND, CONFLICT, FORBIDDEN }
 
     private final Kind kind;
 
@@ -29,6 +29,11 @@ public class BusinessRuleException extends io.mateu.uidl.UserFacingException {
     /** The current state does not allow it (409). */
     public static BusinessRuleException conflict(String message) {
         return new BusinessRuleException(Kind.CONFLICT, message);
+    }
+
+    /** Whoever asks may not do it (403). */
+    public static BusinessRuleException forbidden(String message) {
+        return new BusinessRuleException(Kind.FORBIDDEN, message);
     }
 
     public Kind kind() {

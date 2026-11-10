@@ -208,6 +208,30 @@ class CrudPagesByConsumerTest {
     }
 
     @Test
+    void a_user_without_the_role_is_told_so_and_a_listing_reads_like_the_screens() throws Exception {
+        var store = Files.createTempFile("ui-crud-roles", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]",
+                        "aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]\n  useCaseIds: [\"uc-firmar\"]")
+                .replace("{id: \"f-t\",", "{id: \"f-ref\", name: \"autorId\", basicType: true, type: string}, {id: \"f-p\", name: \"precio\", basicType: true, type: money}, {id: \"f-t\",")
+                + """
+                useCases:
+                - id: "uc-firmar"
+                  name: "Firmar"
+                  allowedRoles: ["EDITOR"]
+                  steps:
+                  - {id: "s1", name: "firmar", type: "Custom", intent: "Firma"}
+                """);
+        var out = generate(store.toString());
+        var useCase = read(out, "FirmarUseCase.java");
+        assertTrue(useCase.replaceAll("\\s+", "").contains("HandleAuthorizationDenied(handlerClass=es.editorial.application.Forbidden.class)"), useCase);
+        assertTrue(read(out, "Forbidden.java").contains("BusinessRuleException.forbidden("), "the screens show a UserFacingException as it is");
+        var listing = read(out, "TemaDBQueryService.java");
+        assertTrue(listing.contains("label(autorIdLabels"), "a reference reads as the label of what it names: " + listing);
+        assertTrue(listing.contains("decimal(") && listing.contains(", true)"), "money with two decimals: " + listing);
+    }
+
+    @Test
     void a_projection_is_wired_to_its_event_and_a_query_in_the_menu_gets_a_listing() throws Exception {
         var store = Files.createTempFile("ui-crud-readmodel", ".yaml");
         Files.writeString(store, Files.readString(STORE)

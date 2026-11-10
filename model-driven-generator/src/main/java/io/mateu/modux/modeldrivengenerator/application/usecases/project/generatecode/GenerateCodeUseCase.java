@@ -372,6 +372,8 @@ public class GenerateCodeUseCase {
                 "src/main/java/" + packageDir + "/application/out/Repository.java");
         createFile(boundedContextDir, boundedContextModel, "business-rule-exception.ftl",
                 "src/main/java/" + packageDir + "/application/BusinessRuleException.java");
+        createFile(boundedContextDir, boundedContextModel, "access-denied.ftl",
+                "src/main/java/" + packageDir + "/application/Forbidden.java");
         createDir(boundedContextDir, "src/main/java/" + packageDir + "/application/query");
         createFile(boundedContextDir, boundedContextModel, "queryservice.ftl",
                 "src/main/java/" + packageDir + "/application/query/QueryService.java");
@@ -921,7 +923,9 @@ public class GenerateCodeUseCase {
             createFile(boundedContextDir, project, service, boundedContext, aggregate, "dbrepository.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "DBRepository.java");
         }
-        createFile(boundedContextDir, project, service, boundedContext, aggregate, "dbqueryservice.ftl",
+        var queryModel = aggregateModel(project, service, boundedContext, aggregate);
+        queryModel.put("rowLookups", rowLookupsOf(project, boundedContext, aggregate));
+        createFile(boundedContextDir, queryModel, "dbqueryservice.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "DBQueryService.java");
         createFile(boundedContextDir, project, service, boundedContext, aggregate, "entityrepository.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/out/persistence/" + aggregate.name() + "EntityRepository.java");
@@ -1184,6 +1188,23 @@ public class GenerateCodeUseCase {
                     .ifPresent(aggregate -> lookups.put(uncapitalize(aggregate.name()) + "Id", Map.of(
                             "suppliers", project.packageName() + "." + boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "")
                                     + ".infra.in.ui.suppliers." + aggregate.name())));
+        }
+        return lookups;
+    }
+
+    /**
+     * The fields of an aggregate's listing that name another aggregate of its context
+     * ({@code salaId} is a Sala): the listing shows that one's label, not its id. Field name →
+     * the query service that knows the label.
+     */
+    private Map<String, String> rowLookupsOf(ProjectEntity project, BoundedContextEntity boundedContext, AggregateEntity aggregate) {
+        var lookups = new HashMap<String, String>();
+        for (var id : boundedContext.aggregateIds() != null ? boundedContext.aggregateIds() : List.<String>of()) {
+            if (id.equals(aggregate.id())) continue;
+            repository.findById(id, AggregateEntity.class).ifPresent(other -> lookups.put(
+                    uncapitalize(other.name()) + "Id",
+                    project.packageName() + "." + boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "")
+                            + ".application.query." + other.name() + "QueryService"));
         }
         return lookups;
     }
@@ -3956,6 +3977,8 @@ public class GenerateCodeUseCase {
                             if (f.basicType() || jsonList) {
                                 fieldMap.put("type", "Wrapper");
                                 fieldMap.put("primitiveType", jsonList ? "json" : mapFieldDataType(f.type()));
+                                // money and number are both decimals; a listing shows money with 2 decimals
+                                fieldMap.put("money", f.type() == FieldDataType.money);
                             } else {
                                 fieldMap.put("type", "ValueObject");
                                 fieldMap.put("primitiveType", null);

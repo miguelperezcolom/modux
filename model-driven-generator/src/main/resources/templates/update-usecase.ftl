@@ -28,6 +28,7 @@ public class Update${aggregate.name}UseCase {
     @Transactional
 <#if aggregate.crudRoles?? && aggregate.crudRoles.update?has_content>
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole(${aggregate.crudRoles.update?map(r -> "'" + r + "'")?join(", ")})")
+    @org.springframework.security.authorization.method.HandleAuthorizationDenied(handlerClass = ${project.packageName}.application.Forbidden.class)
 </#if>
     public void handle(Update${aggregate.name}Command command) {
 <#if aggregate.behavioural!false>

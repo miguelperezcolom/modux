@@ -29,6 +29,10 @@ import java.util.Optional;
 public class ${aggregate.name}DBQueryService implements ${aggregate.name}QueryService {
 
     final ${aggregate.name}EntityRepository repository;
+<#list (rowLookups!{})?keys as f>
+    /** {@code ${f}} names another aggregate: the listing shows its label (lazy, so two listings can reference each other). */
+    final org.springframework.beans.factory.ObjectProvider<${rowLookups[f]}> ${f}Labels;
+</#list>
 
     @Override
     public String getLabel(String id) {
@@ -64,12 +68,34 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
         );
     }
 
+    /** The label of the aggregate a reference names, or the id itself when it cannot be found. */
+    private static String label(org.springframework.beans.factory.ObjectProvider<? extends ${project.packageName}.application.query.QueryService<?, ?, ?>> labels, Object id) {
+        if (id == null || id.toString().isBlank()) return null;
+        try {
+            var label = labels.getObject().getLabel(id.toString());
+            return label == null || "Unknown".equals(label) ? id.toString() : label;
+        } catch (RuntimeException e) {
+            return id.toString();
+        }
+    }
+
+    /** A decimal as people read it: money with two decimals, anything else without trailing zeros. */
+    private static String decimal(java.math.BigDecimal value, boolean money) {
+        if (value == null) return null;
+        return money ? value.setScale(2, java.math.RoundingMode.HALF_EVEN).toPlainString()
+                : value.stripTrailingZeros().toPlainString();
+    }
+
     private ${aggregate.name}Row toRow(${aggregate.name}Entity entity) {
         return new ${aggregate.name}Row(
                 entity.getId().toString()<#if visibleFields?has_content>,</#if>
 <#list visibleFields as field>
     <#if field.type == "Entity">
                 entity.get${field.name?cap_first}Id()<#sep>,</#sep>
+    <#elseif (rowLookups!{})[field.name]??>
+                label(${field.name}Labels, entity.get${field.name?cap_first}())<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "decimal">
+                decimal(entity.get${field.name?cap_first}(), ${(field.money!false)?c})<#sep>,</#sep>
     <#else>
                 entity.get${field.name?cap_first}() != null ? entity.get${field.name?cap_first}().toString() : null<#sep>,</#sep>
     </#if>
@@ -125,6 +151,10 @@ import java.util.Optional;
 public class ${aggregate.name}DBQueryService implements ${aggregate.name}QueryService {
 
     final JdbcTemplate jdbc;
+<#list (rowLookups!{})?keys as f>
+    /** {@code ${f}} names another aggregate: the listing shows its label (lazy, so two listings can reference each other). */
+    final org.springframework.beans.factory.ObjectProvider<${rowLookups[f]}> ${f}Labels;
+</#list>
 
     @Override
     public String getLabel(String id) {
@@ -165,12 +195,34 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
         );
     }
 
+    /** The label of the aggregate a reference names, or the id itself when it cannot be found. */
+    private static String label(org.springframework.beans.factory.ObjectProvider<? extends ${project.packageName}.application.query.QueryService<?, ?, ?>> labels, Object id) {
+        if (id == null || id.toString().isBlank()) return null;
+        try {
+            var label = labels.getObject().getLabel(id.toString());
+            return label == null || "Unknown".equals(label) ? id.toString() : label;
+        } catch (RuntimeException e) {
+            return id.toString();
+        }
+    }
+
+    /** A decimal as people read it: money with two decimals, anything else without trailing zeros. */
+    private static String decimal(java.math.BigDecimal value, boolean money) {
+        if (value == null) return null;
+        return money ? value.setScale(2, java.math.RoundingMode.HALF_EVEN).toPlainString()
+                : value.stripTrailingZeros().toPlainString();
+    }
+
     private ${aggregate.name}Row toRow(ResultSet rs) throws SQLException {
         return new ${aggregate.name}Row(
                 String.valueOf(rs.getLong("id"))<#if visibleFields?has_content>,</#if>
 <#list visibleFields as field>
-    <#if field.type == "Wrapper" && (field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json")>
+    <#if (rowLookups!{})[field.name]??>
+                label(${field.name}Labels, rs.getObject("${field.columnName}"))<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && (field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json")>
                 rs.getString("${field.columnName}")<#sep>,</#sep>
+    <#elseif field.type == "Wrapper" && field.primitiveType == "decimal">
+                decimal(rs.getBigDecimal("${field.columnName}"), ${(field.money!false)?c})<#sep>,</#sep>
     <#else>
                 Objects.toString(rs.getObject("${field.columnName}"), null)<#sep>,</#sep>
     </#if>

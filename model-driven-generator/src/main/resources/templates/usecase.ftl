@@ -101,6 +101,7 @@ public class ${usecase.className}UseCase {
 
 <#if usecase.allowedRoles?has_content>
     @PreAuthorize("hasAnyRole(${usecase.allowedRoles?map(r -> "'" + r + "'")?join(", ")})")
+    @org.springframework.security.authorization.method.HandleAuthorizationDenied(handlerClass = ${project.packageName}.application.Forbidden.class)
 </#if>
 <#if usecase.cacheable?? && usecase.cacheable>
     @Cacheable(value = "${usecase.name?lower_case}", <#if usecase.cacheTtlSeconds??>/* ttlSeconds=${usecase.cacheTtlSeconds} */</#if>)
