@@ -41,6 +41,14 @@ class CrudPagesByConsumerTest {
         return output;
     }
 
+    /** With the DevOps artifacts too (deploy, compose, scripts). */
+    private Path generateAll(String storeFile) throws Exception {
+        repository.loadFrom(storeFile);
+        var output = Files.createTempDirectory("modux-crud-consumers");
+        generateCodeUseCase.handle(new GenerateCodeCommand("editorial", output.toString(), null, false));
+        return output;
+    }
+
     @Test
     void only_the_aggregates_a_ui_consumes_get_pages() throws Exception {
         var out = generate(STORE.toString());
@@ -229,6 +237,36 @@ class CrudPagesByConsumerTest {
         var listing = read(out, "TemaDBQueryService.java");
         assertTrue(listing.contains("label(autorIdLabels"), "a reference reads as the label of what it names: " + listing);
         assertTrue(listing.contains("decimal(") && listing.contains(", true)"), "money with two decimals: " + listing);
+    }
+
+    @Test
+    void each_environment_gets_its_manifest_and_the_hosts_that_belong_to_it() throws Exception {
+        var store = Files.createTempFile("ui-crud-deploy", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("moduleIds: [\"bc-catalogo-main\"]}", "moduleIds: [\"bc-catalogo-main\"], urlIds: [\"url-pro\", \"url-otra\", \"url-dev\"]}")
+                + """
+                urls:
+                - {id: "url-pro", name: "pro", url: "https://editorial.ec1.acme.io"}
+                - {id: "url-otra", name: "otra", url: "https://editorial.otro.dominio"}
+                - {id: "url-dev", name: "dev", url: "https://editorial-dev.lab.local", environment: "DEV"}
+                deployments:
+                - id: "deployment-editorial"
+                  dockerRegistry: "docker.io/acme"
+                  environments:
+                  - {environment: "DEV", kubernetesContext: "kind-lab"}
+                  - {environment: "PROD", kubernetesContext: "cloud", ingressDomain: "ec1.acme.io", certIssuer: "letsencrypt", dnsProvider: "NETLIFY"}
+                """);
+        var out = generateAll(store.toString());
+        var prod = read(out, "prod.yaml");
+        assertTrue(prod.contains("host: editorial.ec1.acme.io"), "a URL in the environment's domain: " + prod);
+        assertFalse(prod.contains("otro.dominio") || prod.contains("lab.local"), "nor another domain, nor another environment's");
+        assertTrue(prod.contains("cert-manager.io/cluster-issuer: letsencrypt"));
+        assertTrue(prod.contains("image: docker.io/acme/editorial-editorial:__TAG__"), prod);
+        assertTrue(prod.contains("jdbc:postgresql://postgres:5432/editorial") && prod.contains("name: kafka"));
+        assertTrue(prod.contains("secretKeyRef: {name: editorial-db, key: password}"), "no password in the file");
+        assertTrue(read(out, "dev.yaml").contains("host: editorial-dev.lab.local"), "a URL that names its environment");
+        var targets = read(out, "targets.json");
+        assertTrue(targets.contains("\"name\" : \"local\"") && targets.contains("\"context\" : \"kind-lab\""), targets);
     }
 
     @Test

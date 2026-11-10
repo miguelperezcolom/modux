@@ -28,6 +28,8 @@ spec:
       containers:
         - name: ${slug}
           image: ${image}:latest
+          # a locally loaded image (kind load) is used as is; a registry one is pulled when missing
+          imagePullPolicy: IfNotPresent
 <#assign profiles = []>
 <#if !(service.database?? && service.database?has_content)><#assign profiles = profiles + ["local"]></#if>
 <#if (profiles?size > 0)>

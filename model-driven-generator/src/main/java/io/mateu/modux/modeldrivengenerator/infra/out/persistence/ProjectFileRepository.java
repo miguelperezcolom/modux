@@ -103,7 +103,7 @@ public class ProjectFileRepository implements ProjectRepository {
                                         e.secretsToken(),
                                         e.ingressDomain(),
                                         e.ingressTlsEnabled(),
-                                        e.ingressClassName()
+                                        e.ingressClassName(), e.deployTarget(), e.imageRegistry(), e.dnsProvider(), e.certIssuer()
                                 )).toList(),
                         entity.serviceIds(),
                         repository.findAllOfType(ContextMapRelationEntity.class).stream()
@@ -209,7 +209,7 @@ public class ProjectFileRepository implements ProjectRepository {
                                 e.secretsToken(),
                                 e.ingressDomain(),
                                 e.ingressTlsEnabled(),
-                                e.ingressClassName()
+                                e.ingressClassName(), e.deployTarget(), e.imageRegistry(), e.dnsProvider(), e.certIssuer()
                         )).toList())
                 .build());
     }

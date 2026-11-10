@@ -47,6 +47,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IdentityPr
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiAdapterEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UrlEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEnvironmentConfigEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiShellEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiComponentNodeEntity;
@@ -157,6 +158,7 @@ public class GenerateCodeUseCase {
             generateCiWorkflow(project);
             generateTerraform(project);
             generateUpSh(project);
+            generateDeployment(project);
             generateE2e(project);
         }
 
@@ -3100,34 +3102,13 @@ public class GenerateCodeUseCase {
         // sibling service's port is rewritten to that service's compose hostname and
         // injected as the gateway's base-url property.
         var services = effectiveServices(project);
-        var gatewayEnvs = new HashMap<String, List<Map<String, String>>>();
-        for (var svc : services) {
-            var list = new java.util.ArrayList<Map<String, String>>();
-            for (var gwId : svc.gatewayIds() != null ? svc.gatewayIds() : List.<String>of()) {
-                var gw = repository.findById(gwId, GatewayEntity.class).orElse(null);
-                if (gw == null) {
-                    continue;
-                }
-                var url = gw.baseUrl() != null ? gw.baseUrl().trim() : "";
-                var matcher = java.util.regex.Pattern.compile("^https?://localhost:(\\d+)$").matcher(url);
-                if (matcher.matches()) {
-                    var port = Integer.parseInt(matcher.group(1));
-                    var target = services.stream()
-                            .filter(s -> s.port() != null && s.port() == port)
-                            .findFirst();
-                    if (target.isPresent()) {
-                        url = "http://" + serviceName(target.get()) + ":" + port;
-                    }
-                }
-                list.add(Map.of(
-                        "envName", "MODUX_GATEWAY_" + gw.name().toUpperCase().replaceAll("[^A-Z0-9]", "") + "_BASEURL",
-                        "url", url));
-            }
-            if (!list.isEmpty()) {
-                gatewayEnvs.put(svc.name(), list);
-            }
-        }
+        var gatewayEnvs = outboundGatewayEnvs(services);
         model.put("gatewayEnvs", gatewayEnvs);
+        var composeServiceIds = services.stream().map(ServiceEntity::id).collect(java.util.stream.Collectors.toSet());
+        model.put("composeShells", repository.findAllOfType(UiShellEntity.class).stream()
+                .filter(sh -> sh.serviceIds() != null && sh.serviceIds().stream().anyMatch(composeServiceIds::contains))
+                .map(sh -> sh.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"))
+                .toList());
 
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
         createDir(project.outputPath(), "postgres-init");
@@ -3276,6 +3257,203 @@ public class GenerateCodeUseCase {
      * keycloak when a uiShell exists) plus every service and shell, all on the model's
      * declared ports with zero overrides. Idempotent by construction.
      */
+    /**
+     * The base URL each service's outbound gateways get in a container network: a gateway aimed at
+     * localhost:{port} of another service of the system goes to that service by name. Service
+     * name → its MODUX_GATEWAY_*_BASEURL variables.
+     */
+    private Map<String, List<Map<String, String>>> outboundGatewayEnvs(List<ServiceEntity> services) {
+        var gatewayEnvs = new HashMap<String, List<Map<String, String>>>();
+        for (var svc : services) {
+            var list = new java.util.ArrayList<Map<String, String>>();
+            for (var gwId : svc.gatewayIds() != null ? svc.gatewayIds() : List.<String>of()) {
+                var gw = repository.findById(gwId, GatewayEntity.class).orElse(null);
+                if (gw == null) {
+                    continue;
+                }
+                var url = gw.baseUrl() != null ? gw.baseUrl().trim() : "";
+                var matcher = java.util.regex.Pattern.compile("^https?://localhost:(\\d+)$").matcher(url);
+                if (matcher.matches()) {
+                    var port = Integer.parseInt(matcher.group(1));
+                    var target = services.stream()
+                            .filter(s -> s.port() != null && s.port() == port)
+                            .findFirst();
+                    if (target.isPresent()) {
+                        url = "http://" + serviceName(target.get()) + ":" + port;
+                    }
+                }
+                list.add(Map.of(
+                        "envName", "MODUX_GATEWAY_" + gw.name().toUpperCase().replaceAll("[^A-Z0-9]", "") + "_BASEURL",
+                        "url", url));
+            }
+            if (!list.isEmpty()) {
+                gatewayEnvs.put(svc.name(), list);
+            }
+        }
+        return gatewayEnvs;
+    }
+
+    /**
+     * What `mvn modux:deploy` needs: an image per runnable (services, API gateway, shells) and, per
+     * environment of the model that runs on Kubernetes, its complete manifest
+     * ({@code deploy/k8s/{env}.yaml}: Postgres and Kafka in the namespace, the runnables, probes and
+     * an Ingress for its URLs). {@code deploy/targets.json} tells the plugin what to build, where
+     * to send it and which hosts to point the DNS at. The local Docker target is the compose file.
+     */
+    @SneakyThrows
+    private void generateDeployment(ProjectEntity project) {
+        var projectSlug = project.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
+        var services = effectiveServices(project);
+        var serviceIds = services.stream().map(ServiceEntity::id).collect(java.util.stream.Collectors.toSet());
+        var shells = repository.findAllOfType(UiShellEntity.class).stream()
+                .filter(sh -> sh.serviceIds() != null && sh.serviceIds().stream().anyMatch(serviceIds::contains))
+                .toList();
+        var deployment = repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class).orElse(null);
+
+        // the runnables, each one an image built from its own directory
+        var runnables = new ArrayList<Map<String, Object>>();
+        for (var sv : services) {
+            var slug = serviceName(sv).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
+            Map<String, Object> r = new HashMap<>();
+            r.put("name", slug);
+            r.put("dir", serviceName(sv));
+            r.put("port", sv.port() != null ? sv.port() : 8080);
+            r.put("kind", "service");
+            r.put("db", sv.name().toLowerCase().replace(" ", "_"));
+            r.put("serviceId", sv.id());
+            r.put("gatewayEnvs", outboundGatewayEnvs(services).getOrDefault(sv.name(), List.of()));
+            runnables.add(r);
+        }
+        if (!shells.isEmpty()) {
+            runnables.add(new HashMap<>(Map.of("name", "gateway", "dir", "gateway", "port", 8088, "kind", "gateway")));
+            for (var sh : shells) {
+                var slug = sh.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
+                runnables.add(new HashMap<>(Map.of("name", slug, "dir", slug, "port", 8100, "kind", "shell", "shellId", sh.id())));
+                Map<String, Object> m = new HashMap<>();
+                m.put("jar", "target/*.jar");
+                m.put("title", sh.name());
+                createFile(project.outputPath() + "/" + slug, m, "runnable-dockerfile.ftl", "Dockerfile");
+            }
+            Map<String, Object> m = new HashMap<>();
+            m.put("jar", "target/*.jar");
+            m.put("title", "API gateway");
+            createFile(project.outputPath() + "/gateway", m, "runnable-dockerfile.ftl", "Dockerfile");
+        }
+
+        var targets = new ArrayList<Map<String, Object>>();
+        // the local Docker target is always there: the compose file next to up.sh
+        targets.add(new HashMap<>(Map.of("name", "local", "target", "DOCKER", "compose", "docker-compose.yml")));
+        var environments = deployment != null && deployment.environments() != null
+                ? deployment.environments() : List.<ProjectEnvironmentConfigEntity>of();
+        for (var env : environments) {
+            if (env.environment() == null) continue;
+            var target = env.deployTarget() != null && !env.deployTarget().isBlank() ? env.deployTarget().toUpperCase()
+                    : (env.kubernetesContext() != null && !env.kubernetesContext().isBlank() ? "KUBERNETES" : "DOCKER");
+            var envName = env.environment().toLowerCase();
+            if (!"KUBERNETES".equals(target)) {
+                targets.add(new HashMap<>(Map.of("name", envName, "target", "DOCKER", "compose", "docker-compose.yml")));
+                continue;
+            }
+            var registry = env.imageRegistry() != null && !env.imageRegistry().isBlank() ? env.imageRegistry()
+                    : deployment.dockerRegistry();
+            var namespace = env.kubernetesNamespace() != null && !env.kubernetesNamespace().isBlank()
+                    ? env.kubernetesNamespace() : projectSlug + "-" + envName;
+            var domain = env.ingressDomain() != null && !env.ingressDomain().isBlank() ? env.ingressDomain().trim() : null;
+            var envRunnables = new ArrayList<Map<String, Object>>();
+            var allHosts = new java.util.LinkedHashSet<String>();
+            for (var r : runnables) {
+                var er = new HashMap<String, Object>(r);
+                var image = (registry != null && !registry.isBlank() ? registry.replaceAll("/+$", "") + "/" : "")
+                        + projectSlug + "-" + r.get("name");
+                er.put("image", image);
+                var hosts = new ArrayList<String>();
+                if ("service".equals(r.get("kind"))) {
+                    var sv = services.stream().filter(x -> x.id().equals(r.get("serviceId"))).findFirst().orElseThrow();
+                    for (var id : sv.urlIds() == null ? List.<String>of() : sv.urlIds()) {
+                        repository.findById(id, UrlEntity.class)
+                                .filter(u -> urlApplies(u, env.environment(), domain))
+                                .map(this::hostOf).ifPresent(hosts::add);
+                    }
+                    // a system without a shell is reached through its services
+                    if (hosts.isEmpty() && shells.isEmpty() && domain != null) hosts.add(r.get("name") + "." + domain);
+                } else if ("shell".equals(r.get("kind"))) {
+                    // the shell is the front door, entered through the API gateway
+                    var sh = shells.stream().filter(x -> x.id().equals(r.get("shellId"))).findFirst().orElseThrow();
+                    var declared = sh.url() == null || sh.url().isBlank() ? null
+                            : hostOf(UrlEntity.builder().url(sh.url()).build());
+                    if (declared != null && (domain == null || declared.equals(domain) || declared.endsWith("." + domain))) {
+                        hosts.add(declared);
+                    } else if (domain != null) {
+                        hosts.add(r.get("name") + "." + domain);
+                    }
+                }
+                er.put("hosts", hosts);
+                allHosts.addAll(hosts);
+                envRunnables.add(er);
+            }
+            // the shell's hosts are served by the gateway
+            var shellHosts = envRunnables.stream().filter(r -> "shell".equals(r.get("kind")))
+                    .flatMap(r -> asList(r.get("hosts")).stream()).toList();
+            envRunnables.stream().filter(r -> "gateway".equals(r.get("kind"))).forEach(r -> r.put("hosts", shellHosts));
+            envRunnables.stream().filter(r -> "shell".equals(r.get("kind"))).forEach(r -> r.put("hosts", List.of()));
+
+            Map<String, Object> model = new HashMap<>();
+            model.put("project", projectToMap(project));
+            model.put("projectSlug", projectSlug);
+            model.put("namespace", namespace);
+            model.put("runnables", envRunnables);
+            model.put("databases", runnables.stream().filter(r -> r.get("db") != null).map(r -> r.get("db")).toList());
+            model.put("ingressClass", env.ingressClassName() != null && !env.ingressClassName().isBlank() ? env.ingressClassName() : "nginx");
+            model.put("tls", env.ingressTlsEnabled() == null || env.ingressTlsEnabled());
+            model.put("certIssuer", env.certIssuer() != null && !env.certIssuer().isBlank() ? env.certIssuer() : null);
+            createFile(project.outputPath(), model, "deploy-k8s.ftl", "deploy/k8s/" + envName + ".yaml");
+
+            Map<String, Object> t = new HashMap<>();
+            t.put("name", envName);
+            t.put("target", "KUBERNETES");
+            t.put("manifest", "deploy/k8s/" + envName + ".yaml");
+            t.put("context", env.kubernetesContext());
+            t.put("namespace", namespace);
+            t.put("registry", registry);
+            t.put("dbSecret", projectSlug + "-db");
+            t.put("dnsProvider", env.dnsProvider());
+            t.put("hosts", new ArrayList<>(allHosts));
+            t.put("images", envRunnables.stream().map(r -> Map.of(
+                    "name", r.get("name"), "dir", r.get("dir"), "image", r.get("image"))).toList());
+            targets.add(t);
+        }
+        Map<String, Object> model = new HashMap<>();
+        model.put("json", new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
+                .writeValueAsString(Map.of("project", projectSlug,
+                        "builds", runnables.stream().map(r -> r.get("dir")).toList(),
+                        "targets", targets)));
+        createFile(project.outputPath(), model, "deploy-targets.ftl", "deploy/targets.json");
+    }
+
+    /** A URL belongs to an environment when it names it, or names none and lives in its domain. */
+    private static boolean urlApplies(UrlEntity url, String environment, String domain) {
+        if (url.environment() != null && !url.environment().isBlank()) {
+            return url.environment().equalsIgnoreCase(environment);
+        }
+        var host = hostOfStatic(url);
+        return host != null && domain != null && (host.equals(domain) || host.endsWith("." + domain));
+    }
+
+    private String hostOf(UrlEntity url) {
+        return hostOfStatic(url);
+    }
+
+    private static String hostOfStatic(UrlEntity url) {
+        var raw = url.url() != null && !url.url().isBlank() ? url.url().trim() : (url.name() != null ? url.name().trim() : "");
+        if (raw.isBlank()) return null;
+        var withScheme = raw.matches("^[a-z][a-z0-9+.-]*://.*") ? raw : "https://" + raw;
+        try {
+            return java.net.URI.create(withScheme).getHost();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     private void generateUpSh(ProjectEntity project) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
@@ -3359,8 +3537,12 @@ public class GenerateCodeUseCase {
                         java.util.Comparator.nullsLast(String::compareTo)))
                 .map(a -> {
                     var slug = a.path().replaceFirst("^/", "").replaceAll("[^a-z0-9-]", "");
+                    var svc = services.stream().filter(sv -> sv.id().equals(a.serviceId())).findFirst()
+                            .map(sv -> serviceName(sv).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"))
+                            .orElse(slug);
                     return Map.of(
                             "slug", slug,
+                            "svc", svc,
                             "port", portsByServiceId.get(a.serviceId()));
                 })
                 .toList());

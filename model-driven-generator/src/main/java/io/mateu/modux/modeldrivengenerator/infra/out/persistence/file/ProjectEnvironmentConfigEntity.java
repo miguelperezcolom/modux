@@ -43,5 +43,13 @@ public record ProjectEnvironmentConfigEntity(
         String secretsToken,
         String ingressDomain,
         Boolean ingressTlsEnabled,
-        String ingressClassName
+        String ingressClassName,
+        /** Where this environment runs: KUBERNETES (kubernetesContext) or DOCKER (the local compose). */
+        String deployTarget,
+        /** Images go here (docker.io/<user>, ghcr.io/<user>); falls back to the deployment's dockerRegistry. */
+        String imageRegistry,
+        /** Who serves the DNS of its URLs: NETLIFY, CLOUDFLARE, HETZNER, GODADDY (token from the environment, never here). */
+        String dnsProvider,
+        /** cert-manager ClusterIssuer for the ingress certificates (e.g. letsencrypt). */
+        String certIssuer
 ) {}

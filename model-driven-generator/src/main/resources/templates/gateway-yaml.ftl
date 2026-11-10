@@ -9,11 +9,13 @@ spring:
         gateway:
             server:
                 webmvc:
+                    # each target comes from {SERVICE}_URL / SHELL_URL (containers, Kubernetes);
+                    # the default is the host-run one up.sh starts
                     routes:
 <#list services as s>
                     # ${s.name}: frontera de máquinas (REST de los gateways ACL)
                     - id: api-${s.slug}
-                      uri: http://localhost:${s.port?c}
+                      uri: ${r"${"}${s.slug?upper_case?replace("-","_")}_URL:http://localhost:${s.port?c}}
                       predicates: [ "Path=/api/${s.slug}/**" ]
                       filters: [ "StripPrefix=2" ]
 </#list>
@@ -22,18 +24,18 @@ spring:
                     # en ruta natural (los sync del micro-frontend van a /<app>/mateu y /<app>/assets);
                     # la UI en /<app> la sirve la shell, que monta la app dentro (misma sesión)
                     - id: mateu-${a.slug}
-                      uri: http://localhost:${a.port?c}
+                      uri: ${r"${"}${a.svc?upper_case?replace("-","_")}_URL:http://localhost:${a.port?c}}
                       predicates: [ "Path=/_${a.slug}/mateu/**" ]
                       filters: [ "RewritePath=/_${a.slug}/mateu(?<segment>/?.*), /${a.slug}/mateu${r"${segment}"}" ]
                     - id: ui-${a.slug}
-                      uri: http://localhost:${a.port?c}
+                      uri: ${r"${"}${a.svc?upper_case?replace("-","_")}_URL:http://localhost:${a.port?c}}
                       predicates: [ "Path=/_${a.slug}/**" ]
                       filters: [ "RewritePath=/_${a.slug}(?<segment>/?.*), /${a.slug}${r"${segment}"}" ]
                     - id: app-${a.slug}
-                      uri: http://localhost:${a.port?c}
+                      uri: ${r"${"}${a.svc?upper_case?replace("-","_")}_URL:http://localhost:${a.port?c}}
                       predicates: [ "Path=/${a.slug}/mateu/**, /${a.slug}/assets/**" ]
 </#list>
                     # la shell (todo lo demás)
                     - id: shell
-                      uri: http://localhost:${shellPort?c}
+                      uri: ${r"${"}SHELL_URL:http://localhost:${shellPort?c}}
                       predicates: [ "Path=/**" ]

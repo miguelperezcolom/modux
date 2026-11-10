@@ -67,7 +67,7 @@ public class CreateProjectUseCase {
                         e.secretsToken(),
                         e.ingressDomain(),
                         e.ingressTlsEnabled(),
-                        e.ingressClassName()
+                        e.ingressClassName(), e.deployTarget(), e.imageRegistry(), e.dnsProvider(), e.certIssuer()
                 )).toList();
 
         var project = Project.of(new ProjectId(command.id()),

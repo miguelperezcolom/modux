@@ -3559,6 +3559,15 @@
         "cacheUsername" : {
           "type" : "string"
         },
+        "certIssuer" : {
+          "type" : "string"
+        },
+        "deployTarget" : {
+          "type" : "string"
+        },
+        "dnsProvider" : {
+          "type" : "string"
+        },
         "emailFrom" : {
           "type" : "string"
         },
@@ -3607,6 +3616,9 @@
           "type" : "string"
         },
         "iamServerUrl" : {
+          "type" : "string"
+        },
+        "imageRegistry" : {
           "type" : "string"
         },
         "ingressClassName" : {
@@ -5014,6 +5026,9 @@
       "type" : "object",
       "properties" : {
         "description" : {
+          "type" : "string"
+        },
+        "environment" : {
           "type" : "string"
         },
         "id" : {
