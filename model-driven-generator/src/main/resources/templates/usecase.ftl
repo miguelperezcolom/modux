@@ -92,6 +92,9 @@ public class ${usecase.className}UseCase {
 <#list (usecase.steps![])?filter(s -> s.integrationClass??) as step>
     final ${project.packageName}.${module.slug}.application.out.integration.${step.integrationClass}Publisher ${step.integrationClass?uncap_first}Publisher;
 </#list>
+<#list (usecase.steps![])?filter(s -> s.operationCall??) as step>
+    final ${project.packageName}.${module.slug}.domain.aggregates.${step.aggregate.name?lower_case}.${step.operationClass} ${step.operationClass?uncap_first};
+</#list>
 <#if usecase.steps?has_content && usecase.steps?filter(s -> s.type == "Custom")?has_content>
     final ${usecase.className}Steps steps;
 </#if>
@@ -114,10 +117,13 @@ public class ${usecase.className}UseCase {
 <#list usecase.steps as step>
 <#if step.type == "ReadAggregate" && step.aggregate??>
         var ${step.aggregate.name?uncap_first} = ${step.aggregate.name?uncap_first}Repository
-                .findById(new ${step.aggregate.name}Id(command.id()))
-                .orElseThrow();
+                .findById(new ${step.aggregate.name}Id(<#if step.idField == "id">command.id()<#else>Long.valueOf(String.valueOf(command.${step.idField}()))</#if>))
+                .orElseThrow(() -> ${project.packageName}.application.BusinessRuleException.notFound(
+                        "${step.aggregate.name} " + command.${step.idField}() + " no existe"));
 <#elseif step.type == "CallAggregateOperation" && step.aggregate??>
-<#if step.operation??>
+<#if step.operationCall??>
+        ${step.aggregate.name?uncap_first}.${step.operation.name?uncap_first}(${step.operationClass?uncap_first}<#if step.operationInputArgs??>, new ${project.packageName}.${module.slug}.domain.aggregates.${step.aggregate.name?lower_case}.${step.operationClass}.Input(${step.operationInputArgs})</#if>);
+<#elseif step.operation??>
         ${step.aggregate.name?uncap_first}.${step.operation.name?uncap_first}(/* TODO: pass operation args */);
 <#else>
         // TODO: call operation on ${step.aggregate.name?uncap_first} (operationId not resolved)

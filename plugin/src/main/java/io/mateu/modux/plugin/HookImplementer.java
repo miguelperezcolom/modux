@@ -148,6 +148,10 @@ final class HookImplementer {
                   in the language of the intent. Never leave a TODO or an UnsupportedOperationException.
                 - Types differ between layers: read the contracts and convert explicitly (for instance a
                   String id into the aggregate's id value object).
+                - Change an aggregate only through its operations (an `XOperation` hook and the aggregate
+                  method that runs it), and inside an operation only through its `context`. When the aggregate
+                  has an operation for a change, do not make it with `update(...)`: that overwrites the whole
+                  state and skips the rules the operation holds.
                 - You may add a helper class only in the same package as the hooks.
 
                 Answer with nothing but the complete files, each one exactly like this, with its path relative

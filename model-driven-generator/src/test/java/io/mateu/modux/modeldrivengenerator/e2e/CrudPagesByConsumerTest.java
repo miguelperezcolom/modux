@@ -175,6 +175,39 @@ class CrudPagesByConsumerTest {
     }
 
     @Test
+    void an_aggregate_with_operations_changes_only_through_them() throws Exception {
+        var store = Files.createTempFile("ui-crud-operations", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("- {id: \"agg-autor\", name: \"Autor\", modelId: \"model-autor\"}",
+                        "- {id: \"agg-autor\", name: \"Autor\", modelId: \"model-autor\", operations: [{id: \"op-ren\", name: \"renombrar\", type: \"CUSTOM\", inputModelId: \"model-ren\", intent: \"Cambia el nombre\"}]}")
+                .replace("aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]",
+                        "aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]\n  useCaseIds: [\"uc-ren\"]")
+                .replace("models:\n", "models:\n- {id: \"model-ren\", name: \"Renombrar\", fields: [{id: \"f-n\", name: \"nombre\", basicType: true, type: string}]}\n"
+                        + "- {id: \"model-uc-ren\", name: \"RenombrarInput\", fields: [{id: \"f-r1\", name: \"autorId\", basicType: true, type: string}, {id: \"f-r2\", name: \"nombre\", basicType: true, type: string}]}\n")
+                + """
+                useCases:
+                - id: "uc-ren"
+                  name: "Renombrar"
+                  inputModelId: "model-uc-ren"
+                  steps:
+                  - {id: "s1", name: "leer", type: "ReadAggregate", aggregateId: "agg-autor"}
+                  - {id: "s2", name: "renombrar", type: "CallAggregateOperation", aggregateId: "agg-autor", operationId: "op-ren"}
+                  - {id: "s3", name: "guardar", type: "SaveAggregate", aggregateId: "agg-autor"}
+                """);
+        var out = generate(store.toString());
+        var aggregate = read(out, "Autor.java");
+        assertFalse(aggregate.contains("public void update("), "a generic update would skip the operations' rules: " + aggregate);
+        assertTrue(aggregate.contains("RenombrarAutorOperation.Input input"), aggregate);
+        assertTrue(read(out, "RenombrarAutorOperation.java").contains("record Input(String nombre)"));
+        var useCase = read(out, "RenombrarUseCase.java");
+        assertTrue(useCase.replaceAll("\\s+", " ").contains("autor.renombrar( renombrarAutorOperation, new"), "the use case runs the operation itself: " + useCase);
+        assertTrue(useCase.contains("command.autorId()"), "an {aggregate}Id loads it (a lookup on screen): " + useCase);
+        assertFalse(file(out, "RenombrarSteps.java").isPresent(), "nothing is left to a use-case hook");
+        assertTrue(read(out, "UpdateAutorUseCase.java").contains("no se edita directamente"));
+        assertTrue(read(out, "AutorCrudOrchestrator.java").contains("canEdit()"));
+    }
+
+    @Test
     void a_projection_is_wired_to_its_event_and_a_query_in_the_menu_gets_a_listing() throws Exception {
         var store = Files.createTempFile("ui-crud-readmodel", ".yaml");
         Files.writeString(store, Files.readString(STORE)

@@ -93,6 +93,43 @@ For a `CUSTOM` operation named `confirmBooking` on a `Booking` aggregate:
 - `BookingOperationContext.java` — context object giving the operation access to the aggregate's state (locked)
 - `DefaultConfirmBookingBookingOperation.java` — write-once default implementation scaffolded in the `{service}-custom` module, for you to fill in (see [two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones))
 
+### Its input
+
+The operation's **input model** (`inputModelId`) becomes a record nested in the operation, and the
+implementation receives it next to the context:
+
+```java
+public interface SalirARepartoEnvioOperation {
+    record Input(String transportista) {}
+    void execute(EnvioOperationContext context, Input input);
+}
+```
+
+Without an input model (or with one with no fields) it is `execute(context)`.
+
+### Calling it from a use case
+
+A use case whose steps are `ReadAggregate`, `CallAggregateOperation` and `SaveAggregate` runs the
+operation itself — no use-case hook is left to write:
+
+```java
+var envio = envioRepository.findById(new EnvioId(Long.valueOf(String.valueOf(command.envioId()))))
+        .orElseThrow(() -> BusinessRuleException.notFound("Envio " + command.envioId() + " no existe"));
+envio.salirAReparto(salirARepartoEnvioOperation, new SalirARepartoEnvioOperation.Input(command.transportista()));
+envioRepository.save(envio);
+```
+
+The aggregate is loaded from the command's `id`, or from its `{aggregate}Id` field (which the
+generated form shows as a lookup of that aggregate). Each input field is taken from the command
+field with its name; when one is missing the step stays a hook, with the operation as its intent.
+
+### An aggregate with operations has no generic update
+
+Once an aggregate has `CUSTOM` operations it changes only through them: the aggregate has no
+`update(...)`, its CRUD shows no **Edit** (it keeps create, view and delete), and the generic update
+use case — the REST `PUT` included — answers `409 Conflict` naming the operations to use. A generic
+update would overwrite the whole state and skip the rules the operations hold.
+
 For `QUERY` operations:
 
 - `{OperationName}Query.java` — query parameters DTO

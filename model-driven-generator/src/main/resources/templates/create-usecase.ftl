@@ -35,7 +35,7 @@ public class Create${aggregate.name}UseCase {
 <#list safeFields as field>
     <#if field.type == "ValueObject">
         <#if field.isEnum>
-                ${field.name?cap_first}.valueOf(command.${field.name}())<#sep>,</#sep>
+                (command.${field.name}() == null || command.${field.name}().isBlank() ? null : ${field.name?cap_first}.valueOf(command.${field.name}()))<#sep>,</#sep>
         <#else>
                 new ${field.name?cap_first}(command.${field.name}())<#sep>,</#sep>
         </#if>

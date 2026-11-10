@@ -886,6 +886,7 @@ public class GenerateCodeUseCase {
                 model.put("module", boundedContextToMap(boundedContext));
                 model.put("aggregate", aggregateToMap(aggregate));
                 model.put("operation", fromJson(toJson(operation)));
+                model.put("operationInput", operationInputOf(operationEntity.inputModelId()));
                 // The modeled body (operation-body.md), legacy fields desugared, drives the scaffold.
                 model.put("steps", operationStepsModel(operationEntity));
                 // An explicit modeled body generates executable control-flow structure with typed
@@ -1334,6 +1335,39 @@ public class GenerateCodeUseCase {
                 }
 
                 String stepType = (String) stepMap.get("type");
+                // The aggregate to load: the command's id, or its {aggregate}Id (a lookup on screen)
+                if ("ReadAggregate".equals(stepType) && stepMap.get("aggregate") instanceof Map<?, ?> readAgg) {
+                    var ref = uncapitalize((String) readAgg.get("name")) + "Id";
+                    if (commandFieldNames.contains("id")) stepMap.put("idField", "id");
+                    else if (commandFieldNames.contains(ref)) stepMap.put("idField", ref);
+                }
+                // An operation on an aggregate the use case loaded, with everything it needs in the
+                // command, is a real call: its rules live in the operation, not in a use-case hook.
+                if ("CallAggregateOperation".equals(stepType)
+                        && stepMap.get("aggregate") instanceof Map<?, ?> callAgg
+                        && loadedAggregates.contains((String) callAgg.get("name"))
+                        && stepMap.get("operation") instanceof Map<?, ?> callOp
+                        && "CUSTOM".equals(callOp.get("type"))) {
+                    var input = operationInputOf((String) callOp.get("inputModelId"));
+                    var inputArgs = new java.util.ArrayList<String>();
+                    var complete = true;
+                    if (input != null) {
+                        for (var f : asList(input.get("fields"))) {
+                            @SuppressWarnings("unchecked") var fm = (Map<String, Object>) f;
+                            var name = (String) fm.get("name");
+                            if (!commandFieldNames.contains(name)) { complete = false; break; }
+                            var basic = Boolean.TRUE.equals(fm.get("basicType"));
+                            var suffixed = !basic && (fm.get("enumId") == null || fm.get("enumId").toString().isBlank())
+                                    && !"array".equals(fm.get("type"));
+                            inputArgs.add("command." + name + (suffixed ? "Id" : "") + "()");
+                        }
+                    }
+                    if (complete) {
+                        stepMap.put("operationCall", true);
+                        stepMap.put("operationClass", capitalize((String) callOp.get("name")) + callAgg.get("name") + "Operation");
+                        stepMap.put("operationInputArgs", input == null ? null : String.join(", ", inputArgs));
+                    }
+                }
                 // A step this template cannot write for real becomes a hook (two-zone rule: no TODO
                 // business logic in the generated zone). Its intent says what it has to do.
                 var hookIntent = hookIntentFor(stepType, stepMap, commandFieldNames, loadedAggregates);
@@ -1426,13 +1460,14 @@ public class GenerateCodeUseCase {
         if (agg == null) return null;
         return switch (stepType) {
             case "CallAggregateOperation" -> {
+                if (Boolean.TRUE.equals(stepMap.get("operationCall"))) yield null;
                 var op = stepMap.get("operation") instanceof Map<?, ?> o ? (String) o.get("name") : null;
                 yield op != null ? "Invoca la operación «" + op + "» de " + agg + " con los datos del comando"
                         : "Opera sobre " + agg + " (carga el agregado, aplica el cambio y guárdalo)";
             }
             case "SaveAggregate" -> loadedAggregates.contains(agg) ? null
                     : "Construye " + agg + " a partir del comando y guárdalo";
-            case "ReadAggregate" -> commandFieldNames.contains("id") ? null
+            case "ReadAggregate" -> stepMap.containsKey("idField") ? null
                     : "Carga " + agg + " a partir de los datos del comando";
             default -> null;
         };
@@ -3699,6 +3734,15 @@ public class GenerateCodeUseCase {
         createCustomFile(baseDir, aggregateModel(project, service, boundedContext, aggregate), template, destFile);
     }
 
+    /** What an aggregate operation receives: its input model, when it has fields (else it takes none). */
+    private Map<String, Object> operationInputOf(String inputModelId) {
+        if (inputModelId == null || inputModelId.isBlank()) return null;
+        return repository.findById(inputModelId, ModelEntity.class)
+                .filter(m -> m.fields() != null && !m.fields().isEmpty())
+                .map(m -> fromJson(toJson(m)))
+                .orElse(null);
+    }
+
     private Map<String, Object> aggregateModel(ProjectEntity project, ServiceEntity service, BoundedContextEntity boundedContext,
                                                AggregateEntity aggregate) {
         Map<String, Object> model = new HashMap<>();
@@ -3872,9 +3916,17 @@ public class GenerateCodeUseCase {
                             operationEntity.defaultPageSize(),
                             operationEntity.intent()
                     ))
-                    .map(op -> fromJson(toJson(op)))
+                    .map(op -> {
+                        var opMap = fromJson(toJson(op));
+                        // the operation's Input record exists only when its model has fields
+                        opMap.put("hasInput", operationInputOf(op.inputModelId()) != null);
+                        return opMap;
+                    })
                     .toList());
         }
+        // With operations the aggregate has behaviour: it changes through them, never by a
+        // generic update that would overwrite its state and skip their rules.
+        map.put("behavioural", map.get("operations") instanceof List<?> ops && !ops.isEmpty());
 
         if (!map.containsKey("invariants") || map.get("invariants") == null) {
             map.put("invariants", List.of());

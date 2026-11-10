@@ -5,10 +5,12 @@ Feature: ${aggregate.name} management
     When I create a new ${aggregate.name}
     Then a ${aggregate.name} should be saved successfully
 
+<#if !(aggregate.behavioural!false)>
   Scenario: Update an existing ${aggregate.name}
     Given a ${aggregate.name} exists with id "test-id"
     When I update the ${aggregate.name} with id "test-id"
     Then the ${aggregate.name} with id "test-id" should be updated
+</#if>
 
   Scenario: Delete an existing ${aggregate.name}
     Given a ${aggregate.name} exists with id "test-id"
