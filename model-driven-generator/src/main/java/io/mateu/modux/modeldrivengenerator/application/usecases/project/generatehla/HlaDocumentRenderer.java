@@ -244,8 +244,20 @@ public final class HlaDocumentRenderer {
             long published = events.stream().filter(e -> e.publishAsIntegrationEvent()).count();
             long dlq = events.stream().filter(e -> e.deadLetterQueueEnabled()).count();
             md.append("- **Eventos**: ").append(events.size()).append(" eventos de dominio, ")
-                    .append(published).append(" publicados como integración (outbox), ")
+                    .append(published).append(" publicados como integración, ")
                     .append(dlq).append(" con DLQ.\n");
+        }
+        var withOutbox = m.services().stream().filter(s -> s.outboxEnabled()).map(s -> s.name()).toList();
+        var withoutOutbox = m.services().stream().filter(s -> !s.outboxEnabled()).map(s -> s.name()).toList();
+        if (!events.isEmpty() && !m.services().isEmpty()) {
+            md.append("- **Outbox**: ").append(withOutbox.isEmpty() ? "ningún servicio"
+                    : String.join(", ", withOutbox)).append(withOutbox.isEmpty() ? ""
+                    : " guarda cada evento en la misma transacción que el cambio de estado y lo envía un relé");
+            if (!withoutOutbox.isEmpty()) {
+                md.append("; ").append(String.join(", ", withoutOutbox))
+                        .append(" publica directamente: un fallo entre guardar y publicar pierde el evento");
+            }
+            md.append(".\n");
         }
         var piiFields = m.models().stream()
                 .flatMap(model -> model.fields() == null ? java.util.stream.Stream.<String>empty() : model.fields().stream()

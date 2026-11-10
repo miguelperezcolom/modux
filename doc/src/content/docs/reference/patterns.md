@@ -128,8 +128,26 @@ Background process:
 Enable per service:
 
 ```yaml
-outboxPattern: true
+# services/svc-pedidos.yaml
+outboxEnabled: true
+outboxTableName: modux_outbox   # optional, this is the default
 ```
+
+What gets generated in the service's `-app` module:
+
+- `infra/out/outbox/Outbox` replaces `StreamOperations`, the one door every generated send goes
+  through (use cases, CRUD, sagas, integration publishers). It inserts the event instead of
+  sending it, joining the caller's transaction. A use case with a `PublishDomainEvent` step is
+  made `@Transactional`, so the aggregate and its event commit or roll back together.
+- `infra/out/outbox/OutboxRelay` sends pending rows oldest first and deletes each one once the
+  broker accepted it. Rows are taken with `FOR UPDATE SKIP LOCKED`, so several instances can relay
+  at once. Tune it with `modux.outbox.relay-delay-ms` (default 500) and `modux.outbox.batch-size`
+  (default 100).
+- The table and its sequence, in the next Flyway migration.
+
+Delivery is at-least-once: a crash between sending and deleting resends the row, which the
+consumer's inbox discards. Under the `local` profile there is no broker, so neither bean is
+active and events go to the log as before.
 
 ---
 

@@ -90,6 +90,16 @@ class CrudPagesByConsumerTest {
     }
 
     @Test
+    void a_crud_route_never_collides_with_the_path_of_its_app() throws Exception {
+        // a shell federating the app strips /autores and opens the app's home: the CRUD would be unreachable
+        var store = Files.createTempFile("ui-crud-app-path", ".yaml");
+        Files.writeString(store, Files.readString(STORE).replace("  title: \"Backoffice\"\n", "  title: \"Backoffice\"\n  path: \"/autores\"\n"));
+        var home = read(generate(store.toString()), "Home.java");
+        assertTrue(home.contains("AutorCrudOrchestrator autoresList;"), home);
+        assertTrue(home.contains("@io.mateu.uidl.annotations.Label(\"Autores\")"), "the menu keeps the modelled label: " + home);
+    }
+
+    @Test
     void a_field_named_after_an_aggregate_with_pages_is_a_lookup() throws Exception {
         var store = Files.createTempFile("ui-crud-lookup", ".yaml");
         Files.writeString(store, Files.readString(STORE).replace("{id: \"f-t\",",
@@ -136,6 +146,32 @@ class CrudPagesByConsumerTest {
         var useCase = read(generate(store.toString()), "AvisarUseCase.java");
         assertTrue(useCase.contains("avisadoPublisher.publish("), useCase);
         assertFalse(useCase.contains("streamBridge.send"), "a local channel no subscriber listens on: " + useCase);
+    }
+
+    @Test
+    void with_an_outbox_the_event_is_stored_in_the_transaction_of_the_state_change() throws Exception {
+        var store = Files.createTempFile("ui-crud-outbox", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("moduleIds: [\"bc-catalogo-main\"]}", "moduleIds: [\"bc-catalogo-main\"], outboxEnabled: true}")
+                .replace("aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]",
+                        "aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]\n  useCaseIds: [\"uc-avisar\"]\n  domainEventIds: [\"ev-avisado\"]")
+                + """
+                domainEvents:
+                - {id: "ev-avisado", name: "Avisado"}
+                useCases:
+                - id: "uc-avisar"
+                  name: "Avisar"
+                  steps:
+                  - {id: "s1", name: "publishAvisado", type: "PublishDomainEvent", domainEventId: "ev-avisado"}
+                """);
+        var out = generate(store.toString());
+        assertTrue(read(out, "Outbox.java").contains("implements StreamOperations"), "every send goes through the outbox");
+        assertTrue(read(out, "OutboxRelay.java").contains("skip locked"));
+        assertTrue(read(out, "V1__baseline.sql").contains("CREATE TABLE IF NOT EXISTS modux_outbox"));
+        assertTrue(read(out, "AvisarUseCase.java").contains("@Transactional"), "state and event commit together");
+
+        var without = generate(STORE.toString());
+        assertFalse(file(without, "Outbox.java").isPresent(), "the outbox is opt-in per service");
     }
 
     @Test
