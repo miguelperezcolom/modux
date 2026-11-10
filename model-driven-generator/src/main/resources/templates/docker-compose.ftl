@@ -5,8 +5,12 @@ services:
   ${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}:
     build:
       context: ./${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}
+<#if !(composeShells![])?has_content>
     ports:
       - "${(svc.port!8080)?c}:${(svc.port!8080)?c}"
+</#if>
+    # until postgres and kafka answer, a service fails to start: compose starts it again
+    restart: on-failure
     environment:
       SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${svc.name?lower_case?replace("[^a-z0-9]","_",'r')}
@@ -21,6 +25,30 @@ services:
       - kafka
 
 </#list>
+<#if (composeShells![])?has_content>
+  # the front door: shell and remote apps, entered at http://localhost:8088
+  gateway:
+    build:
+      context: ./gateway
+    ports:
+      - "8088:8088"
+    environment:
+<#list project.services as svc>
+      ${svc.name?upper_case?replace("[^A-Z0-9]","_",'r')}_URL: http://${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}:${(svc.port!8080)?c}
+</#list>
+<#list composeShells as sh>
+      SHELL_URL: http://${sh}:8100
+</#list>
+<#list composeShells as sh>
+
+  ${sh}:
+    build:
+      context: ./${sh}
+    environment:
+      MATEU_SELF_BASE_URL: http://gateway:8088
+</#list>
+
+</#if>
   postgres:
     image: postgres:16-alpine
     environment:

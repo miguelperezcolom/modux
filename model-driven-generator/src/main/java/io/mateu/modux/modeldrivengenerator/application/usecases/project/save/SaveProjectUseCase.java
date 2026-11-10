@@ -68,7 +68,7 @@ public class SaveProjectUseCase {
                         e.secretsToken(),
                         e.ingressDomain(),
                         e.ingressTlsEnabled(),
-                        e.ingressClassName()
+                        e.ingressClassName(), e.deployTarget(), e.imageRegistry(), e.dnsProvider(), e.certIssuer()
                 )).toList();
 
         project.update(new ProjectName(command.name()),

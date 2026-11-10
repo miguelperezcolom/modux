@@ -13,7 +13,9 @@ public record UrlEntity(
         String name,
         String description,
         /** The address itself (e.g. https://api.acme.com). */
-        String url
+        String url,
+        /** The environment (DEV, STAGING, PROD) this address belongs to; none = every one. */
+        String environment
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
         String projectId

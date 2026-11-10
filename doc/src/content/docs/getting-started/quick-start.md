@@ -24,9 +24,9 @@ the first repository (a local folder, a git remote or a database) — and openin
 one settles the project too (the current one, the first one, or a fresh default
 with its service when the store is empty) and lands you on the graphical editor.
 The header selectors (Repositorio / Proyecto / Modelo) remain the quick way to
-switch once inside — and once the three are resolved, the **⚙ Generar** and
-**🚀 Desplegar** actions appear right next to them (see
-[Generating Code](/manual/generating-code/) and [Deploying](/manual/deploying/)).
+switch once inside — and once the three are resolved, the **⚙ Generar** action appears
+right next to them (see [Generating Code](/manual/generating-code/)). Deploying is
+`mvn modux:deploy` (see [Deploying](/manual/deploying/)).
 
 ## 3. Create a Project
 

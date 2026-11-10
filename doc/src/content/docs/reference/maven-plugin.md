@@ -71,43 +71,47 @@ Reads the spec file, loads the project identified by `projectId`, and generates 
 
 ## Goal: `ai-complete`
 
-**Default phase:** none (run explicitly)
+**Default phase:** none (run explicitly, after `generate`)
 
-Reads the spec, calls the Claude AI API for each bounded context, and writes `AI-PROPOSALS.md` files with ready-to-paste Java implementations for the parts the generator cannot derive automatically.
+Implements the pending hooks of the custom zone — use-case steps, aggregate operations — with
+your local AI command line, from the intent the model wrote on them. It needs no API key, writes
+only under `{service}-custom/src/main/java`, builds the service and retries with the errors (three
+attempts); a service that still does not build is left as it was.
 
 ### Parameters
 
-| Parameter | Property | Default | Required | Description |
-|---|---|---|---|---|
-| `projectId` | `modux.projectId` | — | **Yes** | ID of the project in the spec store |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec file |
-| `outputPath` | `modux.outputPath` | `${project.basedir}/generated` | No | Root directory; proposals go to `{outputPath}/proposals/` |
-| `packageName` | `modux.packageName` | `com.example` | No | Root Java package (used in generated prompts) |
-| `apiKey` | `modux.apiKey` | — | No* | Anthropic API key. Falls back to `ANTHROPIC_API_KEY` env var |
-| `model` | `modux.model` | `claude-haiku-4-5-20251001` | No | Claude model to use for completions |
-
-*Required via `modux.apiKey` or `ANTHROPIC_API_KEY` environment variable.
-
-### Usage
-
-```bash
-# API key from environment (recommended)
-export ANTHROPIC_API_KEY=sk-ant-...
-mvn modux:ai-complete -Dmodux.projectId=my-project-id
-
-# Override model for complex domains
-mvn modux:ai-complete \
-  -Dmodux.projectId=my-project-id \
-  -Dmodux.model=claude-sonnet-4-6
-```
-
-### What it proposes
-
-- `checkInvariants()` body — derived from `InvariantConditionEntity.expression` and `errorMessage`
-- `check{Op}Preconditions()` body — derived from `OperationEntity.preconditions` text
-- Cucumber step bodies — derived from `BddScenarioEntity.steps` and aggregate field context
+| Parameter | Property | Default | Description |
+|---|---|---|---|
+| `modelPath` | `modux.modelPath` | the repository's model directory | Where the model is |
+| `outputPath` | `modux.outputPath` | the project's `outputPath` | The generated system |
+| `aiCommand` | `modux.ai.command` | `claude -p --output-format text` | Reads the prompt on stdin, answers on stdout |
+| `buildCommand` | `modux.ai.build` | `mvn -q compile -DskipTests` | How a service is checked |
+| `timeoutMinutes` | `modux.ai.timeoutMinutes` | `15` | Per AI call |
 
 See [AI-Assisted Code Completion](/manual/ai-completion/) for the full guide.
+
+## Goal: `deploy`
+
+**Default phase:** none (run explicitly, after `generate`)
+
+Deploys the generated system to an environment of the model: `local` (the compose on your
+Docker) or one of the deployment's environments, on the Kubernetes context it names — images
+built and loaded (kind) or pushed (any other cluster), manifest applied, rollouts awaited and
+the DNS of its hosts pointed at the ingress.
+
+| Parameter | Property | Default | Description |
+|---|---|---|---|
+| `environment` | `modux.env` | `local` | `local`, `dev`, `staging` or `prod` |
+| `tag` | `modux.tag` | the moment of the deploy | Image tag |
+| `skipBuild` | `modux.skipBuild` | `false` | Skip `mvn install` of the generated projects |
+| `platform` | `modux.platform` | `linux/amd64` | Architecture of pushed images |
+| `outputPath` | `modux.outputPath` | the project's `outputPath` | The generated system |
+
+```bash
+mvn modux:deploy -Dmodux.env=prod
+```
+
+See [Deploying](/manual/deploying/) for environments, URLs and DNS providers.
 
 ## Goal: `import-openapi`
 

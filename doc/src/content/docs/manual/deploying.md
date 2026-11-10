@@ -1,77 +1,95 @@
 ---
 title: Deploying
-description: One click from the model to a running Kubernetes deployment — images, manifests, DNS
+description: From the model to a running system — local Docker, a local cluster, or a managed one like Cloudfleet — with its DNS
 ---
 
-Next to the **Generar** button on the header sits the **🚀 Desplegar** menu — the whole
-delivery pipeline under one button: **Desplegar en Kubernetes**, **Aplicar Terraform**
-and **Probar** (the latter only when the project declares a URL). The header actions
-appear only when the whole app context (repository · project · model) is resolved.
+One command deploys the generated system to an environment of the model:
 
-## What the pipeline does
+```bash
+mvn modux:generate
+mvn modux:deploy -Dmodux.env=local   # the compose on your Docker
+mvn modux:deploy -Dmodux.env=dev     # an environment of the model, on its Kubernetes context
+```
 
-1. **Regenerates** the project to its output path — you always deploy what the model says.
-2. **Packages each service locally** (`mvn package`). The build runs on your machine, not
-   inside Docker, so it resolves dependencies from your local `~/.m2` (including
-   locally-installed frameworks that no public repository serves).
-3. **Builds a runtime image** per service — a slim `eclipse-temurin` JRE layer with the
-   packaged jar — and **pushes** it to the configured registry.
-4. **Applies the generated Kubernetes manifests** (`Deployment`, `Service`, and an
-   `Ingress` per declared URL) with `kubectl`, against the environment's kubeconfig
-   context. The namespace is created on first deploy.
+## Environments
 
-The action returns immediately; the pipeline runs in the background and streams every
-command and its output to `<outputPath>/.modux/deploy.log`, ending with a
-`Despliegue COMPLETADO` or `Despliegue FALLIDO: <reason>` line.
+They live in the project's deployment (`deployments/deployment-<project>.yaml`), one per
+`DEV`, `STAGING` or `PROD`:
+
+```yaml
+id: deployment-tienda
+dockerRegistry: docker.io/miguelperezcolom
+environments:
+  - environment: DEV
+    deployTarget: KUBERNETES
+    kubernetesContext: kind-lab            # a kind cluster: images are loaded, not pushed
+  - environment: PROD
+    deployTarget: KUBERNETES
+    kubernetesContext: cloudfleet-hetzner  # any other context: images are pushed
+    kubernetesNamespace: tienda            # default: <project>-<env>
+    ingressDomain: ec1.mateu.io
+    ingressClassName: nginx                # default
+    ingressTlsEnabled: true                # default
+    certIssuer: letsencrypt                # cert-manager ClusterIssuer
+    dnsProvider: NETLIFY                   # NETLIFY, CLOUDFLARE, HETZNER or GODADDY
+```
+
+`local` always exists: it is the generated `docker-compose.yml` (Postgres, Kafka, the
+services, and the API gateway and shell when there is one), entered at `http://localhost:8088`.
+An environment with `deployTarget: DOCKER` deploys the same way.
+
+## What a Kubernetes deploy does
+
+Generation writes `deploy/k8s/<env>.yaml` and `deploy/targets.json`; the deploy:
+
+1. Builds every generated project (`mvn install`; `-Dmodux.skipBuild` skips it).
+2. Builds one image per runnable — each service, the API gateway, each shell — tagged with
+   the moment of the deploy (`-Dmodux.tag` to choose it). On a `kind-*` context it loads them
+   into the cluster; on any other it pushes them to `imageRegistry` (or the deployment's
+   `dockerRegistry`), built for `linux/amd64` (`-Dmodux.platform`). Docker Hub and ghcr.io both
+   work with your `docker login`.
+3. Creates the namespace and, the first time, the `<project>-db` Secret with a random database
+   password — it is never written to a file.
+4. Applies the manifest: Postgres (one database per service, on a volume) and a single-node
+   Kafka in the namespace; each runnable with its probes, waiting for the infrastructure before
+   starting; an Ingress with TLS for the environment's hosts.
+5. Waits for every rollout, then points the DNS of each host at the ingress.
+
+## URLs and DNS
+
+The hosts of an environment are:
+
+- the shell's (entered through the API gateway): its `url` when it lives in `ingressDomain`,
+  otherwise `<shell>.<ingressDomain>`;
+- the `urls/` of each service that belong to the environment: those naming it
+  (`environment: PROD`), and those naming none whose host lives in `ingressDomain`;
+- without a shell, `<service>.<ingressDomain>` for a service with no URL of its own.
+
+For each host the deploy reads the ingress' public address. A host that already resolves there
+(a wildcard record, say) is left alone; otherwise the environment's `dnsProvider` gets an A
+record (AAAA for IPv6, CNAME for a host name) in the zone that serves it, found by suffix. The
+credentials come from the environment, never from the model:
+
+| `dnsProvider` | Variables |
+|---|---|
+| `NETLIFY` | `NETLIFY_AUTH_TOKEN` |
+| `CLOUDFLARE` | `CLOUDFLARE_API_TOKEN` (Zone · DNS · Edit); records are not proxied |
+| `HETZNER` | `HCLOUD_TOKEN` (the Cloud API, which now hosts Hetzner DNS) |
+| `GODADDY` | `GODADDY_API_KEY`, `GODADDY_API_SECRET` |
+
+An environment without `ingressDomain` publishes nothing: the deploy prints the
+`kubectl port-forward` that reaches it.
 
 ## Prerequisites
 
-- **docker** logged in to your registry (`docker login`).
-- **kubectl** with a working context for the target cluster (e.g. the one the
-  [Cloudfleet](https://cloudfleet.ai) CLI installs for a managed cluster).
-
-## Configuration
-
-### Image registry
-
-Resolution order — the first non-empty wins, and a missing registry fails **before**
-the pipeline starts:
-
-1. `dockerImageRegistry` on the **service**.
-2. `dockerRegistry` on the **project** (its ficha) — e.g. `docker.io/<user>`.
-3. The `-Dmodux.docker.registry=docker.io/<user>` system property (or the
-   `MODUX_DOCKER_REGISTRY` environment variable) on the Modux instance.
-4. A **local registry** answering at `localhost:5000` (`docker run -d -p 5000:5000
-   registry:2`) — the zero-config default for the local loop: push and pull never
-   leave the machine, no credentials, no pull secret. k3s needs it allowed as an
-   insecure registry in `/etc/rancher/k3s/registries.yaml`. Useless for a REMOTE
-   cluster (it cannot see your localhost): declare a real registry when you target
-   one.
-
-The image name is the service's `dockerImageName`, defaulting to the service name
-slug; everything is tagged `latest`.
-
-### Target cluster
-
-The project's **environment** (Project ficha → Environments) decides where the
-manifests land:
-
-| Field | Meaning | Default when empty |
-|-------|---------|--------------------|
-| `kubernetesContext` | kubeconfig context to use | your current `kubectl` context |
-| `kubernetesNamespace` | namespace for the project's workloads (created on first deploy) | the kubeconfig context's default namespace |
-
-With no environment declared at all, the deploy uses those defaults — which means
-**the first click already targets your current kubectl context**. Declare the
-environment explicitly if that makes you nervous.
-
-### Projects without services
-
-A project with contexts but no declared service deploys through the same
-[synthesized default service](/manual/generating-code/) generation uses: one service,
-named after the project, deploying every context of the project.
+- **docker** (with `buildx` for pushed images) logged in to the registry.
+- **kubectl** with the environment's context; **kind** for kind clusters.
+- On the cluster, an ingress controller and, for TLS, cert-manager with the issuer you name.
 
 ## Identity: the model's IdP becomes OIDC login
+
+> The `secure` profile and its secret are wired in each service's own `k8s/<service>.yaml`;
+> the environment manifests `modux:deploy` applies do not activate it yet.
 
 Declare an **IdP** element (Estratégico palette) with its **issuer** URI — e.g. a
 [Cloud-IAM](https://cloud-iam.com) managed Keycloak realm,
@@ -95,37 +113,11 @@ kubectl create secret generic modux-idp-credentials \
 Create the client in your realm (confidential, redirect URI
 `https://<your-url>/login/oauth2/code/*`) and the login page is Keycloak's.
 
-## Terraform: the infrastructure around the cluster
-
-With `terraformProvider: Hetzner` on the project, the generated `terraform/main.tf`
-is no longer a skeleton:
-
-- the **hcloud** provider, token via `var.hcloud_token`, ready for the Hetzner
-  resources around your cluster (volumes, load balancers, extra nodes);
-- when the distribution map declares **URLs**, the **cloudflare** provider plus one
-  `cloudflare_record` per URL host, pointing at `var.ingress_ip` — your DNS follows
-  the model.
-
-**Aplicar Terraform** (in the Desplegar menu) runs `terraform init` + `terraform apply
--auto-approve` on the generated `terraform/` folder, streaming progress to the same
-dialog the deploy uses; the full output lands in `<outputPath>/.modux/terraform.log`.
-Prerequisites and conventions:
-
-- **terraform** (or its drop-in **OpenTofu**, `tofu`) installed on the machine running
-  Modux — missing binary fails with a clear message.
-- **Variables** travel the terraform way: keep a `terraform.tfvars` next to the
-  generated `main.tf` (git-ignore it: it holds tokens), or export `TF_VAR_*` in Modux's
-  environment. Everything runs with `-input=false`, so a missing variable fails loudly
-  instead of hanging on an invisible prompt.
-
-The cluster itself is expected to exist already (e.g. Cloudfleet-managed): Modux
-deploys ONTO it and reconciles the infrastructure AROUND it (DNS records, volumes…),
-it does not provision the cluster.
-
 ## Troubleshooting
 
-- **`Sin registry de imágenes para «…»`** — configure the registry at any of the three
-  levels above; the message lists them.
+- **`No hay un entorno «…» en el modelo`** — the message lists the ones there are; run
+  `mvn modux:generate` after adding one.
+- **Pods `Pending`** — the cluster has no room: each runnable asks for 448 MiB.
 - **Pod `Pending` with `disk-pressure`** — the pipeline worked; the NODE is out of
   disk. Kubernetes untaints it a few minutes after you free space past its eviction
   threshold (10% by default).
