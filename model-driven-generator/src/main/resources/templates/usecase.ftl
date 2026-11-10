@@ -1,4 +1,7 @@
 package ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')};
+<#-- With an outbox the event is stored with the state change, so a publishing use case is one transaction -->
+<#assign usecaseTransactional = (usecase.transactionBoundary?? && usecase.transactionBoundary?has_content)
+    || ((service.outboxEnabled!false) && (usecase.steps![])?filter(s -> s.type == "PublishDomainEvent")?has_content)>
 <#-- Aggregate-level imports for ReadAggregate / SaveAggregate / CallAggregateOperation steps -->
 <#assign aggregateImports = []>
 <#if usecase.steps?has_content>
@@ -45,7 +48,7 @@ import org.springframework.cloud.stream.function.StreamOperations;
 </#if>
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-<#if usecase.transactionBoundary?? && usecase.transactionBoundary?has_content>
+<#if usecaseTransactional>
 import org.springframework.transaction.annotation.Transactional;
 </#if>
 <#if usecase.cacheable?? && usecase.cacheable>
@@ -99,7 +102,7 @@ public class ${usecase.className}UseCase {
 <#if usecase.cacheable?? && usecase.cacheable>
     @Cacheable(value = "${usecase.name?lower_case}", <#if usecase.cacheTtlSeconds??>/* ttlSeconds=${usecase.cacheTtlSeconds} */</#if>)
 </#if>
-<#if usecase.transactionBoundary?? && usecase.transactionBoundary?has_content>
+<#if usecaseTransactional>
     @Transactional
 </#if>
 <#assign customSteps = (usecase.steps![])?filter(s -> s.type == "Custom")>

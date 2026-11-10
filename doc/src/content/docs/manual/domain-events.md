@@ -61,7 +61,7 @@ Aggregate operation
                       → CallUseCase | UpdateProjection | StartSaga
 ```
 
-If the **Outbox Pattern** is enabled on the service, events are written to an outbox table in the same transaction as the aggregate state change, and then published to Kafka by a background process. This guarantees at-least-once delivery without distributed transactions.
+If the **Outbox Pattern** is enabled on the service (`outboxEnabled: true`), events are written to an outbox table in the same transaction as the aggregate state change, and then published to Kafka by a background relay. This guarantees at-least-once delivery without distributed transactions. Without it, events are sent directly: a crash between saving and sending loses the event. See [Outbox Pattern](/reference/patterns/#outbox-pattern).
 
 ## Integration events
 

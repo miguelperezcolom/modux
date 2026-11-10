@@ -15,6 +15,12 @@ spring:
           issuer-uri: ${idp.issuer}
 </#if>
 
+# A reload or a link to a screen of a remote app is resolved here, asking each remote for its menu.
+# The remotes are declared relative (/_app), and those routes live in the API gateway, not in this
+# server: resolved against itself, every remote answered 404 and the link showed "Page not found".
+mateu:
+  self-base-url: ${r"${MATEU_SELF_BASE_URL:http://localhost:8088}"}
+
 logging:
   level:
     org.springframework.security: INFO

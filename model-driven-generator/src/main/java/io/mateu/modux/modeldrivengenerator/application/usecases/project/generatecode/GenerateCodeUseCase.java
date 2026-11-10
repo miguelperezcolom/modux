@@ -753,6 +753,12 @@ public class GenerateCodeUseCase {
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
         createFile(appDir, appModel, "application.ftl",
                 "src/main/java/" + packageDir + "/" + toClassName(service.name()) + "Application.java");
+        if (service.outboxEnabled()) {
+            // Transactional outbox: every send is stored with the state change, the relay delivers it
+            createDir(appDir, "src/main/java/" + packageDir + "/infra/out/outbox");
+            createFile(appDir, appModel, "outbox.ftl", "src/main/java/" + packageDir + "/infra/out/outbox/Outbox.java");
+            createFile(appDir, appModel, "outbox-relay.ftl", "src/main/java/" + packageDir + "/infra/out/outbox/OutboxRelay.java");
+        }
         createDir(appDir, "src/main/java/" + packageDir + "/infra/in/rest");
         createFile(appDir, appModel, "business-rule-handler.ftl",
                 "src/main/java/" + packageDir + "/infra/in/rest/BusinessRuleExceptionHandler.java");
@@ -2279,6 +2285,20 @@ public class GenerateCodeUseCase {
             inboxTable.put("sequence", "modux_inbox_sequence");
             tables.add(inboxTable);
         }
+        if (service.outboxEnabled()) {
+            var outboxName = service.outboxTableName() != null && !service.outboxTableName().isBlank()
+                    ? service.outboxTableName() : "modux_outbox";
+            var outboxColumns = new ArrayList<Map<String, Object>>();
+            outboxColumns.add(column("id", "bigint", true));
+            outboxColumns.add(column("destination", "varchar(255)", false));
+            outboxColumns.add(column("payload", "text", false));
+            outboxColumns.add(column("created_at", "timestamp", false));
+            var outboxTable = new HashMap<String, Object>();
+            outboxTable.put("name", outboxName);
+            outboxTable.put("columns", outboxColumns);
+            outboxTable.put("sequence", outboxName + "_sequence");
+            tables.add(outboxTable);
+        }
         if (tables.isEmpty()) return;
 
         var appDir = serviceDir + "/" + serviceName(service) + "-app";
@@ -2825,23 +2845,39 @@ public class GenerateCodeUseCase {
     }
 
     /**
-     * The menu field names the CRUD's route, and a route equal to the aggregate's REST path would
-     * lose to the REST listing on a reload or a direct visit: the browser would get its JSON.
+     * The menu field names the CRUD's route. Two routes are taken: the aggregate's REST path (a
+     * reload or a direct visit would get the REST listing's JSON) and the path of the app itself
+     * (a federating shell strips it and opens the app's home, so the CRUD would be unreachable).
      */
-    private static String crudMenuField(String label, AggregateEntity aggregate) {
+    private String crudMenuField(String label, AggregateEntity aggregate, UiAdapterEntity adapter) {
         var field = fieldNameFromLabel(label, aggregate.name().toLowerCase() + "Crud");
         var restPath = io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudApi
                 .pathSegment(aggregate.name(), aggregate.id());
-        return field.equalsIgnoreCase(restPath) ? field + "s" : field;
+        if (field.equalsIgnoreCase(restPath)) field = field + "s";
+        var appPath = appPathOf(adapter);
+        if (appPath != null && field.equalsIgnoreCase(appPath.replaceAll("^/+|/+$", "").replaceAll("[^a-zA-Z0-9]", ""))) {
+            field = field + "List";
+        }
+        return field;
+    }
+
+    /** The path a federating shell mounts the app at (see generateUiShell): the modelled one, or the service's slug. */
+    private String appPathOf(UiAdapterEntity adapter) {
+        if (adapter == null) return null;
+        if (adapter.path() != null && !adapter.path().isBlank()) return adapter.path();
+        if (adapter.serviceId() == null) return null;
+        return repository.findById(adapter.serviceId(), ServiceEntity.class)
+                .map(s -> "/" + s.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"))
+                .orElse(null);
     }
 
     /** Where the CRUD lives: the app menu entry that opens it, or else the module menu's plural. */
     private String crudRouteOf(AggregateEntity aggregate) {
         return "/" + repository.findAllOfType(UiAdapterEntity.class).stream()
-                .flatMap(adapter -> flattenMenu(adapter.menuItems()).stream())
-                .filter(item -> aggregate.id().equals(item.aggregateId()))
+                .flatMap(adapter -> flattenMenu(adapter.menuItems()).stream()
+                        .filter(item -> aggregate.id().equals(item.aggregateId()))
+                        .map(item -> crudMenuField(item.label(), aggregate, adapter)))
                 .findFirst()
-                .map(item -> crudMenuField(item.label(), aggregate))
                 .orElse(aggregate.name().toLowerCase() + "s");
     }
 
@@ -2932,7 +2968,7 @@ public class GenerateCodeUseCase {
                             "slug", aggregate.name().toLowerCase(),
                             "moduleSlug", boundedContextSlug(unit.name()),
                             "label", it.label() != null ? it.label() : "",
-                            "field", crudMenuField(it.label(), aggregate));
+                            "field", crudMenuField(it.label(), aggregate, adapter));
                 })
                 .filter(java.util.Objects::nonNull)
                 .toList());
@@ -3235,6 +3271,9 @@ public class GenerateCodeUseCase {
         model.put("appClients", appClients);
         createFile(project.outputPath(), model, "up-sh.ftl", "up.sh");
         createFile(project.outputPath(), model, "down-sh.ftl", "down.sh");
+        // run as ./up.sh, which is what their own output tells you
+        new File(project.outputPath(), "up.sh").setExecutable(true);
+        new File(project.outputPath(), "down.sh").setExecutable(true);
     }
 
     /**
