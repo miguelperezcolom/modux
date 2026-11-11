@@ -1,0 +1,18 @@
+---
+id: "bc-pagos"
+name: "Pagos"
+aggregateIds:
+- "pago"
+useCaseIds:
+- "uc-crearPago"
+- "uc-actualizarPago"
+- "uc-eliminarPago"
+- "uc-cobrar"
+domainEventIds:
+- "ev-pagoCreado"
+- "ev-pagoModificado"
+- "ev-pagoEliminado"
+- "ev-pago-aceptado"
+- "ev-pago-rechazado"
+subdomainType: "GENERIC"
+projectId: "entradas"

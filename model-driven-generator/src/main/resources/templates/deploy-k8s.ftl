@@ -146,6 +146,11 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - {name: JAVA_OPTS, value: "-XX:MaxRAMPercentage=70"}
+<#if r.kind == "service" || r.kind == "shell">
+            # signs the system's single login when there is no identity provider (ModuxAuthCookie)
+            - name: MODUX_AUTH_SECRET
+              valueFrom: {secretKeyRef: {name: ${projectSlug}-db, key: auth, optional: true}}
+</#if>
 <#if r.kind == "service">
             - {name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres:5432/${r.db}"}
             - {name: SPRING_DATASOURCE_USERNAME, value: user_app}
@@ -154,6 +159,9 @@ spec:
             - {name: SPRING_KAFKA_BOOTSTRAP_SERVERS, value: "kafka:9092"}
 <#list (r.gatewayEnvs![]) as ge>
             - {name: ${ge.envName}, value: "${ge.url?lower_case}"}
+</#list>
+<#list runnables?filter(x -> x.kind == "service" && x.name != r.name) as s>
+            - {name: ${s.name?upper_case?replace("-","_")}_URL, value: "http://${s.name}:${s.port?c}"}
 </#list>
 <#elseif r.kind == "gateway">
 <#list runnables?filter(x -> x.kind == "service") as s>

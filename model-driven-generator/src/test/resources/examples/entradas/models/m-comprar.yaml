@@ -1,0 +1,37 @@
+---
+id: "m-comprar"
+name: "ComprarInput"
+fields:
+- id: "f-m-comprar-conciertoId"
+  name: "conciertoId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-comprar-conciertoId"
+    type: "NotEmpty"
+  label: "Concierto"
+- id: "f-m-comprar-cliente"
+  name: "cliente"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-comprar-cliente"
+    type: "NotEmpty"
+  label: "Cliente"
+- id: "f-m-comprar-entradas"
+  name: "entradas"
+  basicType: true
+  type: "integer"
+  validations:
+  - id: "v-f-m-comprar-entradas"
+    type: "NotNull"
+  label: "Entradas"
+- id: "f-m-comprar-tarjeta"
+  name: "tarjeta"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-comprar-tarjeta"
+    type: "NotEmpty"
+  label: "Tarjeta"
+projectId: "entradas"

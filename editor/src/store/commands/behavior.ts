@@ -160,14 +160,17 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
     }
     const steps = nested(source.steps);
     if (steps.some((step) => step.type === 'CallUseCase' && step.useCaseId === target.id)) return;
-    store.patch('useCases', source.id, {
-      steps: [...steps, {
-        id: `step-call-${target.id}`,
-        name: `call${capitalize(String(target.name ?? target.id))}`,
-        type: 'CallUseCase',
-        useCaseId: target.id,
-      }],
-    });
+    // a call brings what the decision needs: before the first custom step (or the first
+    // publication), so its answer is at hand for the logic — mirrors EditorApiController
+    const call = {
+      id: `step-call-${target.id}`,
+      name: `call${capitalize(String(target.name ?? target.id))}`,
+      type: 'CallUseCase',
+      useCaseId: target.id,
+    };
+    const firstOf = (type: string) => steps.findIndex((step) => step.type === type);
+    const at = [firstOf('Custom'), firstOf('PublishDomainEvent')].find((i) => i >= 0) ?? steps.length;
+    store.patch('useCases', source.id, { steps: [...steps.slice(0, at), call, ...steps.slice(at)] });
   },
 
   'remove-use-case-call': (store, command) => {

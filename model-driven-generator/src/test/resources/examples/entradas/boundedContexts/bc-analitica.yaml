@@ -1,0 +1,11 @@
+---
+id: "bc-analitica"
+name: "Analitica"
+projectionIds:
+- "proj-compras"
+readModelIds:
+- "rm-compras"
+subdomainType: "GENERIC"
+projectId: "entradas"
+queryServiceIds:
+- "qs-panel"

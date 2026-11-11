@@ -1,0 +1,13 @@
+---
+id: "m-cancelar"
+name: "CancelarCompraInput"
+fields:
+- id: "f-m-cancelar-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-cancelar-compraId"
+    type: "NotEmpty"
+  label: "Compra"
+projectId: "entradas"

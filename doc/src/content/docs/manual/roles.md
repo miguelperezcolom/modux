@@ -40,6 +40,15 @@ For a `BOOKING_MANAGER` role:
 - Spring Security method security annotations on the relevant use cases
 - Role-to-permission mapping configuration
 
+## One login without an identity provider
+
+With roles and no identity provider, every service and the UI shell get the model's roles as
+scaffold users (username = password = the role's name in lower case) and **one login serves the
+whole system**: the shell asks for it, and its form login leaves a signed cookie (`MODUX_AUTH`,
+HMAC with `MODUX_AUTH_SECRET`) that every service behind the gateway accepts. Agents and `curl`
+keep using HTTP Basic. `mvn modux:deploy` creates a random secret per Kubernetes namespace; the
+local compose uses a development one. Declare an identity provider for real users.
+
 ## IAM integration
 
 If your project has an IAM provider configured (e.g. Keycloak), Modux generates:

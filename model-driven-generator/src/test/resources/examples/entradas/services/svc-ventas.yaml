@@ -1,0 +1,8 @@
+---
+id: "svc-ventas"
+name: "Ventas"
+port: 8092
+outboxEnabled: true
+moduleIds:
+- "bc-ventas-main"
+projectId: "entradas"

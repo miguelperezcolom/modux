@@ -1,0 +1,6 @@
+---
+id: "bc-pagos-main"
+name: "Pagos"
+boundedContextId: "bc-pagos"
+main: true
+projectId: "entradas"

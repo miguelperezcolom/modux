@@ -1,0 +1,9 @@
+---
+id: "qs-crud-compra"
+name: "CompraQueries"
+boundedContextId: "bc-ventas"
+operations:
+- id: "qs-crud-compra-list"
+  name: "list"
+  cardinality: "Page"
+projectId: "entradas"

@@ -1,0 +1,9 @@
+---
+id: "qs-crud-pago"
+name: "PagoQueries"
+boundedContextId: "bc-pagos"
+operations:
+- id: "qs-crud-pago-list"
+  name: "list"
+  cardinality: "Page"
+projectId: "entradas"

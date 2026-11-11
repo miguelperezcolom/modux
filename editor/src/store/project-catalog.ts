@@ -89,10 +89,10 @@ export function projectCatalog(store: ModelStore): Partial<ModuxModel> {
       handledEventIds: [...new Set(nested(p.handlers)
         .map((h) => str(h.domainEventId))
         .filter((id): id is string => Boolean(id)))],
-      sourceAggregateId: str(p.aggregateId),
+      sourceAggregateId: str(p.sourceAggregateId ?? p.aggregateId),
       boundedContextId: store.findByListMember('boundedContexts', 'projectionIds', p.id)?.id,
-      sourceExternalUseCaseId: str(p.externalUseCaseId),
-      sourceExternalTableId: str(p.externalTableId),
+      sourceExternalUseCaseId: str(p.sourceExternalUseCaseId ?? p.externalUseCaseId),
+      sourceExternalTableId: str(p.sourceExternalTableId ?? p.externalTableId),
     })),
 
     subscriptions: store.all('subscriptions').map((s) => ({

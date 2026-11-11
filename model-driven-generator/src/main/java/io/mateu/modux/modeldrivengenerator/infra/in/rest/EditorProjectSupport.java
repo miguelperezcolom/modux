@@ -186,14 +186,6 @@ public class EditorProjectSupport {
     }
 
     public static UseCaseEntity withExposedAsMcp(UseCaseEntity uc, boolean exposedAsMcp) {
-        return new UseCaseEntity(
-                uc.id(), uc.name(), uc.exposedAsRest(), uc.exposedAsGrpc(), exposedAsMcp,
-                uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(), uc.steps(),
-                uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(), uc.mcpDescription(),
-                uc.restHttpMethod(), uc.restPath(), uc.asyncRetryCount(), uc.asyncDeadLetterQueue(),
-                uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
-                uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
-                uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy(), null);
+        return uc.toBuilder().exposedAsMcp(exposedAsMcp).build();
     }
 }

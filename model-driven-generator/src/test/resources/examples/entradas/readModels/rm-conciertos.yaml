@@ -1,0 +1,7 @@
+---
+id: "rm-conciertos"
+name: "ConciertoView"
+boundedContextId: "bc-ventas"
+modelId: "model-concierto"
+aggregateId: "concierto"
+projectId: "entradas"

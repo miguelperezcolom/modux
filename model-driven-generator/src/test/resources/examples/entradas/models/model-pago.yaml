@@ -1,0 +1,33 @@
+---
+id: "model-pago"
+name: "Pago"
+fields:
+- id: "f-model-pago-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-pago-compraId"
+    type: "NotEmpty"
+  label: "Compra"
+- id: "f-model-pago-importe"
+  name: "importe"
+  basicType: true
+  type: "money"
+  validations:
+  - id: "v-f-model-pago-importe"
+    type: "NotNull"
+  label: "Importe"
+- id: "f-model-pago-estado"
+  name: "estado"
+  enumId: "enum-pago"
+  validations:
+  - id: "v-f-model-pago-estado"
+    type: "NotNull"
+  label: "Estado"
+- id: "f-model-pago-motivo"
+  name: "motivo"
+  basicType: true
+  type: "string"
+  label: "Motivo"
+projectId: "entradas"

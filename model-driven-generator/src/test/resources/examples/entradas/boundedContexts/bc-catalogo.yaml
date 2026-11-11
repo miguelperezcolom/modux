@@ -1,0 +1,17 @@
+---
+id: "bc-catalogo"
+name: "Catalogo"
+aggregateIds:
+- "concierto"
+useCaseIds:
+- "uc-crearConcierto"
+- "uc-actualizarConcierto"
+- "uc-eliminarConcierto"
+- "uc-consultarPrecio"
+- "uc-cerrarVenta"
+domainEventIds:
+- "ev-conciertoCreado"
+- "ev-conciertoModificado"
+- "ev-conciertoEliminado"
+subdomainType: "GENERIC"
+projectId: "entradas"

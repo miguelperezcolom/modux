@@ -1,0 +1,13 @@
+---
+id: "ui-analitica"
+name: "Analitica"
+title: "Analitica"
+appType: "APP"
+serviceId: "svc-analitica"
+path: "/analitica"
+menuItems:
+- id: "ui-analitica-0"
+  label: "Panel de ventas"
+  queryServiceId: "qs-panel"
+  queryOperationId: "qs-panel-compras"
+projectId: "entradas"

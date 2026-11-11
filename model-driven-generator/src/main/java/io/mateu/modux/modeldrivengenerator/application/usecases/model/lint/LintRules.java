@@ -981,10 +981,11 @@ public final class LintRules {
                             if (provider == null || providerBoundedContext == null) continue;
                             if (crossesService(m, consumerService, providerBoundedContext.id(), provider.id())
                                     && !provider.exposedAsGrpc() && !provider.exposedAsRest()) {
-                                findings.add(new LintFinding(id(), LintSeverity.WARNING, "UseCase",
+                                // generation turns it into a REST call: a client here, the endpoint there
+                                findings.add(new LintFinding(id(), LintSeverity.INFO, "UseCase",
                                         consumer.id(), consumer.name(),
-                                        "Consumes use case '" + provider.name() + "' deployed in another service — "
-                                                + "the call crosses a process boundary: expose it as gRPC (or run Derive APIs)."));
+                                        "Calls use case '" + provider.name() + "' of another service: it goes over REST "
+                                                + "(a generated client here, its /v1 endpoint there) — a network call that can fail."));
                             }
                         }
                         if (step.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallQueryService

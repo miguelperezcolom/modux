@@ -80,6 +80,11 @@ class ${usecase.className}UseCaseTest {
     ${project.packageName}.${module.slug}.application.out.integration.${step.integrationClass}Publisher ${step.integrationClass?uncap_first}Publisher;
 
 </#list>
+<#list (usecase.steps![])?filter(s -> s.type == "CallRemoteUseCase") as step>
+    @Mock
+    ${project.packageName}.${module.slug}.application.out.remote.${step.remote.className}Client ${step.remote.var}Client;
+
+</#list>
     @InjectMocks
     ${usecase.className}UseCase useCase;
 
@@ -100,7 +105,7 @@ class ${usecase.className}UseCaseTest {
 <#assign customs = (usecase.steps![])?filter(s -> s.type == "Custom")>
 <#if outputModel?? && customs?has_content>
         // the last custom step decides the result the later steps read
-        org.mockito.Mockito.when(steps.${customs?last.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(org.mockito.ArgumentMatchers.any()))
+        org.mockito.Mockito.when(steps.${customs?last.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(org.mockito.ArgumentMatchers.any()<#list (customs?last.remoteParams![])?filter(r -> r.hasResponse) as r>, org.mockito.ArgumentMatchers.any()</#list>))
                 .thenReturn(new ${usecase.className}Result(<#list (outputModel.fields![]) as f>null<#sep>, </#sep></#list>));
 </#if>
         assertDoesNotThrow(() -> useCase.handle(command));

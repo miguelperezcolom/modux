@@ -19,14 +19,42 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Title("${title}")
 public class ${className}Listing extends Crud<
-        ${className}ReadModel, ${className}ReadModel, ${className}ReadModel, NoFilters, ${className}ReadModel, String> {
+        ${className}ReadModel, ${className}ReadModel, ${className}ReadModel, NoFilters, ${className}Listing.Row, String> {
+
+<#if rowFields?has_content>
+    /** What a row shows: the model's labels, and amounts with their two decimals. */
+    public record Row(
+<#list rowFields as f>
+            @io.mateu.uidl.annotations.Label("${f.label?j_string}") String ${f.name}<#sep>,</#sep>
+</#list>
+    ) {
+        static Row of(${className}ReadModel rm) {
+            return new Row(
+<#list rowFields as f>
+<#if f.money>
+                    rm.${f.accessor}() == null ? null : rm.${f.accessor}().setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()<#sep>,</#sep>
+<#else>
+                    rm.${f.accessor}() == null ? null : String.valueOf(rm.${f.accessor}())<#sep>,</#sep>
+</#if>
+</#list>
+            );
+        }
+    }
+<#else>
+    public record Row(String value) {
+        static Row of(${className}ReadModel rm) {
+            return new Row(String.valueOf(rm));
+        }
+    }
+</#if>
 
     final ${className}ReadModelQueryService queries;
 
     @Override
-    public ListingData<${className}ReadModel> search(SearchRequest request, HttpRequest httpRequest) {
+    public ListingData<Row> search(SearchRequest request, HttpRequest httpRequest) {
         var text = request.searchText().toLowerCase();
         return ListingData.of(queries.findAll().stream()
+                .map(Row::of)
                 .filter(row -> row.toString().toLowerCase().contains(text))
                 .toList());
     }

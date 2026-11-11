@@ -1,0 +1,23 @@
+---
+id: "uc-cerrarVenta"
+name: "CerrarVenta"
+exposedAsUi: true
+inputModelId: "m-cerrar"
+steps:
+- id: "step-read"
+  name: "readConcierto"
+  type: "ReadAggregate"
+  aggregateId: "concierto"
+- id: "step-op"
+  name: "cerrar"
+  type: "CallAggregateOperation"
+  aggregateId: "concierto"
+  operationId: "op-cerrar"
+- id: "step-save"
+  name: "saveConcierto"
+  type: "SaveAggregate"
+  aggregateId: "concierto"
+allowedRoles:
+- "PROMOTORA"
+title: "Cerrar la venta"
+projectId: "entradas"

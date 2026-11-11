@@ -1,0 +1,13 @@
+---
+id: "m-cerrar"
+name: "CerrarVentaInput"
+fields:
+- id: "f-m-cerrar-conciertoId"
+  name: "conciertoId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-cerrar-conciertoId"
+    type: "NotEmpty"
+  label: "Concierto"
+projectId: "entradas"

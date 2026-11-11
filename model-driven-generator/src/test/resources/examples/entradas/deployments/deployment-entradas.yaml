@@ -1,0 +1,13 @@
+---
+id: "deployment-entradas"
+dockerRegistry: "docker.io/miguelperezcolom"
+environments:
+- environment: "PROD"
+  kubernetesNamespace: "entradas"
+  kubernetesContext: "cloudfleet-hetzner"
+  ingressDomain: "ec1.mateu.io"
+  ingressTlsEnabled: true
+  ingressClassName: "nginx"
+  deployTarget: "KUBERNETES"
+  dnsProvider: "NETLIFY"
+  certIssuer: "letsencrypt"

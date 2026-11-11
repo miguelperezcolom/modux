@@ -114,7 +114,7 @@ final class HookImplementer {
         return pending;
     }
 
-    /** What a hook may use: the domain, the outbound ports and the use cases' contracts. */
+    /** What a hook may use: the domain, the outbound ports, the read side and the use cases' contracts. */
     private Map<Path, String> contracts(Path service) throws IOException {
         var contracts = new LinkedHashMap<Path, String>();
         try (Stream<Path> files = Files.walk(service)) {
@@ -125,10 +125,14 @@ final class HookImplementer {
         return contracts;
     }
 
-    private static boolean isContract(Path file) {
+    static boolean isContract(Path file) {
         var path = file.toString().replace('\\', '/');
         if (!path.endsWith(".java") || !path.contains("/src/main/java/") || path.contains("-custom/")) return false;
         return path.contains("/domain/") || path.contains("/application/out/")
+                // the read side the context keeps (read models fed by projections and their queries)
+                || path.contains("/application/query/")
+                // the use case itself: what it does before and after the hook
+                || (path.contains("/application/usecases/") && path.endsWith("UseCase.java"))
                 || path.endsWith("BusinessRuleException.java")
                 || path.endsWith("Command.java") || path.endsWith("Result.java") || path.endsWith("Steps.java")
                 || path.endsWith("EventSourcing.java");
@@ -152,6 +156,11 @@ final class HookImplementer {
                   method that runs it), and inside an operation only through its `context`. When the aggregate
                   has an operation for a change, do not make it with `update(...)`: that overwrites the whole
                   state and skips the rules the operation holds.
+                - A use-case hook does only its own step. What the use case does after calling it (publishing
+                  an event, saving an aggregate) is already written in the use case, listed among the
+                  contracts: never do it again in the hook, or it happens twice.
+                - Data another context owns is read from this context's read models (the query services
+                  under application/query), not asked for elsewhere.
                 - You may add a helper class only in the same package as the hooks.
 
                 Answer with nothing but the complete files, each one exactly like this, with its path relative

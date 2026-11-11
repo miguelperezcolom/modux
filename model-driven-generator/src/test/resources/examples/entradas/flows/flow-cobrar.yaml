@@ -1,0 +1,9 @@
+---
+id: "flow-cobrar"
+name: "cobrar"
+archetype: "TRIGGERS"
+triggerAggregateId: "compra"
+triggerEvent: "CompraRealizada"
+targetBoundedContextId: "bc-pagos"
+targetUseCaseId: "uc-cobrar"
+projectId: "entradas"

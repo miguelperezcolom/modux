@@ -38,6 +38,11 @@ public class FlowStoreMaterializer {
     final ModelStore repository;
     final FlowExpander expander;
     final FlowExpansionContextResolver resolver;
+    final AggregateStateProjections stateProjections;
+
+    public AggregateStateProjections stateProjections() {
+        return stateProjections;
+    }
 
     /** Per-boundedContext ids to append to the boundedContext's domain-event / projection / subscription / saga lists. */
     private record BoundedContextAdditions(List<String> domainEvents, List<String> projections,
@@ -48,6 +53,8 @@ public class FlowStoreMaterializer {
     }
 
     public void materialize() {
+        // an aggregate drawn into a read model: its state travels as events (see AggregateStateProjections)
+        stateProjections.materialize();
         var flows = repository.findAllOfType(FlowEntity.class).stream()
                 .map(e -> FlowExpansionService.withEventPayload(e, repository))
                 .toList();

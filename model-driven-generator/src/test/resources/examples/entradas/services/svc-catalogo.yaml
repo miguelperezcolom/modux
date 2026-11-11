@@ -1,0 +1,7 @@
+---
+id: "svc-catalogo"
+name: "Catalogo"
+port: 8091
+moduleIds:
+- "bc-catalogo-main"
+projectId: "entradas"

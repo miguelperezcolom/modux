@@ -1,0 +1,10 @@
+---
+id: "shell-entradas"
+name: "Entradas"
+title: "Entradas"
+serviceIds:
+- "svc-catalogo"
+- "svc-ventas"
+- "svc-pagos"
+- "svc-analitica"
+projectId: "entradas"

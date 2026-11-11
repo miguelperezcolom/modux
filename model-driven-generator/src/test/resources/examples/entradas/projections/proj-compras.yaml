@@ -1,0 +1,6 @@
+---
+id: "proj-compras"
+name: "Compras"
+readModelId: "rm-compras"
+sourceAggregateId: "compra"
+projectId: "entradas"

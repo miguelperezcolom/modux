@@ -22,7 +22,7 @@ public class Default${usecase.className}Steps implements ${usecase.className}Ste
     /** Intent (from the model): ${step.intent} */
 </#if>
     @Override
-    public <#if returnsResult>${usecase.className}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.className}Command command) {
+    public <#if returnsResult>${usecase.className}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.className}Command command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${project.packageName}.${module.slug}.application.out.remote.${r.className}Client.Response ${r.var}</#list>) {
 <#if step.intent?? && step.intent?has_content>
         // Intended behaviour: ${step.intent}
         // Tip: `mvn modux:ai-complete` implements this hook from that intent.

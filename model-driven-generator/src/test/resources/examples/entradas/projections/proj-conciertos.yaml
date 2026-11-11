@@ -1,0 +1,6 @@
+---
+id: "proj-conciertos"
+name: "Conciertos"
+readModelId: "rm-conciertos"
+sourceAggregateId: "concierto"
+projectId: "entradas"

@@ -1,0 +1,9 @@
+---
+id: "flow-confirmar"
+name: "confirmar"
+archetype: "TRIGGERS"
+triggerAggregateId: "pago"
+triggerEvent: "PagoAceptado"
+targetBoundedContextId: "bc-ventas"
+targetUseCaseId: "uc-confirmarCompra"
+projectId: "entradas"

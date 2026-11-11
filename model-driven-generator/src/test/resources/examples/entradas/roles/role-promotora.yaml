@@ -1,0 +1,9 @@
+---
+id: "role-promotora"
+name: "PROMOTORA"
+allowedUseCaseIds:
+- "uc-crearConcierto"
+- "uc-actualizarConcierto"
+- "uc-eliminarConcierto"
+- "uc-cerrarVenta"
+projectId: "entradas"

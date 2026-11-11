@@ -1255,18 +1255,7 @@ public class EditorApiController {
                                     : s)
                             .toList())));
             case "use-case" -> repository.findById(command.id(), UseCaseEntity.class)
-                    .ifPresent(uc -> repository.save(new UseCaseEntity(
-                            uc.id(), command.name(), uc.exposedAsRest(), uc.exposedAsGrpc(),
-                            uc.exposedAsMcp(), uc.exposedAsAsync(), uc.exposedAsUi(),
-                            uc.inputModelId(), uc.outputModelId(), uc.steps(),
-                            uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(),
-                            uc.mcpDescription(), uc.restHttpMethod(), uc.restPath(),
-                            uc.asyncRetryCount(), uc.asyncDeadLetterQueue(), uc.asyncOrderingKey(),
-                            uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
-                            uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(),
-                            uc.idempotencyEnabled(), uc.idempotencyKeyField(), uc.rateLimitEnabled(),
-                            uc.rateLimitRequestsPerSecond(), uc.grpcServiceName(), uc.grpcMethodName(),
-                            uc.decisionIds(), uc.policy(), null)));
+                    .ifPresent(uc -> repository.save(uc.toBuilder().name(command.name()).build()));
             case "external-use-case" -> {
                 var project = projects.owningProject();
                 projects.replaceExternalSystems(projects.externalSystems().stream()
@@ -1732,10 +1721,23 @@ public class EditorApiController {
                 st.type() == io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase
                         && target.id().equals(st.useCaseId()));
         if (alreadyThere) return;
-        steps.add(new UseCaseStepEntity("step-call-" + target.id(), "call" + capitalize(target.name()),
+        // a call brings what the decision needs: it goes before the first custom step (or the first
+        // publication), so its answer is at hand for the logic — appended only when there is neither
+        var at = callInsertionIndex(steps);
+        steps.add(at, new UseCaseStepEntity("step-call-" + target.id(), "call" + capitalize(target.name()),
                 io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallUseCase,
                 null, null, null, null, null, target.id(), null, null, null, null, null));
         repository.save(withSteps(source, steps));
+    }
+
+    static int callInsertionIndex(List<UseCaseStepEntity> steps) {
+        for (var type : List.of(io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.Custom,
+                io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.PublishDomainEvent)) {
+            for (int i = 0; i < steps.size(); i++) {
+                if (steps.get(i).type() == type) return i;
+            }
+        }
+        return steps.size();
     }
 
     private void removeUseCaseCall(EditorCommand command) {
@@ -2678,15 +2680,8 @@ public class EditorApiController {
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */
     static UseCaseEntity withSteps(UseCaseEntity uc, List<UseCaseStepEntity> steps) {
-        return new UseCaseEntity(
-                uc.id(), uc.name(), uc.exposedAsRest(), uc.exposedAsGrpc(), uc.exposedAsMcp(),
-                uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(), steps,
-                uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(), uc.mcpDescription(),
-                uc.restHttpMethod(), uc.restPath(), uc.asyncRetryCount(), uc.asyncDeadLetterQueue(),
-                uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
-                uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
-                uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName(), uc.grpcMethodName(), uc.decisionIds(), uc.policy(), null);
+        // a copy, not a positional rebuild: that one silently dropped every field added later (title…)
+        return uc.toBuilder().steps(steps).build();
     }
 
     /**

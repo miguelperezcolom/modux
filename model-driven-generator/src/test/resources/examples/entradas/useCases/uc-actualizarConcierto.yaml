@@ -1,0 +1,20 @@
+---
+id: "uc-actualizarConcierto"
+name: "ActualizarConcierto"
+inputModelId: "model-concierto"
+steps:
+- id: "step-read"
+  name: "readConcierto"
+  type: "ReadAggregate"
+  aggregateId: "concierto"
+- id: "step-save"
+  name: "saveConcierto"
+  type: "SaveAggregate"
+  aggregateId: "concierto"
+- id: "step-publish-ev-conciertoModificado"
+  name: "publishConciertoModificado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-conciertoModificado"
+allowedRoles:
+- "PROMOTORA"
+projectId: "entradas"

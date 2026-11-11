@@ -54,6 +54,7 @@ class DeployerTest {
         assertTrue(commands.contains("kind load docker-image acme/tienda-pedidos:t1 --name lab"), commands.toString());
         assertFalse(commands.stream().anyMatch(c -> c.contains("--push")), "nothing leaves the machine");
         assertTrue(commands.stream().anyMatch(c -> c.contains("create secret generic tienda-db --from-literal=password=")));
+        assertTrue(commands.stream().anyMatch(c -> c.contains("--from-literal=auth=")), "the key of the single login");
         assertTrue(stdins.contains("image: acme/tienda-pedidos:t1\n"), stdins.toString());
         assertTrue(commands.contains("kubectl --context=kind-lab -n tienda-dev rollout status deploy/pedidos --timeout=600s"));
     }

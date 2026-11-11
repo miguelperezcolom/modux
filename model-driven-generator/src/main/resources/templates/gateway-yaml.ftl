@@ -35,6 +35,13 @@ spring:
                       uri: ${r"${"}${a.svc?upper_case?replace("-","_")}_URL:http://localhost:${a.port?c}}
                       predicates: [ "Path=/${a.slug}/mateu/**, /${a.slug}/assets/**" ]
 </#list>
+<#list proxies![] as px>
+                    # proxy ${px.name}: la API que publica ${px.svc}, para fuera<#if (px.ttl > 0)>, con caché de ${px.ttl?c} s (ProxyCacheFilter)</#if>
+                    - id: proxy-${px.slug}
+                      uri: ${r"${"}${px.svc?upper_case?replace("-","_")}_URL:http://localhost:${px.port?c}}
+                      predicates: [ "Path=${px.path}/**" ]
+                      filters: [ "StripPrefix=${px.segments?c}" ]
+</#list>
                     # la shell (todo lo demás)
                     - id: shell
                       uri: ${r"${"}SHELL_URL:http://localhost:${shellPort?c}}

@@ -92,8 +92,10 @@ public class Deployer {
             shell.run(concat(kubectl, "-n", namespace, "get", "secret", secret), output, null);
         } catch (IOException missing) {
             var password = HexFormat.of().formatHex(new SecureRandom().generateSeed(18));
+            // and the key that signs the system's single login when the model has no identity provider
+            var auth = HexFormat.of().formatHex(new SecureRandom().generateSeed(32));
             shell.run(concat(kubectl, "-n", namespace, "create", "secret", "generic", secret,
-                    "--from-literal=password=" + password), output, null);
+                    "--from-literal=password=" + password, "--from-literal=auth=" + auth), output, null);
             log.accept("Modux: creado el secreto " + secret);
         }
         var manifest = Files.readString(output.resolve(target.path("manifest").asText())).replace("__TAG__", settings.tag());

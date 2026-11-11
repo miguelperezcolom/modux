@@ -1,0 +1,15 @@
+---
+id: "uc-eliminarCompra"
+name: "EliminarCompra"
+steps:
+- id: "step-delete"
+  name: "deleteCompra"
+  type: "Custom"
+  aggregateId: "compra"
+- id: "step-publish-ev-compraEliminado"
+  name: "publishCompraEliminado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-compraEliminado"
+allowedRoles:
+- "CLIENTE"
+projectId: "entradas"

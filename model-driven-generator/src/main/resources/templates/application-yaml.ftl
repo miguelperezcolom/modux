@@ -1,6 +1,9 @@
 <#assign useFlyway = (project.dbMigrationTool!'Flyway') != 'None'>
 server:
     port: ${(service.port!8080)?c}
+    # behind the gateway: a redirect (the login) must not name this container's host
+    tomcat:
+        use-relative-redirects: true
 
 spring:
     application:

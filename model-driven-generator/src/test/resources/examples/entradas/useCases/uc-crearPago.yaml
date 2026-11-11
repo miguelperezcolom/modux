@@ -1,0 +1,14 @@
+---
+id: "uc-crearPago"
+name: "CrearPago"
+inputModelId: "model-pago"
+steps:
+- id: "step-save"
+  name: "savePago"
+  type: "SaveAggregate"
+  aggregateId: "pago"
+- id: "step-publish-ev-pagoCreado"
+  name: "publishPagoCreado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-pagoCreado"
+projectId: "entradas"

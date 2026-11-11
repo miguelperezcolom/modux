@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
 <#list project.services as svc>
   ${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}:
@@ -19,6 +17,10 @@ services:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 <#list (gatewayEnvs[svc.name]![]) as ge>
       ${ge.envName}: ${ge.url}
+</#list>
+<#-- where its siblings answer: a use case may call another service's over REST -->
+<#list project.services?filter(o -> o.name != svc.name) as o>
+      ${o.name?upper_case?replace("[^A-Z0-9]","_",'r')}_URL: http://${o.name?lower_case?replace("[^a-z0-9]","-",'r')}:${(o.port!8080)?c}
 </#list>
     depends_on:
       - postgres

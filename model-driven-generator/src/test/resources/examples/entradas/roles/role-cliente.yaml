@@ -1,0 +1,7 @@
+---
+id: "role-cliente"
+name: "CLIENTE"
+allowedUseCaseIds:
+- "uc-comprar"
+- "uc-cancelarCompra"
+projectId: "entradas"

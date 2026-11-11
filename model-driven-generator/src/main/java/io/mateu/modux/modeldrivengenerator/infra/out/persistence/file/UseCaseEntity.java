@@ -4,6 +4,7 @@ import io.mateu.modux.modeldrivengenerator.domain.shared.Identifiable;
 
 import java.util.List;
 
+@lombok.Builder(toBuilder = true)
 public record UseCaseEntity(
         String id,
         String name,

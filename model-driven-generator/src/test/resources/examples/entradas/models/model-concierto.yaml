@@ -1,0 +1,49 @@
+---
+id: "model-concierto"
+name: "Concierto"
+fields:
+- id: "f-model-concierto-artista"
+  name: "artista"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-concierto-artista"
+    type: "NotEmpty"
+  label: "Artista"
+- id: "f-model-concierto-recinto"
+  name: "recinto"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-concierto-recinto"
+    type: "NotEmpty"
+  label: "Recinto"
+- id: "f-model-concierto-fecha"
+  name: "fecha"
+  basicType: true
+  type: "date"
+  validations:
+  - id: "v-f-model-concierto-fecha"
+    type: "NotNull"
+  label: "Fecha"
+- id: "f-model-concierto-aforo"
+  name: "aforo"
+  basicType: true
+  type: "integer"
+  validations:
+  - id: "v-f-model-concierto-aforo"
+    type: "NotNull"
+  label: "Aforo"
+- id: "f-model-concierto-precio"
+  name: "precio"
+  basicType: true
+  type: "money"
+  validations:
+  - id: "v-f-model-concierto-precio"
+    type: "NotNull"
+  label: "Precio"
+- id: "f-model-concierto-estado"
+  name: "estado"
+  enumId: "enum-concierto"
+  label: "Estado"
+projectId: "entradas"

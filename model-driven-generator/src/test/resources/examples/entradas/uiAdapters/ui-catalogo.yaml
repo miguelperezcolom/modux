@@ -1,0 +1,15 @@
+---
+id: "ui-catalogo"
+name: "Catalogo"
+serviceId: "svc-catalogo"
+title: "Catalogo"
+path: "/catalogo"
+menuItems:
+- label: "Conciertos"
+  id: "ui-catalogo-0"
+  aggregateId: "concierto"
+- label: "Cerrar la venta"
+  id: "ui-catalogo-1"
+  useCaseId: "uc-cerrarVenta"
+appType: "APP"
+projectId: "entradas"
