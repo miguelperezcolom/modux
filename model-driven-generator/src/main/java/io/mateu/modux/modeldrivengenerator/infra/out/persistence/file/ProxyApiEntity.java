@@ -17,7 +17,14 @@ public record ProxyApiEntity(
         /** External system hosting the proxy (it nests inside it on the map); null = standalone. */
         String publishedByExternalSystemId,
         /** Per-operation routing to the fronted API's implementation sites. */
-        java.util.List<ProxyOperationRouteEntity> operationRoutes
+        java.util.List<ProxyOperationRouteEntity> operationRoutes,
+        /**
+         * Seconds a GET answered through the proxy is served from its cache (null or 0 = no cache).
+         * The gateway generates the cache: a read-heavy API gets it with one number.
+         */
+        Integer cacheTtlSeconds,
+        /** Where the proxy answers on the gateway; by default {@code /public/{proxy-slug}}. */
+        String path
 ,
         /** The project this element belongs to (selection scoping; null = legacy, claimed on open). */
         String projectId
@@ -26,7 +33,7 @@ public record ProxyApiEntity(
     /** Backward-compatible constructor (pre-operationRoutes callers and stores). */
     public ProxyApiEntity(String id, String name, String description,
                           String targetApiId, String publishedByExternalSystemId) {
-        this(id, name, description, targetApiId, publishedByExternalSystemId, java.util.List.of(), null);
+        this(id, name, description, targetApiId, publishedByExternalSystemId, java.util.List.of(), null, null, null);
     }
 
     public java.util.List<ProxyOperationRouteEntity> operationRoutes() {

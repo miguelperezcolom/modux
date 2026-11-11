@@ -1,0 +1,12 @@
+---
+id: "enum-compra"
+values:
+- id: "PENDIENTE"
+  name: "PENDIENTE"
+- id: "CONFIRMADA"
+  name: "CONFIRMADA"
+- id: "RECHAZADA"
+  name: "RECHAZADA"
+- id: "CANCELADA"
+  name: "CANCELADA"
+projectId: "entradas"

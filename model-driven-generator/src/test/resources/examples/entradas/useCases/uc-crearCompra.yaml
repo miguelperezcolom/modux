@@ -1,0 +1,16 @@
+---
+id: "uc-crearCompra"
+name: "CrearCompra"
+inputModelId: "model-compra"
+steps:
+- id: "step-save"
+  name: "saveCompra"
+  type: "SaveAggregate"
+  aggregateId: "compra"
+- id: "step-publish-ev-compraCreado"
+  name: "publishCompraCreado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-compraCreado"
+allowedRoles:
+- "CLIENTE"
+projectId: "entradas"

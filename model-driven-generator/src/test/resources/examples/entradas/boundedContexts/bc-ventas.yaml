@@ -1,0 +1,24 @@
+---
+id: "bc-ventas"
+name: "Ventas"
+aggregateIds:
+- "compra"
+useCaseIds:
+- "uc-crearCompra"
+- "uc-actualizarCompra"
+- "uc-eliminarCompra"
+- "uc-comprar"
+- "uc-confirmarCompra"
+- "uc-rechazarCompra"
+- "uc-cancelarCompra"
+domainEventIds:
+- "ev-compraCreado"
+- "ev-compraModificado"
+- "ev-compraEliminado"
+- "ev-compra-realizada"
+projectionIds:
+- "proj-conciertos"
+readModelIds:
+- "rm-conciertos"
+subdomainType: "GENERIC"
+projectId: "entradas"

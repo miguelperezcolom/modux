@@ -1,0 +1,12 @@
+---
+id: "ui-pagos"
+name: "Pagos"
+serviceId: "svc-pagos"
+title: "Pagos"
+path: "/pagos"
+menuItems:
+- label: "Pagos"
+  id: "ui-pagos-0"
+  aggregateId: "pago"
+appType: "APP"
+projectId: "entradas"

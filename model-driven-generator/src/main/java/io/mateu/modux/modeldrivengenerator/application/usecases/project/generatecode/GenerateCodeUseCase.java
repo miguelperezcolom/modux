@@ -3,8 +3,11 @@ package io.mateu.modux.modeldrivengenerator.application.usecases.project.generat
 import com.google.googlejavaformat.java.Formatter;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.FieldValueSettingDto;
 import io.mateu.modux.modeldrivengenerator.application.out.query.dtos.OperationDto;
+import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.AggregateStateProjections;
 import io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowStoreMaterializer;
 import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.ModuleTopology;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
@@ -1072,6 +1075,17 @@ public class GenerateCodeUseCase {
         @SuppressWarnings("unchecked")
         var enriched = (List<Map<String, Object>>) ((Map<String, Object>) model.get("usecase")).get("steps");
         var hasCustomStep = enriched != null && enriched.stream().anyMatch(st -> "Custom".equals(st.get("type")));
+        if (enriched != null) {
+            for (var st : enriched) {
+                if (!"CallRemoteUseCase".equals(st.get("type")) || !(st.get("remote") instanceof Map<?, ?> remote)) continue;
+                Map<String, Object> clientModel = buildBaseModel(project, service, boundedContext);
+                clientModel.put("remote", remote);
+                createFile(boundedContextDir, clientModel, "remote-usecase-client.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/application/out/remote/" + remote.get("className") + "Client.java");
+                createFile(boundedContextDir, clientModel, "remote-usecase-rest-client.ftl",
+                        "src/main/java/" + boundedContextPackageDir + "/infra/out/remote/" + remote.get("className") + "RestClient.java");
+            }
+        }
         if (hasCustomStep) {
             createFile(boundedContextDir, model, "usecase-steps.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
@@ -1082,7 +1096,7 @@ public class GenerateCodeUseCase {
                             + "/custom/Default" + ucClass + "Steps.java");
         }
 
-        if (useCase.exposedAsRest() || calledThroughInboundAcl(boundedContext, useCase)) {
+        if (useCase.exposedAsRest() || calledThroughInboundAcl(boundedContext, useCase) || calledRemotely(useCase)) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/rest");
             createFile(boundedContextDir, model, "usecase-rest-controller.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
@@ -1252,7 +1266,11 @@ public class GenerateCodeUseCase {
                         .filter(op -> item.queryOperationId() == null || item.queryOperationId().equals(op.id()))
                         .findFirst())
                 .flatMap(op -> repository.findAllOfType(ReadModelEntity.class).stream()
-                        .filter(rm -> rm.modelId() != null && rm.modelId().equals(op.outputModelId()))
+                        .filter(rm -> rm.modelId() != null && rm.modelId().equals(op.outputModelId())
+                                // a view of an aggregate answers to the aggregate's model too (its own
+                                // shape may be derived from it, see AggregateStateProjections)
+                                || rm.aggregateId() != null && repository.findById(rm.aggregateId(), AggregateEntity.class)
+                                        .map(a -> op.outputModelId() != null && op.outputModelId().equals(a.modelId())).orElse(false))
                         .findFirst());
     }
 
@@ -1343,6 +1361,8 @@ public class GenerateCodeUseCase {
         var enrichedSteps = new java.util.ArrayList<Map<String, Object>>();
         var needsStreamBridge = false;
         var loadedAggregates = new java.util.HashSet<String>();
+        // calls to a use case another service deploys: what each returned, for the hooks after it
+        var remoteResponses = new java.util.ArrayList<Map<String, Object>>();
 
         if (useCase.steps() != null) {
             var stepIndex = -1;
@@ -1391,6 +1411,21 @@ public class GenerateCodeUseCase {
                         stepMap.put("operationInputArgs", input == null ? null : String.join(", ", inputArgs));
                     }
                 }
+                // A use case of ANOTHER service is not a bean here: the call goes over HTTP, through a
+                // client generated next to the caller and the callee's REST endpoint (one line in the
+                // editor: use case → use case). What it answers is handed to the hooks after it.
+                if ("CallUseCase".equals(stepType) && step.useCaseId() != null) {
+                    var remote = remoteCallOf(useCase.id(), step.useCaseId(), commandFieldNames);
+                    if (remote != null) {
+                        stepMap.put("type", "CallRemoteUseCase");
+                        stepMap.put("remote", remote);
+                        stepType = "CallRemoteUseCase";
+                        remoteResponses.add(remote);
+                    }
+                }
+                if ("Custom".equals(stepType) && !remoteResponses.isEmpty()) {
+                    stepMap.put("remoteParams", new java.util.ArrayList<>(remoteResponses));
+                }
                 // A step this template cannot write for real becomes a hook (two-zone rule: no TODO
                 // business logic in the generated zone). Its intent says what it has to do.
                 var hookIntent = hookIntentFor(stepType, stepMap, commandFieldNames, loadedAggregates);
@@ -1398,6 +1433,7 @@ public class GenerateCodeUseCase {
                     stepMap.put("type", "Custom");
                     if (!stepMap.containsKey("intent")) stepMap.put("intent", hookIntent);
                     stepType = "Custom";
+                    if (!remoteResponses.isEmpty()) stepMap.put("remoteParams", new java.util.ArrayList<>(remoteResponses));
                 }
                 if ("CallGateway".equals(stepType) && stepMap.get("gatewayOperation") instanceof Map<?, ?> opMap) {
                     var inModelId = (String) opMap.get("inputModelId");
@@ -1493,6 +1529,88 @@ public class GenerateCodeUseCase {
             case "ReadAggregate" -> stepMap.containsKey("idField") ? null
                     : "Carga " + agg + " a partir de los datos del comando";
             default -> null;
+        };
+    }
+
+    /** "conciertoId" → "Concierto id": a column header when the model gives no label. */
+    private static String humanize(String name) {
+        var spaced = name.replaceAll("([a-z0-9])([A-Z])", "$1 $2").toLowerCase();
+        return spaced.isEmpty() ? spaced : Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
+    }
+
+    /** The service that deploys a use case (through the module of its context), or null. */
+    private ServiceEntity serviceOfUseCase(String useCaseId) {
+        for (var sv : repository.findAllOfType(ServiceEntity.class)) {
+            for (var bc : deployedUnits(sv)) {
+                if (bc.useCaseIds() != null && bc.useCaseIds().contains(useCaseId)) return sv;
+            }
+        }
+        return null;
+    }
+
+    /** Whether a use case of another service calls this one: then it answers over REST. */
+    private boolean calledRemotely(UseCaseEntity callee) {
+        var calleeService = serviceOfUseCase(callee.id());
+        if (calleeService == null) return false;
+        return repository.findAllOfType(UseCaseEntity.class).stream()
+                .filter(uc -> uc.steps() != null && uc.steps().stream().anyMatch(st ->
+                        st.type() == UseCaseStepType.CallUseCase && callee.id().equals(st.useCaseId())))
+                .map(uc -> serviceOfUseCase(uc.id()))
+                .anyMatch(sv -> sv != null && !sv.id().equals(calleeService.id()));
+    }
+
+    /**
+     * A call from one service's use case to another's: the client the caller needs (its request
+     * built from the command, its response typed after the callee's output) and where the callee
+     * answers. Null when both run in the same service — then it is a plain bean call.
+     */
+    private Map<String, Object> remoteCallOf(String callerId, String calleeId, Set<String> commandFieldNames) {
+        var callee = repository.findById(calleeId, UseCaseEntity.class).orElse(null);
+        var callerService = serviceOfUseCase(callerId);
+        var calleeService = serviceOfUseCase(calleeId);
+        if (callee == null || callerService == null || calleeService == null || callerService.id().equals(calleeService.id())) {
+            return null;
+        }
+        var className = toTypeName(callee.name());
+        var request = new java.util.ArrayList<Map<String, Object>>();
+        fieldsOf(callee.inputModelId()).forEach(f -> request.add(Map.of(
+                "name", f.name(), "javaType", javaTypeOf(f),
+                "expr", commandFieldNames.contains(f.name()) ? "command." + f.name() + "()" : "null")));
+        var response = new java.util.ArrayList<Map<String, Object>>();
+        fieldsOf(callee.outputModelId()).forEach(f -> response.add(Map.of("name", f.name(), "javaType", javaTypeOf(f))));
+        var apiVersion = callee.apiVersion() != null && !callee.apiVersion().isBlank() ? callee.apiVersion() : "v1";
+        if (!apiVersion.startsWith("v")) apiVersion = "v" + apiVersion;
+        var svcSlug = serviceName(calleeService).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
+        Map<String, Object> remote = new HashMap<>();
+        remote.put("className", className);
+        remote.put("var", uncapitalize(className));
+        remote.put("service", serviceName(calleeService));
+        remote.put("urlProperty", svcSlug.toUpperCase().replace("-", "_") + "_URL");
+        remote.put("port", calleeService.port() != null ? calleeService.port() : 8080);
+        remote.put("path", "/" + apiVersion + "/" + callee.name().toLowerCase().replaceAll("[^a-z0-9]", "-"));
+        remote.put("request", request);
+        remote.put("response", response);
+        remote.put("hasResponse", !response.isEmpty());
+        return remote;
+    }
+
+    private List<ModelFieldEntity> fieldsOf(String modelId) {
+        if (modelId == null || modelId.isBlank()) return List.of();
+        return repository.findById(modelId, ModelEntity.class)
+                .map(m -> m.fields() == null ? List.<ModelFieldEntity>of() : m.fields()).orElse(List.of());
+    }
+
+    /** The Java type a field travels as between services (enums and references as text). */
+    private static String javaTypeOf(ModelFieldEntity f) {
+        if (!f.basicType() || f.type() == null) return "String";
+        return switch (f.type().name()) {
+            case "integer" -> "Integer";
+            case "number", "money" -> "java.math.BigDecimal";
+            case "bool" -> "Boolean";
+            case "date" -> "java.time.LocalDate";
+            case "time" -> "java.time.LocalTime";
+            case "dateTime" -> "java.time.LocalDateTime";
+            default -> "String";
         };
     }
 
@@ -2869,6 +2987,11 @@ public class GenerateCodeUseCase {
 
         createFile(appDir, model, "role-security.ftl",
                 "src/main/java/" + packageDir + "/infra/in/security/SecurityConfig.java");
+        if (!roles.isEmpty() && idpFor(project).isEmpty()) {
+            model.put("securityPackage", project.packageName() + ".infra.in.security");
+            createFile(appDir, model, "auth-cookie.ftl",
+                    "src/main/java/" + packageDir + "/infra/in/security/ModuxAuthCookie.java");
+        }
     }
 
     // ─── UIAdapter Home ───────────────────────────────────────────────────────
@@ -3077,6 +3200,19 @@ public class GenerateCodeUseCase {
                     var listingModel = buildBaseModel(project, service, unit);
                     listingModel.put("className", className);
                     listingModel.put("title", listing.get("label"));
+                    // the row the listing shows: the model's labels, money with its two decimals
+                    var rmFields = rm.modelId() == null ? List.<ModelFieldEntity>of()
+                            : repository.findById(rm.modelId(), ModelEntity.class)
+                                    .map(m -> m.fields() == null ? List.<ModelFieldEntity>of() : m.fields()).orElse(List.of());
+                    listingModel.put("rowFields", rmFields.stream().map(f -> {
+                        Map<String, Object> rf = new HashMap<>();
+                        rf.put("name", f.name());
+                        rf.put("label", f.label() != null && !f.label().isBlank() ? f.label() : humanize(f.name()));
+                        rf.put("accessor", f.basicType() ? f.name() : f.name() + "Id");
+                        rf.put("money", f.basicType() && f.type() != null
+                                && ("money".equals(f.type().name()) || "number".equals(f.type().name())));
+                        return rf;
+                    }).toList());
                     var unitDir = serviceDir + "/" + boundedContextSlug(unit.name());
                     var pagesDir = "src/main/java/" + packageDir + "/" + moduleSlug + "/infra/in/ui/pages/" + className.toLowerCase();
                     createDir(unitDir, pagesDir);
@@ -3085,6 +3221,45 @@ public class GenerateCodeUseCase {
                 }).orElse(null))
                 .filter(java.util.Objects::nonNull)
                 .toList());
+
+        // An event-sourced aggregate in the menu brings its history: what happened to each one, in order
+        var histories = new java.util.ArrayList<Map<String, Object>>();
+        for (var it : flattenMenu(adapter.menuItems())) {
+            if (it.aggregateId() == null || it.aggregateId().isBlank()) continue;
+            var aggregate = repository.findById(it.aggregateId(), AggregateEntity.class).orElse(null);
+            if (aggregate == null || !isEventSourced(aggregate)) continue;
+            var unit = deployedUnits(service).stream()
+                    .filter(u -> u.aggregateIds() != null && u.aggregateIds().contains(aggregate.id()))
+                    .findFirst().orElse(null);
+            if (unit == null) continue;
+            var className = aggregate.name() + "HistoryListing";
+            var slug = aggregate.name().toLowerCase() + "historial";
+            var moduleSlug = boundedContextSlug(unit.name());
+            var label = "Historial de " + (it.label() != null && !it.label().isBlank() ? it.label().toLowerCase() : aggregate.name());
+            var historyModel = buildBaseModel(project, service, unit);
+            historyModel.put("className", className);
+            historyModel.put("aggregateName", aggregate.name());
+            historyModel.put("moduleSlug", moduleSlug);
+            historyModel.put("slug", slug);
+            historyModel.put("title", label);
+            var unitDir = serviceDir + "/" + boundedContextSlug(unit.name());
+            var pagesDir = "src/main/java/" + packageDir + "/" + moduleSlug + "/infra/in/ui/pages/" + slug;
+            createDir(unitDir, pagesDir);
+            createFile(unitDir, historyModel, "es-history-listing.ftl", pagesDir + "/" + className + ".java");
+            Map<String, Object> listing = new HashMap<>();
+            listing.put("className", className);
+            listing.put("moduleSlug", moduleSlug);
+            listing.put("slug", slug);
+            listing.put("label", label);
+            listing.put("field", slug);
+            histories.add(listing);
+        }
+        if (!histories.isEmpty()) {
+            @SuppressWarnings("unchecked")
+            var all = new java.util.ArrayList<>((List<Map<String, Object>>) model.get("menuListings"));
+            all.addAll(histories);
+            model.put("menuListings", all);
+        }
 
         // Overwrite Home.java with UIAdapter-driven version
         createFile(appDir, model, "ui-adapter-home.ftl",
@@ -3546,12 +3721,47 @@ public class GenerateCodeUseCase {
                             "port", portsByServiceId.get(a.serviceId()));
                 })
                 .toList());
+        var proxies = gatewayProxies(services);
+        model.put("proxies", proxies);
         var gatewayDir = project.outputPath() + "/gateway";
         var packageDir = (project.packageName() + ".gateway").replace(".", "/");
         createFile(gatewayDir, model, "gateway-pom.ftl", "pom.xml");
         createFile(gatewayDir, model, "gateway-application.ftl",
                 "src/main/java/" + packageDir + "/ApiGatewayApplication.java");
         createFile(gatewayDir, model, "gateway-yaml.ftl", "src/main/resources/application.yaml");
+        if (proxies.stream().anyMatch(p -> (int) p.get("ttl") > 0)) {
+            createFile(gatewayDir, model, "gateway-proxy-cache.ftl",
+                    "src/main/java/" + packageDir + "/ProxyCacheFilter.java");
+        }
+    }
+
+    /**
+     * Every proxy that fronts an API some deployed service implements becomes a gateway route —
+     * its public path to that service's REST — with the proxy's cache, when it declares one.
+     */
+    private List<Map<String, Object>> gatewayProxies(List<ServiceEntity> services) {
+        var out = new java.util.ArrayList<Map<String, Object>>();
+        for (var proxy : repository.findAllOfType(ProxyApiEntity.class)) {
+            if (proxy.targetApiId() == null) continue;
+            var api = repository.findById(proxy.targetApiId(), ApiEntity.class).orElse(null);
+            if (api == null || api.implementedByBoundedContextIds() == null) continue;
+            var service = services.stream()
+                    .filter(sv -> deployedUnits(sv).stream().anyMatch(bc -> api.implementedByBoundedContextIds().contains(bc.id())))
+                    .findFirst().orElse(null);
+            if (service == null) continue;
+            var slug = proxy.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-").replaceAll("^-|-$", "");
+            var path = proxy.path() != null && !proxy.path().isBlank()
+                    ? "/" + proxy.path().replaceAll("^/+|/+$", "") : "/public/" + slug;
+            out.add(Map.of(
+                    "slug", slug,
+                    "name", proxy.name(),
+                    "path", path,
+                    "segments", path.split("/").length - 1,
+                    "svc", serviceName(service).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
+                    "port", service.port() != null ? service.port() : 8080,
+                    "ttl", proxy.cacheTtlSeconds() != null ? proxy.cacheTtlSeconds() : 0));
+        }
+        return out;
     }
 
     // ─── UI Shells ────────────────────────────────────────────────────────────
@@ -3604,8 +3814,16 @@ public class GenerateCodeUseCase {
                 "src/main/java/" + packageDir + "/" + shellClassName + "Application.java");
         createFile(shellDir, model, "uishell-home.ftl",
                 "src/main/java/" + packageDir + "/infra/in/ui/" + shellClassName + "Home.java");
+        var shellRoles = repository.findAllOfType(RoleEntity.class).stream()
+                .filter(r -> inProject(r.projectId(), project)).map(r -> fromJson(toJson(r))).toList();
+        model.put("roles", shellRoles);
         createFile(shellDir, model, "uishell-security.ftl",
                 "src/main/java/" + packageDir + "/infra/config/SecurityConfig.java");
+        if (!shellRoles.isEmpty() && idpFor(project).isEmpty()) {
+            model.put("securityPackage", shellPackage + ".infra.config");
+            createFile(shellDir, model, "auth-cookie.ftl",
+                    "src/main/java/" + packageDir + "/infra/config/ModuxAuthCookie.java");
+        }
         createFile(shellDir, model, "uishell-yaml.ftl",
                 "src/main/resources/application.yaml");
     }
@@ -3954,6 +4172,11 @@ public class GenerateCodeUseCase {
         model.put("module", boundedContextToMap(boundedContext));
         model.put("aggregate", aggregateToMap(aggregate));
         model.put("dataAccess", dataAccessOf(project, aggregate));
+        // drawn into a read model somewhere: its repository publishes the state on every change
+        if (flowStoreMaterializer.stateProjections().isStateSource(aggregate.id())) {
+            model.put("stateTopic", AggregateStateProjections.topicOf(AggregateStateProjections.stateEventName(aggregate.name())));
+            model.put("deletedTopic", AggregateStateProjections.topicOf(AggregateStateProjections.deletedEventName(aggregate.name())));
+        }
         return model;
     }
 

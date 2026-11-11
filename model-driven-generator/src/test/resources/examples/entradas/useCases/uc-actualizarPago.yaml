@@ -1,0 +1,18 @@
+---
+id: "uc-actualizarPago"
+name: "ActualizarPago"
+inputModelId: "model-pago"
+steps:
+- id: "step-read"
+  name: "readPago"
+  type: "ReadAggregate"
+  aggregateId: "pago"
+- id: "step-save"
+  name: "savePago"
+  type: "SaveAggregate"
+  aggregateId: "pago"
+- id: "step-publish-ev-pagoModificado"
+  name: "publishPagoModificado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-pagoModificado"
+projectId: "entradas"

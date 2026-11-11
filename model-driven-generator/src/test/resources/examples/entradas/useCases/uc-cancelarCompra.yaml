@@ -1,0 +1,23 @@
+---
+id: "uc-cancelarCompra"
+name: "CancelarCompra"
+exposedAsUi: true
+inputModelId: "m-cancelar"
+steps:
+- id: "step-read"
+  name: "readCompra"
+  type: "ReadAggregate"
+  aggregateId: "compra"
+- id: "step-op"
+  name: "cancelar"
+  type: "CallAggregateOperation"
+  aggregateId: "compra"
+  operationId: "op-cancelar"
+- id: "step-save"
+  name: "saveCompra"
+  type: "SaveAggregate"
+  aggregateId: "compra"
+allowedRoles:
+- "CLIENTE"
+title: "Cancelar una compra"
+projectId: "entradas"

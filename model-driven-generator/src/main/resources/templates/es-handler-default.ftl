@@ -16,23 +16,22 @@ import java.util.List;
 @Component
 public class Default${aggregate.name}EventSourcing implements ${aggregate.name}EventSourcing {
 
+    /**
+     * The domain events of the aggregate's latest change (instances of the {Event}Event records in
+     * domain.events). Returning none is a valid choice: the repository then records the state the
+     * aggregate was saved in (${aggregate.name}Guardado), so the history is complete either way.
+     */
     @Override
     public List<Object> eventsOf(${aggregate.name} aggregate) {
-        // TODO: return the domain events produced by the aggregate's latest change (instances of the
-        // {Event}Event records in domain.events). While this is empty, no events are appended and reads
-        // use the current-state snapshot.
         return List.of();
     }
 
+    /**
+     * Rebuilds the aggregate from its decoded history. Returning null reads the current-state
+     * snapshot, which the repository keeps up to date on every save.
+     */
     @Override
     public ${aggregate.name} replay(${aggregate.name}Id id, List<Object> events) {
-        // TODO: fold the decoded domain events to rebuild the aggregate, e.g.:
-        //   ${aggregate.name} state = null;
-        //   for (var event : events) {
-        //       if (event instanceof SomeEvent e) { state = ...; }
-        //   }
-        //   return state;
-        // Returning null falls back to the current-state snapshot.
         return null;
     }
 }

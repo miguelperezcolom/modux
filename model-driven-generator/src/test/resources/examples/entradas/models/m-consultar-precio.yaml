@@ -1,0 +1,13 @@
+---
+id: "m-consultar-precio"
+name: "ConsultarPrecioInput"
+fields:
+- id: "f-m-consultar-precio-conciertoId"
+  name: "conciertoId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-consultar-precio-conciertoId"
+    type: "NotEmpty"
+  label: "Concierto"
+projectId: "entradas"

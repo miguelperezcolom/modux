@@ -12,7 +12,7 @@ mvn modux:ai-complete
 
 For each service with pending hooks, the goal:
 
-1. Sends the command line those hooks and the generated contracts they may use (domain, outbound ports, commands and results).
+1. Sends the command line those hooks and the generated contracts they may use (domain, outbound ports, the read side — read models and their queries —, commands, results and the use case itself, so a hook never repeats what the use case does after it).
 2. Writes the answer, only inside `{service}-custom/src/main/java`.
 3. Compiles the service. If it does not compile, it sends the errors back, up to three attempts.
 4. If it never compiles, restores the hooks as they were and fails.

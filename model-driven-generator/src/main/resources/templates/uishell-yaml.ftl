@@ -1,5 +1,8 @@
 server:
   port: ${r"${SHELL_PORT:8100}"}
+  # behind the gateway: a redirect (the login) must not name this container's host
+  tomcat:
+    use-relative-redirects: true
 
 spring:
   application:

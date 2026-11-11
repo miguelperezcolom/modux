@@ -1,0 +1,7 @@
+---
+id: "svc-analitica"
+name: "Analitica"
+port: 8094
+moduleIds:
+- "bc-analitica-main"
+projectId: "entradas"

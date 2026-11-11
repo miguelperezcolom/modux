@@ -1,0 +1,18 @@
+---
+id: "ui-ventas"
+name: "Ventas"
+serviceId: "svc-ventas"
+title: "Ventas"
+path: "/ventas"
+menuItems:
+- label: "Comprar entradas"
+  id: "ui-ventas-0"
+  useCaseId: "uc-comprar"
+- label: "Cancelar una compra"
+  id: "ui-ventas-1"
+  useCaseId: "uc-cancelarCompra"
+- label: "Compras"
+  id: "ui-ventas-2"
+  aggregateId: "compra"
+appType: "APP"
+projectId: "entradas"

@@ -1,0 +1,6 @@
+---
+id: "bc-ventas-main"
+name: "Ventas"
+boundedContextId: "bc-ventas"
+main: true
+projectId: "entradas"

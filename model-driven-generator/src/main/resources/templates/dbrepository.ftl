@@ -47,6 +47,10 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     final ${aggregate.name}EntityRepository repository;
     final ApplicationEventPublisher domainEvents;
+<#if stateTopic??>
+    final org.springframework.cloud.stream.function.StreamOperations stateStream;
+    final com.fasterxml.jackson.databind.ObjectMapper stateMapper;
+</#if>
 <#if dataAccess != "JPA">
     final JdbcTemplate jdbc;
 </#if>
@@ -164,7 +168,11 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     @Override
     public ${aggregate.name}Id save(${aggregate.name} domain) {
-        var id = new ${aggregate.name}Id(repository.save(toEntity(domain)).getId());
+        var saved = repository.save(toEntity(domain));
+        var id = new ${aggregate.name}Id(saved.getId());
+<#if stateTopic??>
+        publishState(saved);
+</#if>
         // Domain events raised inside the aggregate (AggregateRoot.send) surface as Spring
         // application events on save — in-process policies subscribe with @EventListener.
         domain.popEvents().forEach(domainEvents::publishEvent);
@@ -174,6 +182,24 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
     @Override
     public void deleteAllById(List<${aggregate.name}Id> selectedIds) {
         repository.deleteAllById(selectedIds.stream().map(${aggregate.name}Id::value).toList());
+<#if deletedTopic??>
+        selectedIds.forEach(selected -> publishDeleted(selected.value()));
+</#if>
     }
+<#if stateTopic??>
+
+    /** This aggregate feeds a read model: its whole state travels on every change (event-carried state transfer). */
+    private void publishState(${aggregate.name}Entity state) {
+        try {
+            stateStream.send("${stateTopic}", stateMapper.writeValueAsString(state));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize the state of ${aggregate.name}", e);
+        }
+    }
+
+    private void publishDeleted(Object id) {
+        stateStream.send("${deletedTopic}", "{\"id\":\"" + id + "\"}");
+    }
+</#if>
 
 }

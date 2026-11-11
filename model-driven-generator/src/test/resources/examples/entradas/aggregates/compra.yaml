@@ -1,0 +1,24 @@
+---
+id: "compra"
+name: "Compra"
+modelId: "model-compra"
+persistenceType: "EVENT_SOURCED"
+operations:
+- id: "op-confirmar"
+  name: "confirmar"
+  type: "CUSTOM"
+  intent: "Una compra PENDIENTE pasa a CONFIRMADA; en otro estado se rechaza con «\
+    La compra no está pendiente»."
+- id: "op-rechazar"
+  name: "rechazar"
+  inputModelId: "model-op-rechazar"
+  type: "CUSTOM"
+  intent: "Una compra PENDIENTE pasa a RECHAZADA con el motivo recibido; en otro estado\
+    \ se rechaza con «La compra no está pendiente»."
+- id: "op-cancelar"
+  name: "cancelar"
+  type: "CUSTOM"
+  intent: "Una compra PENDIENTE pasa a CANCELADA; una confirmada no se cancela: «\
+    Una compra confirmada no se puede cancelar»."
+title: "Compras"
+projectId: "entradas"

@@ -676,3 +676,31 @@ describe('the block as a whole', () => {
     expect(store.get('roles', 'act')?.allowedUseCaseIds).toBeUndefined();
   });
 });
+
+describe('projections', () => {
+  it('stores the source under the names the model reads (sourceAggregateId…)', () => {
+    const store = model({ boundedContexts: [
+      { id: 'bc-res', name: 'Reservas', aggregateIds: ['agg-reserva'], useCaseIds: [] },
+      { id: 'bc-pan', name: 'Panel', aggregateIds: [], useCaseIds: [] },
+    ] });
+    apply(store, { kind: 'add-projection', id: 'proj-reservas', name: 'Reservas',
+      aggregateId: 'agg-reserva', boundedContextId: 'bc-pan' } as never);
+    const projection = store.get('projections', 'proj-reservas');
+    expect(projection?.sourceAggregateId).toBe('agg-reserva');
+    expect(projection).not.toHaveProperty('aggregateId');
+  });
+});
+
+describe('use case calls', () => {
+  it('puts the call before the logic, so its answer is at hand', () => {
+    const store = model({ useCases: [
+      { id: 'uc-a', name: 'Comprar', steps: [
+        { id: 's1', name: 'decidir', type: 'Custom' },
+        { id: 's2', name: 'publicar', type: 'PublishDomainEvent' }] },
+      { id: 'uc-b', name: 'ConsultarPrecio', steps: [] },
+    ] });
+    apply(store, { kind: 'add-use-case-call', sourceId: 'uc-a', targetId: 'uc-b' } as never);
+    const steps = store.get('useCases', 'uc-a')?.steps as { type: string }[];
+    expect(steps.map((s) => s.type)).toEqual(['CallUseCase', 'Custom', 'PublishDomainEvent']);
+  });
+});

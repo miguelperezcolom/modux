@@ -1,0 +1,6 @@
+---
+id: "bc-catalogo-main"
+name: "Catalogo"
+boundedContextId: "bc-catalogo"
+main: true
+projectId: "entradas"

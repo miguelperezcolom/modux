@@ -1,0 +1,10 @@
+---
+id: "model-op-rechazar"
+name: "RechazarInput"
+fields:
+- id: "f-model-op-rechazar-motivo"
+  name: "motivo"
+  basicType: true
+  type: "string"
+  label: "Motivo"
+projectId: "entradas"

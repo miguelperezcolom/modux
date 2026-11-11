@@ -1,0 +1,10 @@
+---
+id: "m-pago-aceptado"
+name: "PagoAceptado"
+fields:
+- id: "f-m-pago-aceptado-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  label: "Compra"
+projectId: "entradas"

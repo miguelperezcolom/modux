@@ -1,0 +1,6 @@
+---
+id: "bc-analitica-main"
+name: "Analitica"
+boundedContextId: "bc-analitica"
+main: true
+projectId: "entradas"

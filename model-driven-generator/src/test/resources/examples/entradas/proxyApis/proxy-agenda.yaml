@@ -1,0 +1,6 @@
+---
+id: "proxy-agenda"
+name: "Agenda"
+targetApiId: "api-crud-concierto"
+projectId: "entradas"
+cacheTtlSeconds: 60

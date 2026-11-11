@@ -29,6 +29,10 @@ public class ${aggregate.name}EventSourcedRepository implements ${aggregate.name
     final ${aggregate.name}EventAppender eventAppender;
     final ${aggregate.name}EventCodec eventCodec;
     final ${aggregate.name}EventSourcing eventSourcing;
+<#if stateTopic??>
+    final org.springframework.cloud.stream.function.StreamOperations stateStream;
+    final com.fasterxml.jackson.databind.ObjectMapper stateMapper;
+</#if>
 
     @Override
     public Optional<${aggregate.name}> findById(${aggregate.name}Id id) {
@@ -55,16 +59,42 @@ public class ${aggregate.name}EventSourcedRepository implements ${aggregate.name
     public ${aggregate.name}Id save(${aggregate.name} domain) {
         var snapshot = repository.save(toEntity(domain));
         var id = new ${aggregate.name}Id(snapshot.getId());
-        for (var event : eventSourcing.eventsOf(domain)) {
+        var events = eventSourcing.eventsOf(domain);
+        if (events.isEmpty()) {
+            // no domain events of its own: the history is the sequence of states it was saved in
+            eventAppender.append(String.valueOf(snapshot.getId()), "${aggregate.name}Guardado", snapshot);
+        }
+        for (var event : events) {
             eventAppender.append(String.valueOf(snapshot.getId()), event);
         }
+<#if stateTopic??>
+        publishState(snapshot);
+</#if>
         return id;
     }
 
     @Override
     public void deleteAllById(List<${aggregate.name}Id> selectedIds) {
         repository.deleteAllById(selectedIds.stream().map(${aggregate.name}Id::value).toList());
+<#if deletedTopic??>
+        selectedIds.forEach(selected -> publishDeleted(selected.value()));
+</#if>
     }
+<#if stateTopic??>
+
+    /** This aggregate feeds a read model: its whole state travels on every change (event-carried state transfer). */
+    private void publishState(${aggregate.name}Entity state) {
+        try {
+            stateStream.send("${stateTopic}", stateMapper.writeValueAsString(state));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("Cannot serialize the state of ${aggregate.name}", e);
+        }
+    }
+
+    private void publishDeleted(Object id) {
+        stateStream.send("${deletedTopic}", "{\"id\":\"" + id + "\"}");
+    }
+</#if>
 
     private ${aggregate.name} toDomain(${aggregate.name}Entity entity) {
         return new ${aggregate.name}(

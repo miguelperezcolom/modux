@@ -86,9 +86,10 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
       name: command.name,
       readModelId,
       mappings: [],
-      aggregateId: aggregate?.id ?? null,
-      externalUseCaseId: command.externalUseCaseId ?? null,
-      externalTableId: command.externalTableId ?? null,
+      // the names the model (ProjectionEntity, the schema) gives them — the server reads these
+      sourceAggregateId: aggregate?.id ?? null,
+      sourceExternalUseCaseId: command.externalUseCaseId ?? null,
+      sourceExternalTableId: command.externalTableId ?? null,
     });
     store.addToList('boundedContexts', owner.id, 'projectionIds', id);
   },

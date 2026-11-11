@@ -41,6 +41,22 @@ public class ${aggregate.name}EventAppender {
         store.save(entity);
     }
 
+    /** Append a record of the given type (e.g. the state the aggregate was saved in). */
+    @SneakyThrows
+    public void append(String aggregateId, String eventType, Object payload) {
+        var history = store.findByAggregateIdOrderBySequenceNumberAsc(aggregateId);
+        var nextSequence = history.isEmpty()
+                ? 1L
+                : history.get(history.size() - 1).getSequenceNumber() + 1;
+        store.save(new ${aggregate.name}EventEntity(
+                null,
+                aggregateId,
+                nextSequence,
+                eventType,
+                objectMapper.writeValueAsString(payload),
+                LocalDateTime.now()));
+    }
+
     /** The ordered event stream for an aggregate id. */
     public List<${aggregate.name}EventEntity> history(String aggregateId) {
         return store.findByAggregateIdOrderBySequenceNumberAsc(aggregateId);

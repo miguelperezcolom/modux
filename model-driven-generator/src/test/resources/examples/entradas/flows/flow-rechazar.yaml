@@ -1,0 +1,9 @@
+---
+id: "flow-rechazar"
+name: "rechazar"
+archetype: "TRIGGERS"
+triggerAggregateId: "pago"
+triggerEvent: "PagoRechazado"
+targetBoundedContextId: "bc-ventas"
+targetUseCaseId: "uc-rechazarCompra"
+projectId: "entradas"

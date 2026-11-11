@@ -61,6 +61,13 @@ public class SecurityConfig {
         return http.build();
     }
 <#else>
+    /** One login for the whole system (see ModuxAuthCookie): the shell's, or any service's. */
+    private final ModuxAuthCookie authCookie;
+
+    public SecurityConfig(org.springframework.core.env.Environment env) {
+        this.authCookie = ModuxAuthCookie.from(env);
+    }
+
     /**
      * Machine/API border (Mateu sync, MCP): no HTML form here — unauthenticated callers
      * get a 401 with a basic challenge instead of a redirect to the login page, so
@@ -75,6 +82,7 @@ public class SecurityConfig {
             .securityMatcher("/mateu/**", "/*/mateu/**", "/mcp", "/mcp/**")
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+            .addFilterBefore(authCookie, org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class)
             .httpBasic(basic -> { })
             .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(basicChallenge()));
         return http.build();
@@ -97,10 +105,12 @@ public class SecurityConfig {
                 // sendError keeps its status through the error re-dispatch.
                 .requestMatchers("/v1/**", "/error").permitAll()
                 .anyRequest().authenticated())
-            // Browser: form login. Agents and APIs (MCP included): HTTP Basic.
-            .formLogin(login -> login.defaultSuccessUrl("/", true))
+            .addFilterBefore(authCookie, org.springframework.security.web.authentication.www.BasicAuthenticationFilter.class)
+            // Browser: form login (it signs the user in for every service). Agents and APIs: HTTP Basic.
+            .formLogin(login -> login.successHandler(authCookie.loginSuccess("/")))
             .httpBasic(basic -> { })
-            .logout(logout -> logout.logoutSuccessUrl("/login"));
+            .logout(logout -> logout.addLogoutHandler((request, response, authentication) -> ModuxAuthCookie.clear(response))
+                    .logoutSuccessUrl("/login"));
         return http.build();
     }
 

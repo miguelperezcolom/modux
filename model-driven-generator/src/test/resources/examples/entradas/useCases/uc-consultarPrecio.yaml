@@ -1,0 +1,12 @@
+---
+id: "uc-consultarPrecio"
+name: "ConsultarPrecio"
+inputModelId: "m-consultar-precio"
+outputModelId: "m-precio"
+steps:
+- id: "step-consultar"
+  name: "consultar"
+  type: "Custom"
+  intent: "Carga el concierto por su id y devuelve su precio, su estado (EN_VENTA\
+    \ o CERRADO) y su artista; si no existe, BusinessRuleException.notFound."
+projectId: "entradas"

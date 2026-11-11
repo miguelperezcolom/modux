@@ -1,0 +1,15 @@
+---
+id: "uc-eliminarConcierto"
+name: "EliminarConcierto"
+steps:
+- id: "step-delete"
+  name: "deleteConcierto"
+  type: "Custom"
+  aggregateId: "concierto"
+- id: "step-publish-ev-conciertoEliminado"
+  name: "publishConciertoEliminado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-conciertoEliminado"
+allowedRoles:
+- "PROMOTORA"
+projectId: "entradas"

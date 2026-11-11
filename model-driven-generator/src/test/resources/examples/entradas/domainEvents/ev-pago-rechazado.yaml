@@ -1,0 +1,5 @@
+---
+id: "ev-pago-rechazado"
+name: "PagoRechazado"
+modelId: "m-pago-rechazado"
+projectId: "entradas"

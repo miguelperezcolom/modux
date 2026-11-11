@@ -1,0 +1,51 @@
+---
+id: "model-compra"
+name: "Compra"
+fields:
+- id: "f-model-compra-conciertoId"
+  name: "conciertoId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-compra-conciertoId"
+    type: "NotEmpty"
+  label: "Concierto"
+- id: "f-model-compra-cliente"
+  name: "cliente"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-compra-cliente"
+    type: "NotEmpty"
+  label: "Cliente"
+- id: "f-model-compra-entradas"
+  name: "entradas"
+  basicType: true
+  type: "integer"
+  validations:
+  - id: "v-f-model-compra-entradas"
+    type: "NotNull"
+  label: "Entradas"
+- id: "f-model-compra-importe"
+  name: "importe"
+  basicType: true
+  type: "money"
+  label: "Importe"
+- id: "f-model-compra-tarjeta"
+  name: "tarjeta"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-compra-tarjeta"
+    type: "NotEmpty"
+  label: "Tarjeta"
+- id: "f-model-compra-estado"
+  name: "estado"
+  enumId: "enum-compra"
+  label: "Estado"
+- id: "f-model-compra-motivo"
+  name: "motivo"
+  basicType: true
+  type: "string"
+  label: "Motivo"
+projectId: "entradas"

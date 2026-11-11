@@ -1,0 +1,13 @@
+---
+id: "entradas"
+name: "Entradas"
+outputPath: "generated"
+packageName: "es.entradas"
+serviceIds:
+- "svc-catalogo"
+- "svc-ventas"
+- "svc-pagos"
+- "svc-analitica"
+objective: "Una promotora vende entradas para sus conciertos. El catálogo lo consulta\
+  \ mucha más gente de la que compra; una compra no vale hasta que el pago la confirma,\
+  \ y si el pago falla las entradas vuelven a la venta."

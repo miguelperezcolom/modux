@@ -1,0 +1,7 @@
+---
+id: "rm-compras"
+name: "CompraView"
+boundedContextId: "bc-analitica"
+modelId: "model-compra"
+aggregateId: "compra"
+projectId: "entradas"

@@ -1,0 +1,15 @@
+---
+id: "m-pago-rechazado"
+name: "PagoRechazado"
+fields:
+- id: "f-m-pago-rechazado-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  label: "Compra"
+- id: "f-m-pago-rechazado-motivo"
+  name: "motivo"
+  basicType: true
+  type: "string"
+  label: "Motivo"
+projectId: "entradas"

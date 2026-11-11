@@ -1,0 +1,23 @@
+---
+id: "uc-comprar"
+name: "Comprar"
+title: "Comprar entradas"
+exposedAsUi: true
+inputModelId: "m-comprar"
+outputModelId: "m-compra-realizada"
+steps:
+- id: "step-call-uc-consultarPrecio"
+  name: "callConsultarPrecio"
+  type: "CallUseCase"
+  useCaseId: "uc-consultarPrecio"
+- id: "step-comprar"
+  name: "comprar"
+  type: "Custom"
+  intent: "Con el precio vigente que da Catálogo (consultarPrecio): rechaza si las entradas no están entre 1 y 6, si el concierto no está EN_VENTA o si pide más de las disponibles («Solo quedan N entradas»); disponibles = aforo de ConciertoView menos las entradas de las compras de ese concierto que no están RECHAZADA ni CANCELADA. Si no, crea la compra PENDIENTE con importe = precio × entradas y devuelve CompraRealizada."
+- id: "step-pub-ev-compra-realizada"
+  name: "publishCompraRealizada"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-compra-realizada"
+allowedRoles:
+- "CLIENTE"
+projectId: "entradas"

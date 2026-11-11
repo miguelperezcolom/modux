@@ -1,0 +1,12 @@
+---
+id: "concierto"
+name: "Concierto"
+modelId: "model-concierto"
+operations:
+- id: "op-cerrar"
+  name: "cerrarVenta"
+  type: "CUSTOM"
+  intent: "Si el concierto está EN_VENTA pasa a CERRADO; si ya está cerrado, se rechaza\
+    \ con «La venta ya está cerrada»."
+title: "Conciertos"
+projectId: "entradas"

@@ -1,0 +1,10 @@
+---
+id: "qs-panel"
+name: "Panel"
+boundedContextId: "bc-analitica"
+operations:
+- id: "qs-panel-compras"
+  name: "compras"
+  outputModelId: "model-compra"
+  cardinality: "Page"
+projectId: "entradas"

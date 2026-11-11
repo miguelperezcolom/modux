@@ -1,0 +1,13 @@
+---
+id: "uc-eliminarPago"
+name: "EliminarPago"
+steps:
+- id: "step-delete"
+  name: "deletePago"
+  type: "Custom"
+  aggregateId: "pago"
+- id: "step-publish-ev-pagoEliminado"
+  name: "publishPagoEliminado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-pagoEliminado"
+projectId: "entradas"

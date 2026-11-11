@@ -58,4 +58,14 @@ class HookImplementerTest {
         assertThrows(IllegalStateException.class, () -> HookImplementer.parse(
                 "===FILE: ../../../evil.java\nx\n===END", dir.resolve("root")));
     }
+
+    @Test
+    void the_read_side_and_the_use_case_are_contracts_a_hook_can_use() {
+        var base = "ventas/ventas/src/main/java/es/x/ventas/";
+        assertTrue(HookImplementer.isContract(Path.of(base + "application/query/ConciertoViewReadModelQueryService.java")));
+        assertTrue(HookImplementer.isContract(Path.of(base + "application/usecases/comprar/ComprarUseCase.java")));
+        assertTrue(HookImplementer.isContract(Path.of(base + "application/out/remote/ConsultarPrecioClient.java")));
+        assertFalse(HookImplementer.isContract(Path.of(base + "infra/out/persistence/ConciertoViewReadModelEntityRepository.java")));
+        assertFalse(HookImplementer.isContract(Path.of("ventas/ventas-custom/src/main/java/es/x/custom/DefaultComprarSteps.java")));
+    }
 }

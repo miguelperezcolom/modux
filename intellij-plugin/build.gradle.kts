@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.3.0"
+version = "0.4.0"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,11 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.4.0</h4>
+            <ul>
+              <li>Release aligned with modux-maven-plugin 0.4.0: high-level patterns from one line (projections, calls between services, cached proxies), model checks before generating, one login without an identity provider.</li>
+              <li>A view nobody has placed opens laid out by ELK.</li>
+            </ul>
             <h4>0.3.0</h4>
             <ul>
               <li>Release aligned with modux-maven-plugin 0.3.0: deploy to local Docker or Kubernetes, with DNS.</li>

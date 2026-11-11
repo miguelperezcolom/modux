@@ -1,0 +1,35 @@
+---
+id: "m-compra-realizada"
+name: "CompraRealizada"
+fields:
+- id: "f-m-compra-realizada-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  label: "Compra"
+- id: "f-m-compra-realizada-conciertoId"
+  name: "conciertoId"
+  basicType: true
+  type: "string"
+  label: "Concierto"
+- id: "f-m-compra-realizada-cliente"
+  name: "cliente"
+  basicType: true
+  type: "string"
+  label: "Cliente"
+- id: "f-m-compra-realizada-entradas"
+  name: "entradas"
+  basicType: true
+  type: "integer"
+  label: "Entradas"
+- id: "f-m-compra-realizada-importe"
+  name: "importe"
+  basicType: true
+  type: "money"
+  label: "Importe"
+- id: "f-m-compra-realizada-tarjeta"
+  name: "tarjeta"
+  basicType: true
+  type: "string"
+  label: "Tarjeta"
+projectId: "entradas"

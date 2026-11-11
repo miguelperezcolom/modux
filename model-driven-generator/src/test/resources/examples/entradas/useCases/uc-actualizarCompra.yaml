@@ -1,0 +1,20 @@
+---
+id: "uc-actualizarCompra"
+name: "ActualizarCompra"
+inputModelId: "model-compra"
+steps:
+- id: "step-read"
+  name: "readCompra"
+  type: "ReadAggregate"
+  aggregateId: "compra"
+- id: "step-save"
+  name: "saveCompra"
+  type: "SaveAggregate"
+  aggregateId: "compra"
+- id: "step-publish-ev-compraModificado"
+  name: "publishCompraModificado"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-compraModificado"
+allowedRoles:
+- "CLIENTE"
+projectId: "entradas"

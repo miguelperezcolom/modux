@@ -1,0 +1,8 @@
+---
+id: "enum-pago"
+values:
+- id: "ACEPTADO"
+  name: "ACEPTADO"
+- id: "RECHAZADO"
+  name: "RECHAZADO"
+projectId: "entradas"

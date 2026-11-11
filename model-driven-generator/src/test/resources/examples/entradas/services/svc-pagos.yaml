@@ -1,0 +1,8 @@
+---
+id: "svc-pagos"
+name: "Pagos"
+port: 8093
+outboxEnabled: true
+moduleIds:
+- "bc-pagos-main"
+projectId: "entradas"

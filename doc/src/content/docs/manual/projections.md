@@ -108,15 +108,33 @@ If the projection logic changes, you can rebuild the target ReadModel by replayi
 ## Alternative sources
 
 Folding domain events (the `handlers` above) is the default source, but a projection
-can also declare that it materializes something else entirely. These are *declared
-now, implemented later*: the spec records the intent; how the data travels (CDC,
-snapshot events, polling schedule…) is a generation-time decision still open.
+can also declare that it materializes something else entirely.
 
 | Source field | Meaning | Canvas gesture |
 |---|---|---|
 | `sourceAggregateId` | Project an **aggregate's whole state** into the read model — even into another bounded context | Drag the aggregate onto a read model or a context |
 | `sourceExternalUseCaseId` | **Poll an external system's operation** — the classic scheduled pull | Drag the external operation onto a read model or a context |
 | `sourceExternalTableId` | **Poll a legacy system's table** (external systems declare their [tables](/manual/graphical-editor/)) | Drag the external table onto a read model or a context |
+
+### An aggregate's state, in one line
+
+A projection whose source is an **aggregate** (and that declares no handlers of its own)
+is generated end to end, in any context — draw the aggregate onto the read model, or onto
+the context that should keep the copy:
+
+- the aggregate's repository publishes its whole state on **every** save
+  (`{Aggregate}Estado`, topic `{aggregate}estado`) and its id on every delete
+  (`{Aggregate}Borrado`) — whatever saved it: the CRUD screen, a use case, an operation;
+  event-sourced aggregates too. With an [outbox](/manual/services/) the send is part of the
+  transaction;
+- the projection gets an upsert handler for the first and a delete handler for the second;
+- the read model takes the aggregate's fields (enums as text, the model's labels kept) unless
+  it declares its own shape.
+
+The read model is then a plain read side of that context: its query service is what its use
+cases read (`mvn modux:ai-complete` is told so), and a menu entry on a query whose output is
+the aggregate's model lists it, labels and amounts formatted. Polling sources (external
+operations and tables) are still declared only.
 
 Exactly **one** source is allowed per projection (handlers, aggregate, operation or
 table). Dropping on a context (instead of an existing read model) creates a stub read

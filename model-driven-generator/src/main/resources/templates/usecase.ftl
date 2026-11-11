@@ -89,6 +89,9 @@ public class ${usecase.className}UseCase {
 <#if usecase.needsStreamBridge>
     final StreamOperations streamBridge;
 </#if>
+<#list (usecase.steps![])?filter(s -> s.type == "CallRemoteUseCase") as step>
+    final ${project.packageName}.${module.slug}.application.out.remote.${step.remote.className}Client ${step.remote.var}Client;
+</#list>
 <#list (usecase.steps![])?filter(s -> s.integrationClass??) as step>
     final ${project.packageName}.${module.slug}.application.out.integration.${step.integrationClass}Publisher ${step.integrationClass?uncap_first}Publisher;
 </#list>
@@ -146,6 +149,8 @@ public class ${usecase.className}UseCase {
 <#else>
         streamBridge.send("${step.domainEvent.name?lower_case?replace("[^a-z0-9]","-",'r')}", new ${step.domainEvent.className}Event(<#if step.aggregateIdExpr??>String.valueOf(${step.aggregateIdExpr})<#else>null /* TODO: aggregateId */</#if><#if step.argFields??><#list step.argFields as a>, <#if a.expr??>${a.expr}<#elseif a.matched>command.${a.name}()<#else>null /* TODO: ${a.name} */</#if></#list></#if>));
 </#if>
+<#elseif step.type == "CallRemoteUseCase">
+        <#if step.remote.hasResponse>var ${step.remote.var} = </#if>${step.remote.var}Client.call(new ${project.packageName}.${module.slug}.application.out.remote.${step.remote.className}Client.Request(<#list step.remote.request as f>${f.expr}<#sep>, </#sep></#list>));
 <#elseif step.type == "CallUseCase" && step.useCase??>
         ${step.useCase.className?uncap_first}UseCase.handle(/* TODO: build ${step.useCase.className}Command */);
 <#elseif step.type == "ApplyModelMapping">
@@ -156,9 +161,9 @@ public class ${usecase.className}UseCase {
 </#if>
 <#elseif step.type == "Custom">
 <#if outputModel?? && customSteps?has_content && step.id == customSteps?last.id>
-        result = steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command);
+        result = steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${r.var}</#list>);
 <#else>
-        steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command);
+        steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${r.var}</#list>);
 </#if>
 <#else>
         // TODO: implement step "${step.name}" (${step.type})

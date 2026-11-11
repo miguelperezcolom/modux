@@ -120,6 +120,16 @@ operation it wires itself; otherwise the operation is picked in the form). The
 use-case→aggregate relation draws an amber «opera sobre» edge, and Supr on any of
 those edges removes the step behind it.
 
+A call to a use case is placed **before** the first custom step (or the first publication):
+it brings what the decision needs. When the called use case runs in **another service**, the
+call goes over REST with nothing else to declare: the callee answers at `/v1/{use-case}`, the
+caller gets a client (`application/out/remote/{UseCase}Client`, at `{SERVICE}_URL`), and the
+custom steps after the call receive its answer as a parameter:
+
+```java
+ComprarResult comprar(ComprarCommand command, ConsultarPrecioClient.Response consultarPrecio);
+```
+
 ### The pipeline shape
 
 Every operation of an information system has the same shape: **gather data → transform it → write it somewhere or return it**. Each step type plays one of those roles:

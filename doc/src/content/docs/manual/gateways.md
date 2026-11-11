@@ -72,6 +72,25 @@ The quickest way to create a gateway for a third-party API is to [import its Ope
 
 When you call a third-party API whose model differs from your domain, the gateway adapter is the natural place for an **Anti-Corruption Layer**: keep the gateway's DTOs separate from your domain model and translate between them in the adapter (optionally with [Model Mappings](/manual/model-mappings/)), so external changes don't leak into your domain.
 
+## API proxies and their cache
+
+A **proxy** (`proxyApis/`) fronts a published API for outside consumers. When the API is
+implemented by a deployed service, the system's API gateway routes the proxy's public path
+(`path`, by default `/public/{proxy}`) to it, and `cacheTtlSeconds` gives it a cache with one
+number:
+
+```yaml
+id: proxy-agenda
+name: Agenda
+targetApiId: api-crud-concierto
+cacheTtlSeconds: 60
+```
+
+Successful `GET`s are served from the gateway's memory for that long (`X-Cache: HIT` or `MISS`
+on every answer), per caller: the `Authorization` header is part of the key, so an answer is
+never served to someone it was not given to. A shared cache (Redis, a CDN) is a deployment
+decision, not the model's.
+
 ## Next steps
 
 - Use [Sagas](/manual/sagas/) to coordinate calls across multiple gateways
