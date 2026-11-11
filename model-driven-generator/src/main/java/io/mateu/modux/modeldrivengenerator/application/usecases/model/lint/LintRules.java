@@ -38,6 +38,12 @@ public final class LintRules {
     private LintRules() {}
 
     public static List<LintRule> all() {
+        var rules = new java.util.ArrayList<LintRule>(catalog());
+        rules.addAll(ConflictRules.all());
+        return List.copyOf(rules);
+    }
+
+    private static List<LintRule> catalog() {
         return List.of(
                 new FlowContextRelation(),
                 new SubscriptionIdempotency(),

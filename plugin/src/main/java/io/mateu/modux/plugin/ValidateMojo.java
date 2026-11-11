@@ -51,6 +51,12 @@ public class ValidateMojo extends AbstractMojo {
                 walk(element.value(), element.type(), ownerId, known, problems, new IdentityHashMap<>());
             }
             report(problems);
+            // the dangling references are already reported above, with the ignores applied
+            System.setProperty("modux.model-file", ModuxModel.locate(modelPath).toAbsolutePath().toString());
+            try (var ctx = ModuxContext.create()) {
+                var errors = ModelGate.check(ctx, getLog(), java.util.Set.of("referential-integrity"));
+                if (!errors.isEmpty() && !reportOnly) throw new MojoFailureException(errors.size() + " error(es) en el modelo");
+            }
         } catch (MojoFailureException e) {
             throw e;
         } catch (Exception e) {

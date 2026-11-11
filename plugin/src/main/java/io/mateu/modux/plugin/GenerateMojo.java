@@ -4,6 +4,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.project.generate
 import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -39,8 +40,12 @@ public class GenerateMojo extends AbstractMojo {
     @Parameter(property = "modux.sourceOnly", defaultValue = "false")
     private boolean sourceOnly;
 
+    /** Generate even when the model has ERROR findings (see {@link ModelGate}). */
+    @Parameter(property = "modux.skipChecks", defaultValue = "false")
+    private boolean skipChecks;
+
     @Override
-    public void execute() throws MojoExecutionException {
+    public void execute() throws MojoExecutionException, MojoFailureException {
         try {
             var path = ModuxModel.locate(modelPath);
             var model = ModuxModel.read(path);
@@ -55,9 +60,16 @@ public class GenerateMojo extends AbstractMojo {
             getLog().info("Modux: generando '" + id + "' desde " + path + " → " + output);
             System.setProperty("modux.model-file", path.toAbsolutePath().toString());
             try (var ctx = ModuxContext.create()) {
+                var errors = ModelGate.check(ctx, getLog(), java.util.Set.of());
+                if (!errors.isEmpty()) {
+                    if (!skipChecks) throw new MojoFailureException(ModelGate.summary(errors));
+                    getLog().warn("Modux: se genera con errores en el modelo (modux.skipChecks=true)");
+                }
                 ctx.getBean(GenerateCodeUseCase.class)
                         .handle(new GenerateCodeCommand(id, output, pkg, sourceOnly));
             }
+        } catch (MojoFailureException e) {
+            throw e;
         } catch (Exception e) {
             throw new MojoExecutionException("Code generation failed: " + e.getMessage(), e);
         }
