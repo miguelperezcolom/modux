@@ -122,7 +122,9 @@ class HighLevelPatternsTest {
     void an_event_sourced_aggregate_with_screens_shows_its_history() throws Exception {
         var history = read("CompraHistoryListing.java");
         assertTrue(history.contains("events.findAll()"), history);
-        assertTrue(read("Home.java").contains("Historial de compras"), "in the app's menu");
+        // one Home per service: the one of Ventas, which deploys the aggregate
+        var home = Files.readString(file("Home.java", "ventas-app").orElseThrow());
+        assertTrue(home.contains("Historial de compras"), "in the app's menu: " + home);
         // with no domain events of its own, the repository records each saved state
         assertTrue(read("CompraEventSourcedRepository.java").contains("\"CompraGuardado\""));
     }
