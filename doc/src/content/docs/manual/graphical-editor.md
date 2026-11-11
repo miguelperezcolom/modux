@@ -245,6 +245,13 @@ maps stay readable.
   everything back. **With a selection it is scoped** — «✨ Auto-layout (N)» rearranges
   only the selected top-level nodes, translated to keep their centroid in place so the
   rest of the sheet stays put; edges straddling the selection re-route live.
+- **A sheet nobody has placed opens already laid out.** A model written by hand or from
+  a spec carries no geometry; the first time such a view is shown on the canvas, ELK
+  arranges it the same way (no overlapping boxes, orthogonal lines, crossings
+  minimised) and the result is stored as the view's geometry — in the IDE it is part of
+  the document you save. It is not an undo step. Once any box of the view has a stored
+  position the sheet is yours: new elements land where the view puts them, and nothing
+  else moves until you press ✨ Auto-layout.
 - **↻ Líneas** re-routes the edges **without moving any node** — the companion to
   auto-layout for a hand-placed sheet. It drops the stored routes so the canvas redraws
   each line clean and orthogonal on the current positions and keeps them live (they
