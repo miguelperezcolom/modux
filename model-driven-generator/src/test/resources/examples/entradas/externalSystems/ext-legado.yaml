@@ -1,0 +1,10 @@
+---
+id: "ext-legado"
+name: "Legado"
+description: "El sistema de taquilla de antes: su tabla de recintos sigue siendo la buena."
+protocol: "DATABASE"
+direction: "INBOUND"
+tables:
+- id: "ext-legado-recintos"
+  name: "recintos"
+  description: "Los recintos donde se celebran los conciertos."

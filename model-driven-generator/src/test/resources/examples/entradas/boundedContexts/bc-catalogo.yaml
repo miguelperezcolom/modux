@@ -14,4 +14,10 @@ domainEventIds:
 - "ev-conciertoModificado"
 - "ev-conciertoEliminado"
 subdomainType: "GENERIC"
+readModelIds:
+- "rm-recintos"
+projectionIds:
+- "proj-recintos"
+queryServiceIds:
+- "qs-recintos"
 projectId: "entradas"

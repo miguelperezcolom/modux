@@ -1,0 +1,6 @@
+---
+id: "proj-recintos"
+name: "Recintos"
+readModelId: "rm-recintos"
+sourceExternalTableId: "ext-legado-recintos"
+projectId: "entradas"

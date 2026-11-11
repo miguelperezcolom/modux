@@ -68,4 +68,23 @@ class HookImplementerTest {
         assertFalse(HookImplementer.isContract(Path.of(base + "infra/out/persistence/ConciertoViewReadModelEntityRepository.java")));
         assertFalse(HookImplementer.isContract(Path.of("ventas/ventas-custom/src/main/java/es/x/custom/DefaultComprarSteps.java")));
     }
+
+    @Test
+    void adapts_an_implemented_hook_the_model_changed_under_it() throws Exception {
+        // implemented for the old signature: it no longer compiles, though nothing says it is pending
+        var hook = hook("Old.java", "class Old { void a() { old(); } }");
+        var build = "grep -q old " + hook + " && { echo '[ERROR] " + hook + ":[1,20] cannot find symbol'; exit 1; } || exit 0";
+        var written = implementer("===FILE: x/Old.java\nclass Old { void a(int answer) { } }\n===END", build)
+                .implementAll(dir.resolve("out"));
+        assertEquals(List.of(hook), written);
+        assertEquals("class Old { void a(int answer) { } }", Files.readString(hook));
+    }
+
+    @Test
+    void finds_the_custom_sources_a_failed_build_points_at() throws Exception {
+        var hook = hook("H.java", "class H { }");
+        var root = dir.resolve("out/svc/svc-custom/src/main/java");
+        var output = "[ERROR] /elsewhere/Generated.java:[3,1] x\n[ERROR] " + hook + ":[1,1] cannot find symbol";
+        assertEquals(List.of(hook), HookImplementer.customFilesIn(output, root));
+    }
 }

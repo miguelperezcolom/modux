@@ -17,7 +17,7 @@ For each service with pending hooks, the goal:
 3. Compiles the service. If it does not compile, it sends the errors back, up to three attempts.
 4. If it never compiles, restores the hooks as they were and fails.
 
-A hook is pending while it still says so, so hooks already implemented are never touched and running the goal twice is harmless. Review the result before committing it: it compiles, but only you can tell whether it does what the business needs.
+A hook is pending while it still says so, so hooks already implemented are never touched and running the goal twice is harmless. The exception is a hook the **model changed under it**: when the service no longer compiles because a hook was written for an older contract (a call added before it now hands it the answer, say), the goal sends that hook too, marked as outdated with the compiler's errors, and asks for it to be adapted keeping its logic. Review the result before committing it: it compiles, but only you can tell whether it does what the business needs.
 
 ## Writing intents that work
 

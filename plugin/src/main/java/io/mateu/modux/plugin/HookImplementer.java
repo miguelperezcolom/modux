@@ -63,17 +63,30 @@ final class HookImplementer {
     private List<Path> implement(Path service, Path custom) throws IOException, InterruptedException {
         var root = custom.resolve(CUSTOM_ROOT);
         var pending = pendingHooks(root);
-        if (pending.isEmpty()) {
+        // a hook written against an older model (the use case now hands it what a call answered,
+        // say) no longer compiles: it is adapted too, keeping its logic
+        var outdated = new LinkedHashMap<Path, String>();
+        var before = run(settings.buildCommand(), service, null);
+        if (before.exit() != 0) {
+            for (var file : customFilesIn(before.output(), root)) {
+                if (!pending.containsKey(file)) outdated.put(file, Files.readString(file));
+            }
+        }
+        if (pending.isEmpty() && outdated.isEmpty()) {
             log.accept("Modux: " + service.getFileName() + " no tiene ganchos pendientes.");
             return List.of();
         }
-        log.accept("Modux: " + service.getFileName() + ": " + pending.size() + " gancho(s) pendiente(s).");
+        log.accept("Modux: " + service.getFileName() + ": " + pending.size() + " gancho(s) pendiente(s)"
+                + (outdated.isEmpty() ? "" : ", " + outdated.size() + " por adaptar al modelo") + ".");
         var originals = new LinkedHashMap<Path, String>(pending);
+        originals.putAll(outdated);
         var contracts = contracts(service);
         var written = new ArrayList<Path>();
         String feedback = "";
+        pending.putAll(outdated);
+        var outdatedErrors = outdated.isEmpty() ? "" : errorsOf(before.output());
         for (var attempt = 1; attempt <= ATTEMPTS; attempt++) {
-            var answer = ask(prompt(root, pending, contracts, feedback));
+            var answer = ask(prompt(root, pending, outdated.keySet(), outdatedErrors, contracts, feedback));
             var files = parse(answer, root);
             if (files.isEmpty()) {
                 feedback = "Your answer contained no ===FILE: blocks.";
@@ -138,7 +151,32 @@ final class HookImplementer {
                 || path.endsWith("EventSourcing.java");
     }
 
-    private String prompt(Path root, Map<Path, String> pending, Map<Path, String> contracts, String feedback) {
+    /** The custom-zone sources a failed build points at. */
+    static List<Path> customFilesIn(String buildOutput, Path root) {
+        var files = new java.util.LinkedHashSet<Path>();
+        var matcher = Pattern.compile("(/[^\\s:\\[\\]]+\\.java)").matcher(buildOutput);
+        Path base;
+        try {
+            base = root.toRealPath();
+        } catch (IOException e) {
+            return List.of();
+        }
+        while (matcher.find()) {
+            var file = Path.of(matcher.group(1));
+            if (!Files.isRegularFile(file)) continue;
+            try {
+                // /tmp and /private/tmp are one place: compare where they really are, keep the root's spelling
+                var real = file.toRealPath();
+                if (real.startsWith(base)) files.add(root.resolve(base.relativize(real).toString()));
+            } catch (IOException ignored) {
+                // gone meanwhile
+            }
+        }
+        return new ArrayList<>(files);
+    }
+
+    private String prompt(Path root, Map<Path, String> pending, java.util.Set<Path> outdated, String outdatedErrors,
+                          Map<Path, String> contracts, String feedback) {
         var prompt = new StringBuilder("""
                 You implement the business logic of a generated Java 21 Spring Boot service. The classes
                 below are hooks: each states, in comments and exception messages, the behaviour the model
@@ -147,7 +185,10 @@ final class HookImplementer {
                 Rules:
                 - Keep each class name, package and interface. Add the constructor-injected collaborators you
                   need (`final` fields with Lombok @RequiredArgsConstructor), using only the contracts listed.
-                - Keep already implemented methods exactly as they are.
+                - Keep already implemented methods exactly as they are, except in the hooks marked OUTDATED:
+                  they were written for an older model and no longer compile. Adapt them to the current
+                  contract (the signature, the parameters it now receives) keeping their logic, and use what
+                  the new parameters bring instead of simulating it.
                 - Reject with BusinessRuleException.conflict/notFound/invalid and a message for the end user,
                   in the language of the intent. Never leave a TODO or an UnsupportedOperationException.
                 - Types differ between layers: read the contracts and convert explicitly (for instance a
@@ -171,7 +212,9 @@ final class HookImplementer {
 
                 """);
         contracts.forEach((path, source) -> prompt.append("--- contract ").append(path).append(" ---\n").append(source).append('\n'));
-        pending.forEach((path, source) -> prompt.append("--- hook ").append(root.relativize(path)).append(" ---\n").append(source).append('\n'));
+        pending.forEach((path, source) -> prompt.append(outdated.contains(path) ? "--- hook OUTDATED " : "--- hook ")
+                .append(root.relativize(path)).append(" ---\n").append(source).append('\n'));
+        if (!outdatedErrors.isBlank()) prompt.append("\nWhat the compiler says about the OUTDATED hooks:\n").append(outdatedErrors).append('\n');
         if (!feedback.isBlank()) prompt.append("\nYour previous answer was rejected. ").append(feedback).append('\n');
         return prompt.toString();
     }

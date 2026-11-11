@@ -14,17 +14,35 @@ spring:
         error:
             include-message: always
 <#if idp??>
+<#assign backchannel = r"${MODUX_IDP_BACKCHANNEL:" + idp.issuer + "}">
 
-    # The JWT resource server (machine paths: /mateu/**, /mcp): tokens from the model's
-    # identity provider (${idp.name}) validate — the same keycloak the shell and every
-    # app log into, so remote menus and cross-service calls authenticate. jwk-set-uri
-    # (not issuer discovery) keeps startup independent of the IdP being reachable.
+    # The model's identity provider (${idp.name}). A person signs in there (OIDC login, a public
+    # client with PKCE) and the service then issues the system's own cookie (ModuxAuthCookie),
+    # which every service accepts; agents and curl send the IdP's JWT instead (resource server).
+    # The browser reaches the IdP at its issuer; the service, at MODUX_IDP_BACKCHANNEL when it
+    # sees it under another name (keycloak:8080 inside the compose network). No discovery: the
+    # service starts whether or not the IdP answers yet.
     security:
         oauth2:
             resourceserver:
                 jwt:
                     issuer-uri: ${idp.issuer}
-                    jwk-set-uri: ${idp.issuer}/protocol/openid-connect/certs
+                    jwk-set-uri: ${backchannel}/protocol/openid-connect/certs
+            client:
+                registration:
+                    modux:
+                        client-id: ${oidcClientId!service.name?lower_case?replace("[^a-z0-9]","-",'r')}
+                        client-authentication-method: none
+                        authorization-grant-type: authorization_code
+                        scope: openid,profile,email
+                        redirect-uri: ${r"${MODUX_PUBLIC_URL:http://localhost:"}${(service.port!8080)?c}}/login/oauth2/code/modux
+                provider:
+                    modux:
+                        authorization-uri: ${idp.issuer}/protocol/openid-connect/auth
+                        token-uri: ${backchannel}/protocol/openid-connect/token
+                        jwk-set-uri: ${backchannel}/protocol/openid-connect/certs
+                        user-info-uri: ${backchannel}/protocol/openid-connect/userinfo
+                        user-name-attribute: preferred_username
 </#if>
 
     datasource:

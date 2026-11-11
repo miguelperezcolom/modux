@@ -3,10 +3,12 @@ id: "uc-cobrar"
 name: "Cobrar"
 inputModelId: "m-compra-realizada"
 steps:
+- id: "step-ext-ext-pasarela-cobrar"
+  name: "callCobrar"
+  type: "CallExternalUseCase"
+  externalUseCaseId: "ext-pasarela-cobrar"
 - id: "step-cobrar"
   name: "cobrar"
   type: "Custom"
-  intent: "La pasarela rechaza las tarjetas que acaban en 0000 con motivo «Tarjeta\
-    \ rechazada» y acepta las demás. Registra el Pago (compraId, importe, ACEPTADO\
-    \ o RECHAZADO con su motivo) y publica PagoAceptado o PagoRechazado."
+  intent: "Con la respuesta de la pasarela registra el Pago (compraId, importe, ACEPTADO si la pasarela lo acepta o RECHAZADO con el motivo que da) y publica PagoAceptado o PagoRechazado."
 projectId: "entradas"

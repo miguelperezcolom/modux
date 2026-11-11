@@ -31,6 +31,9 @@ mínimo trabajo (una relación, un indicador), no escritos a mano.
 - **Panel de ventas** (dirección): por concierto, entradas vendidas e ingresos confirmados.
 - **Consulta pública del catálogo**: otros sistemas (una web de agenda cultural) consultan los
   conciertos a través de una API publicada, con caché porque se consulta muchísimo.
+- **Recintos**: la tabla de recintos del sistema de taquilla antiguo sigue siendo la buena; Catálogo
+  la refleja.
+- **Conciliación**: Pagos ve los cargos que ha hecho la pasarela.
 
 ## Patrones que tiene que ejercitar
 
@@ -39,12 +42,15 @@ mínimo trabajo (una relación, un indicador), no escritos a mano.
 | Historia de la compra | Event sourcing | `persistenceType: EVENT_SOURCED` en el agregado Compra |
 | Reglas de la compra | Operaciones del agregado | operaciones `confirmar`, `rechazar`, `cancelar` |
 | Disponibles por concierto en Ventas | Proyección entre contextos | una línea agregado Concierto → read model de Ventas |
-| Panel de ventas | Proyección entre contextos | una línea agregado Compra → read model de Analítica |
+| Panel de ventas | Proyección entre contextos + consulta agrupada | una línea agregado Compra → read model de Analítica; `groupBy: conciertoId`, `filter: estado=CONFIRMADA` |
+| El panel nombra el concierto | Proyección entre contextos | una línea agregado Concierto → read model de Analítica |
 | Compra → cobro → confirmar/rechazar | Coreografía con eventos | flujos entre contextos |
 | Que ningún evento se pierda | Outbox | `outboxEnabled` en Ventas y Pagos |
 | Consultar un concierto desde Ventas | API publicada + cliente | una línea caso de uso → caso de uso de otro contexto |
 | Agenda cultural | API publicada + proxy con caché | un ProxyApi delante de la API de Catálogo |
-| Pasarela de pago | Sistema externo + gateway saliente | un sistema externo con su operación `cobrar` |
+| Pasarela de pago | Sistema externo, llamada REST | una línea Cobrar → la operación `cobrar` de la pasarela |
+| Recintos | Proyección desde una tabla legada | una línea tabla `recintos` → read model de Catálogo |
+| Conciliación | Proyección desde una operación externa | una línea operación `movimientos` → read model de Pagos |
 | Entrada única | Gateway | el gateway del sistema |
 | Quién hace qué | Roles | promotora, cliente, dirección |
 | Pantallas | UI federada | una app por actor |
@@ -66,10 +72,14 @@ mínimo trabajo (una relación, un indicador), no escritos a mano.
    y sus entradas no cuentan.
 5. Cliente: intenta cancelar una compra confirmada → se rechaza.
 6. Historial de compras: cada una, PENDIENTE y después CONFIRMADA o RECHAZADA, en orden.
-7. Dirección: el panel de ventas lista las compras, con sus importes.
+7. Dirección: el panel de ventas, una fila por concierto (por su nombre): compras, entradas e
+   ingresos confirmados.
 8. Promotora: cierra la venta; una compra nueva se rechaza.
 9. API pública: el concierto se consulta por el proxy; la segunda consulta sale de la caché.
 10. Outbox: con Kafka parado, una compra queda PENDIENTE y se confirma al volver Kafka.
+11. Recintos: los de la tabla legada; Movimientos de la pasarela: los cargos que hizo.
+12. Con un IdP (Keycloak en local): se entra en Keycloak, una vez, y los roles del realm son los del
+    modelo.
 
 ## Resultado (2026-11-11)
 
@@ -86,5 +96,25 @@ URL de los demás; las redirecciones salían con el host interno; el event sourc
 nada y su historial no tenía pantalla; las listas de read models no tenían etiquetas ni formato de dinero;
 `ai-complete` no veía los read models y repetía la publicación que hace el caso de uso.
 
-Queda: el panel no agrega por concierto (lista las compras); la pasarela real (un sistema externo de
-verdad) no se ha probado.
+## Segunda vuelta (2026-11-11)
+
+Cerrados los huecos que quedaban, otra vez en marcha y en el navegador:
+
+- **Panel por concierto**: una consulta con `groupBy` y `filter` da una fila por concierto con sus
+  totales confirmados; con la vista de Concierto en Analítica (una línea más) la fila lo nombra.
+- **Pasarela de verdad**: un proceso aparte, por HTTP. Cobrar la llama con un cliente generado
+  (`PASARELA_URL`) y el gancho recibe su respuesta; la tarjeta rechazada llega RECHAZADA con el motivo
+  que da el banco. `ai-complete` adaptó el gancho, que ya no compilaba con la firma nueva.
+- **Proyecciones desde fuera**: Recintos refleja una tabla de una base legada (JDBC) y Movimientos la
+  operación de la pasarela (GET), cada minuto.
+- **Keycloak en local**: con un IdP en `localhost` el compose levanta Keycloak con el realm generado
+  (roles, un usuario por rol, clientes); se entra en Keycloak y la cookie del sistema lleva los roles
+  del realm. `@KeycloakSecured`, que Mateu quitó, ya no se genera.
+
+Huecos nuevos que destapó, arreglados: un 400 de otro servicio salía como «error inesperado» (ahora
+es la misma regla con su mensaje); el cliente REST mandaba el cuerpo troceado, que no todos los
+servidores aceptan; con IdP nada compilaba (la anotación retirada) y los roles del JWT no llegaban a
+`@PreAuthorize`; el realm de `up.sh` no existía.
+
+Queda: el DNS real (crear un registro en Netlify) necesita `NETLIFY_AUTH_TOKEN`, que esta sesión no
+tiene; los proveedores sí tienen sus pruebas contra servidores que responden como sus APIs.

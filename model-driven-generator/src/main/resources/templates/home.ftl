@@ -4,7 +4,6 @@ import io.mateu.uidl.annotations.Menu;
 import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.annotations.UI;
 <#if idp??>
-import io.mateu.uidl.annotations.KeycloakSecured;
 import io.mateu.uidl.data.Anchor;
 import io.mateu.uidl.data.Popover;
 import io.mateu.uidl.data.Text;
@@ -13,10 +12,8 @@ import io.mateu.uidl.fluent.Component;
 import io.mateu.uidl.interfaces.HttpRequest;
 import io.mateu.uidl.interfaces.WidgetSupplier;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 
-import static io.mateu.core.infra.JsonSerializer.fromJson;
 </#if>
 <#list menuModules as m>
 import ${project.packageName}.${m.slug}.infra.in.ui.menu.${m.className};
@@ -28,9 +25,6 @@ import ${project.packageName}.${pg.moduleSlug}.infra.in.ui.pages.${pg.pageSlug}.
 </#if>
 
 <#if idp??>
-<#-- keycloak.js login: adapter-less apps get a client named after the service (up.sh
-     provisions it) -->
-@KeycloakSecured(url = "${idp.url}", realm = "${idp.realm}", clientId = "${service.name?lower_case?replace("[^a-z0-9]","-",'r')}")
 </#if>
 <#if ui??>
 <#assign uiPath = (ui.path?has_content)?then(ui.path, '')>
@@ -63,24 +57,20 @@ public class Home<#if idp??> implements WidgetSupplier</#if> {
 </#if>
 <#if idp??>
 
-    /** The user widget: who is logged in (from the keycloak JWT) and a way out. */
+    /** The user widget: who is logged in and a way out. */
     @Override
     public List<Component> widgets(HttpRequest httpRequest) {
         List<Component> widgets = new ArrayList<>();
-        var authorization = httpRequest.getHeaderValue("Authorization");
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            var token = authorization.substring("Bearer ".length());
-            var payload = new String(Base64.getDecoder().decode(token.split("\\.")[1]));
-            var values = fromJson(payload);
-            var nombre = values.get("name") != null ? values.get("name") : values.get("preferred_username");
-            var detalle = values.get("email") != null ? "Email: " + values.get("email") : "Usuario: " + nombre;
+        // who signed in at the identity provider: the system's own cookie carries it (ModuxAuthCookie)
+        var who = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (who != null && who.isAuthenticated() && !"anonymousUser".equals(who.getPrincipal())) {
             widgets.add(Popover.builder()
-                    .wrapped(Text.builder().text("Hola, " + nombre)
+                    .wrapped(Text.builder().text("Hola, " + who.getName())
                             .style("margin-right: 20px;")
                             .build())
                     .content(VerticalLayout.builder().content(List.of(
-                                    new Text(detalle),
-                                    new Anchor("Logout", "javascript: window.logout();"))
+                                    new Text("Usuario: " + who.getName()),
+                                    new Anchor("Salir", "/logout"))
                             ).spacing(true)
                             .padding(true)
                             .build())

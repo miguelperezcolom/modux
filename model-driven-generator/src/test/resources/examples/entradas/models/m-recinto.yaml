@@ -1,0 +1,20 @@
+---
+id: "m-recinto"
+name: "Recinto"
+fields:
+- id: "f-m-recinto-nombre"
+  name: "nombre"
+  basicType: true
+  type: "string"
+  label: "Nombre"
+- id: "f-m-recinto-ciudad"
+  name: "ciudad"
+  basicType: true
+  type: "string"
+  label: "Ciudad"
+- id: "f-m-recinto-aforoMaximo"
+  name: "aforoMaximo"
+  basicType: true
+  type: "integer"
+  label: "Aforo máximo"
+projectId: "entradas"

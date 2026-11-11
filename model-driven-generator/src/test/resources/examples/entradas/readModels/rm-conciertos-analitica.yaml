@@ -1,0 +1,7 @@
+---
+id: "rm-conciertos-analitica"
+name: "ConciertoView"
+boundedContextId: "bc-analitica"
+modelId: "model-concierto"
+aggregateId: "concierto"
+projectId: "entradas"

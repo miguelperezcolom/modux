@@ -11,5 +11,8 @@ menuItems:
 - label: "Cerrar la venta"
   id: "ui-catalogo-1"
   useCaseId: "uc-cerrarVenta"
+- label: "Recintos"
+  id: "ui-catalogo-2"
+  queryServiceId: "qs-recintos"
 appType: "APP"
 projectId: "entradas"

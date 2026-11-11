@@ -26,24 +26,52 @@ public class SecurityConfig {
 </#if>
 
 <#if idp??>
+    /** One login for the whole system (see ModuxAuthCookie): the identity provider's, at the shell or here. */
+    private final ModuxAuthCookie authCookie;
+    private final org.springframework.core.env.Environment env;
+
+    public SecurityConfig(org.springframework.core.env.Environment env) {
+        this.authCookie = ModuxAuthCookie.from(env);
+        this.env = env;
+    }
+
     /**
-     * The model authenticates against ${idp.name} (${idp.type}) — one mode everywhere:
-     * every Mateu/MCP call must carry a keycloak JWT. The Mateu frontend logs the user in
-     * via keycloak.js and sends it on every request; a shell propagates it on its
-     * remote-menu fetches; agents and curl ask the IdP for a token (password or
-     * client-credentials grant) and call with it. Pages and static assets stay open so
-     * the SPA can boot and start the login dance; the /v1 borders and /error are covered
-     * by the permitAll too. Unauthenticated calls get a 401 with a Bearer challenge —
-     * never a redirect to an HTML login page.
+     * Machine/API border (Mateu sync, MCP): the system's cookie (a person who signed in) or the
+     * IdP's JWT (agents, curl, sibling services). Unauthenticated callers get a 401 with a Bearer
+     * challenge, never a redirect to a login page.
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @org.springframework.core.annotation.Order(1)
+    public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
+        http
+            .securityMatcher("/mateu/**", "/*/mateu/**", "/mcp", "/mcp/**")
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+            .addFilterBefore(authCookie, org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class)
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(SecurityConfig::realmRoles)));
+        return http.build();
+    }
+
+    /**
+     * Browser border: whoever opens this service directly signs in at ${idp.name} and gets the
+     * system's cookie. Through the shell they already have it.
+     */
+    @Bean
+    @org.springframework.core.annotation.Order(2)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/mateu/**", "/*/mateu/**", "/mcp", "/mcp/**").authenticated()
-                .anyRequest().permitAll())
-            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
+                // service-to-service borders and the login dance itself
+                .requestMatchers("/v1/**", "/error", "/login/**", "/oauth2/**").permitAll()
+                .anyRequest().authenticated())
+            .addFilterBefore(authCookie, org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter.class)
+            .oauth2Login(login -> login
+                .userInfoEndpoint(userInfo -> userInfo.oidcUserService(ModuxAuthCookie.withRealmRoles()))
+                .successHandler(authCookie.loginSuccess("/")))
+            .logout(logout -> logout.addLogoutHandler((request, response, authentication) -> ModuxAuthCookie.clear(response))
+                .logoutSuccessUrl(ModuxAuthCookie.idpLogoutUrl(env, "${oidcClientId!service.name?lower_case?replace("[^a-z0-9]","-",'r')}",
+                        "http://localhost:${(service.port!8080)?c}")));
         return http.build();
     }
 <#elseif !roles?has_content>
@@ -144,5 +172,18 @@ public class SecurityConfig {
         );
     }
 </#if>
+<#if idp??>
 
+    /** Keycloak carries the realm's roles in realm_access.roles: they are the ROLE_* the use cases check. */
+    static org.springframework.security.authentication.AbstractAuthenticationToken realmRoles(org.springframework.security.oauth2.jwt.Jwt jwt) {
+        var access = jwt.getClaimAsMap("realm_access");
+        var authorities = new java.util.ArrayList<org.springframework.security.core.GrantedAuthority>();
+        if (access != null && access.get("roles") instanceof java.util.Collection<?> roles) {
+            roles.forEach(r -> authorities.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + r)));
+        }
+        var name = jwt.getClaimAsString("preferred_username");
+        return new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(
+                jwt, authorities, name != null ? name : jwt.getSubject());
+    }
+</#if>
 }

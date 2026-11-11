@@ -7,6 +7,17 @@ package io.mateu.modux.modeldrivengenerator.infra.out.persistence.file;
 public record ExternalSystemUseCaseEntity(
         String id,
         String name,
-        String description
+        String description,
+        /** What it receives; when absent, the calling use case's input travels as it is. */
+        String inputModelId,
+        /** What it answers, handed to the steps after the call; absent = nothing. */
+        String outputModelId,
+        /** Where it answers, relative to the system's base URL; default {@code /{name}} (POST). */
+        String path
 ) {
+
+    /** Backward-compatible constructor (pre-models callers and stores). */
+    public ExternalSystemUseCaseEntity(String id, String name, String description) {
+        this(id, name, description, null, null, null);
+    }
 }

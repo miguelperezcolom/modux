@@ -27,30 +27,17 @@ docker run -d --name $PRE-kafka -p 29092:9092 \
   apache/kafka:3.8.0 > /dev/null
 <#if localIdp>
 docker run -d --name $PRE-keycloak -p 8080:8080 \
-  -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin \
-  quay.io/keycloak/keycloak:26.0 start-dev > /dev/null
+  -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+  -v "$PWD/keycloak:/opt/keycloak/data/import:ro" \
+  quay.io/keycloak/keycloak:26.0 start-dev --import-realm > /dev/null
 </#if>
 
 echo "==> esperando a postgres"
 until docker exec $PRE-postgres pg_isready -U user_app > /dev/null 2>&1; do sleep 1; done
 <#if localIdp>
 
-echo "==> keycloak: clientes públicos para el login (shell y apps)"
+echo "==> keycloak: el realm ${idp.realm} (roles, un usuario por rol y los clientes) se importa al arrancar"
 until curl -sf ${idp.issuer}/.well-known/openid-configuration > /dev/null 2>&1; do sleep 2; done
-docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh config credentials \
-  --server ${idp.url} --realm master --user admin --password admin > /dev/null 2>&1 || true
-<#if shells?has_content>
-docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh create clients -r ${idp.realm} \
-  -s clientId=shell -s publicClient=true -s standardFlowEnabled=true \
-  -s rootUrl=http://localhost:8100 \
-  -s 'redirectUris=["http://localhost:8100/*","http://localhost:8088/*"]' > /dev/null 2>&1 || true
-</#if>
-<#list appClients as a>
-docker exec $PRE-keycloak /opt/keycloak/bin/kcadm.sh create clients -r ${idp.realm} \
-  -s clientId=${a.clientId} -s publicClient=true -s standardFlowEnabled=true \
-  -s rootUrl=http://localhost:${a.port?c} \
-  -s 'redirectUris=["http://localhost:${a.port?c}/*","http://localhost:8088/_${a.clientId}/*"]' > /dev/null 2>&1 || true
-</#list>
 </#if>
 
 <#list services as s>
@@ -117,7 +104,7 @@ Sistema arriba:
   api gateway → http://localhost:8088 (la shell y los menús remotos se usan desde aquí)
 </#if>
 <#if localIdp>
-  keycloak → ${idp.url} (admin/admin)
+  keycloak → ${idp.url} (admin/admin); un usuario por rol, con su nombre como contraseña
   Nota: los menús remotos de la shell se resuelven a través del api gateway o del ingress —
   cada app también se abre directa en su puerto.
 </#if>

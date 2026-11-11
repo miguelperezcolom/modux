@@ -1,8 +1,8 @@
 package ${project.packageName}.${module.slug}.application.out.remote;
 
 /**
- * The ${remote.className} use case of the ${remote.service} service, as this context calls it: over
- * HTTP, with its own copy of the request and the response — the two services share no code.
+ * The ${remote.className} use case of the ${remote.service} <#if remote.external!false>external system<#else>service</#if>, as this context calls it: over
+ * HTTP, with its own copy of the request and the response — the two share no code.
  */
 public interface ${remote.className}Client {
 

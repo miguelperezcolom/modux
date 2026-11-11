@@ -21,6 +21,50 @@ import org.springframework.stereotype.Service;
 public class ${className}Listing extends Crud<
         ${className}ReadModel, ${className}ReadModel, ${className}ReadModel, NoFilters, ${className}Listing.Row, String> {
 
+<#if grouping??>
+    /** One row per ${grouping.keyLabel}: how many there are and what they add up to. */
+    public record Row(
+            @io.mateu.uidl.annotations.Label("${grouping.keyLabel?j_string}") String ${grouping.keyName},
+            @io.mateu.uidl.annotations.Label("${grouping.countLabel?j_string}") String count<#list grouping.sums as f>,
+            @io.mateu.uidl.annotations.Label("${f.label?j_string}") String ${f.name}</#list>
+    ) {}
+
+    final ${className}ReadModelQueryService queries;
+<#if grouping.lookupQueryService??>
+    final ${grouping.lookupQueryService} names;
+</#if>
+
+    @Override
+    public ListingData<Row> search(SearchRequest request, HttpRequest httpRequest) {
+        var text = request.searchText().toLowerCase();
+        var groups = queries.findAll().stream()
+<#if filters??><#list filters as f>
+                .filter(rm -> "${f.value?j_string}".equals(String.valueOf(rm.${f.accessor}())))
+</#list></#if>
+                .collect(java.util.stream.Collectors.groupingBy(
+                        rm -> String.valueOf(rm.${grouping.keyAccessor}()), java.util.TreeMap::new, java.util.stream.Collectors.toList()));
+        return ListingData.of(groups.entrySet().stream()
+                .map(e -> row(e.getKey(), e.getValue()))
+                .filter(row -> row.toString().toLowerCase().contains(text))
+                .toList());
+    }
+
+    private Row row(String key, List<${className}ReadModel> group) {
+        return new Row(
+<#if grouping.lookupQueryService??>
+                names.getById(key).map(v -> String.valueOf(v.${grouping.lookupAccessor}())).orElse(key),
+<#else>
+                key,
+</#if>
+                String.valueOf(group.size())<#list grouping.sums as f>,
+<#if f.integer>
+                String.valueOf(group.stream().map(${className}ReadModel::${f.name}).filter(java.util.Objects::nonNull)
+                        .mapToLong(Number::longValue).sum())<#else>
+                group.stream().map(${className}ReadModel::${f.name}).filter(java.util.Objects::nonNull)
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)
+                        .setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()</#if></#list>);
+    }
+<#else>
 <#if rowFields?has_content>
     /** What a row shows: the model's labels, and amounts with their two decimals. */
     public record Row(
@@ -54,10 +98,14 @@ public class ${className}Listing extends Crud<
     public ListingData<Row> search(SearchRequest request, HttpRequest httpRequest) {
         var text = request.searchText().toLowerCase();
         return ListingData.of(queries.findAll().stream()
+<#if filters??><#list filters as f>
+                .filter(rm -> "${f.value?j_string}".equals(String.valueOf(rm.${f.accessor}())))
+</#list></#if>
                 .map(Row::of)
                 .filter(row -> row.toString().toLowerCase().contains(text))
                 .toList());
     }
+</#if>
 
     @Override public boolean readOnly() { return true; }
     @Override public boolean canView() { return false; }
