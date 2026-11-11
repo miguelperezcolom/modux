@@ -7,4 +7,6 @@ operations:
   name: "compras"
   outputModelId: "model-compra"
   cardinality: "Page"
+  groupBy: "conciertoId"
+  filter: "estado=CONFIRMADA"
 projectId: "entradas"

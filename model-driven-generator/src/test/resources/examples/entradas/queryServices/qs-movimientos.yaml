@@ -1,0 +1,10 @@
+---
+id: "qs-movimientos"
+name: "Movimientos"
+boundedContextId: "bc-pagos"
+operations:
+- id: "qs-movimientos-list"
+  name: "movimientos"
+  outputModelId: "m-movimiento"
+  cardinality: "Page"
+projectId: "entradas"

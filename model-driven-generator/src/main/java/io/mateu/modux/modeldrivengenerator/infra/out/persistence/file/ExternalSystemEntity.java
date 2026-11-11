@@ -52,8 +52,33 @@ public record ExternalSystemEntity(
         /** The external system this one lives INSIDE — subsystems of a bigger partner. */
         String parentExternalSystemId,
         /** ANOTHER modux project referenced as a system: where to find it, versioned (§4.7). */
-        ReferencedProjectEntity referencedProject
+        ReferencedProjectEntity referencedProject,
+        /**
+         * Where it answers (its use cases are POSTed under it). The local default: each environment
+         * overrides it with {@code {NAME}_URL}, the way a service reaches its siblings.
+         */
+        String baseUrl
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-baseUrl callers and stores). */
+    @SuppressWarnings("deprecation")
+    public ExternalSystemEntity(String id, String name, String description,
+                                ExternalSystemProtocol protocol, ExternalSystemDirection direction,
+                                String gatewayId, String owner, List<String> decisionIds,
+                                List<ExternalSystemUseCaseEntity> useCases,
+                                List<ExternalSystemTableEntity> tables,
+                                List<String> dependsOnExternalSystemIds,
+                                List<String> dependsOnApiIds,
+                                List<String> cqrsExternalSystemIds,
+                                List<McpServerEntity> mcpServers,
+                                List<ExternalApiOperationUseEntity> apiOperationUses,
+                                String referencedRepositoryId,
+                                String parentExternalSystemId,
+                                ReferencedProjectEntity referencedProject) {
+        this(id, name, description, protocol, direction, gatewayId, owner, decisionIds, useCases,
+                tables, dependsOnExternalSystemIds, dependsOnApiIds, cqrsExternalSystemIds,
+                mcpServers, apiOperationUses, referencedRepositoryId, parentExternalSystemId, referencedProject, null);
+    }
 
     /** Whether this system stands for another modux project rather than a third party. */
     public boolean isProjectReference() {

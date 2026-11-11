@@ -133,8 +133,43 @@ the context that should keep the copy:
 
 The read model is then a plain read side of that context: its query service is what its use
 cases read (`mvn modux:ai-complete` is told so), and a menu entry on a query whose output is
-the aggregate's model lists it, labels and amounts formatted. Polling sources (external
-operations and tables) are still declared only.
+the aggregate's model lists it, labels and amounts formatted. A projection added later catches
+up by itself: its consumer group is new, so it reads the topic from the beginning.
+
+### An external operation or a legacy table, polled
+
+A projection whose source is an **external system's operation** or one of its **tables** is a
+mirror, refreshed every `modux.poll.interval` (one minute by default, `PT30S` style): it reads
+all the rows, upserts them by their `id` and drops the ones that are gone. Columns and JSON
+properties match the read model's fields by name, ignoring case and underscores
+(`aforo_maximo` is `aforoMaximo`). When the source is down it keeps what it has and tries again.
+
+| Source | How it reads | Where, from the environment |
+|---|---|---|
+| Operation (`sourceExternalUseCaseId`) | `GET {path}` (default `/{name}`): a JSON array, or an object carrying it as `items`, `content` or `data` | `{SYSTEM}_URL`, default the system's `baseUrl` |
+| Table (`sourceExternalTableId`) | `SELECT * FROM {table}` over JDBC | `{SYSTEM}_JDBC_URL`, `_USER`, `_PASSWORD` (the driver of another database goes in the service's pom) |
+
+The compose file passes those variables through (`LEGADO_JDBC_URL=… mvn modux:deploy`); on
+Kubernetes they come from the optional secret `{project}-external`.
+
+### Panels: a grouped query
+
+A query operation with `groupBy` lists **one row per value** of that field, with how many rows it
+stands for and the sum of every numeric field; `filter` keeps only the rows that match
+(`field=value`, several joined by `,`):
+
+```yaml
+operations:
+- id: "qs-panel-compras"
+  name: "compras"
+  outputModelId: "model-compra"
+  groupBy: "conciertoId"
+  filter: "estado=CONFIRMADA"
+```
+
+When the key names another aggregate (`conciertoId`) and the same service keeps a view of it (one
+more line: that aggregate onto a read model of this context), the row shows its name instead of
+the id.
 
 Exactly **one** source is allowed per projection (handlers, aggregate, operation or
 table). Dropping on a context (instead of an existing read model) creates a stub read

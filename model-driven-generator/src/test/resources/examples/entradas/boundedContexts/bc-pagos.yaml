@@ -15,4 +15,10 @@ domainEventIds:
 - "ev-pago-aceptado"
 - "ev-pago-rechazado"
 subdomainType: "GENERIC"
+readModelIds:
+- "rm-movimientos"
+projectionIds:
+- "proj-movimientos"
+queryServiceIds:
+- "qs-movimientos"
 projectId: "entradas"

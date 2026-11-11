@@ -1,0 +1,16 @@
+---
+id: "ext-pasarela"
+name: "Pasarela"
+description: "La pasarela de pago del banco: cobra una tarjeta y dice si acepta el cargo."
+protocol: "REST"
+direction: "OUTBOUND"
+useCases:
+- id: "ext-pasarela-cobrar"
+  name: "cobrar"
+  description: "Cobra el importe a la tarjeta."
+  inputModelId: "m-cobro"
+  outputModelId: "m-cobro-resultado"
+- id: "ext-pasarela-movimientos"
+  name: "movimientos"
+  description: "Los cargos que ha hecho la pasarela: lo que se concilia con los pagos."
+baseUrl: "http://localhost:9099"

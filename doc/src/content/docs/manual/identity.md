@@ -33,6 +33,45 @@ clears every trust edge pointing at it. One system usually holds two or three Id
 the corporate one for the back-office apps and contexts, a B2C one for the customer
 portal, a partner's for federated operations.
 
+## What an IdP generates
+
+An app connected to an IdP with an **issuer** (`https://host/realms/<realm>` for Keycloak) gets
+one login for the whole system, at the IdP:
+
+- the shell (and any service opened directly) signs people in with **OIDC login** — a public
+  client with PKCE, `shell` for the shell and one per app, named after its path;
+- on success it issues the system's own signed cookie, `MODUX_AUTH` (the same one the
+  [login without an IdP](/manual/roles/#one-login-without-an-identity-provider) uses), carrying
+  the user and the **realm roles** (`realm_access.roles` of the access token) as `ROLE_*`
+  authorities — what the use cases' `@PreAuthorize` and the menus check;
+- every service accepts that cookie, and also the IdP's **JWT** on its machine border
+  (`/mateu/**`, `/mcp`) for agents and `curl` — with the same realm roles;
+- leaving (`/logout`) clears the cookie and ends the IdP session.
+
+Nothing is discovered at startup, so a service boots whether or not the IdP answers yet. Two
+variables adapt it to where it runs:
+
+| Variable | What it says | Default |
+|---|---|---|
+| `MODUX_PUBLIC_URL` | Where people enter (the IdP sends them back to `/login/oauth2/code/modux` there) | `http://localhost:8088` for the shell; the Kubernetes manifests set the environment's host |
+| `MODUX_IDP_BACKCHANNEL` | Where the service reaches the IdP when it knows it by another name (token, keys, user info) | the issuer |
+
+### A Keycloak on your machine
+
+When the issuer is on `localhost` (`http://localhost:8080/realms/entradas`), the IdP is part of
+the local system: generation writes its realm, `keycloak/<realm>-realm.json`, with the model's
+roles, **one user per role** (username = password = the role's name in lower case) and the
+clients of the shell and the apps. `mvn modux:deploy` (compose) and `up.sh` start Keycloak 26
+with that realm imported — admin console at <http://localhost:8080> (`admin`/`admin`). Inside
+compose the services reach it as `keycloak:8080` (`MODUX_IDP_BACKCHANNEL`) while the tokens keep
+the browser's issuer.
+
+### An IdP of your own
+
+For an external IdP (a managed Keycloak, say), create in its realm the realm roles named like the
+model's roles, and **public** clients with standard flow and PKCE (S256): `shell`, redirect URI
+`https://<your-host>/*`, post-logout redirect `+`. No client secret travels in the deployment.
+
 ## Access policies (row-level authorization)
 
 Beyond role checks, an **access policy** on a bounded context constrains **which rows** a

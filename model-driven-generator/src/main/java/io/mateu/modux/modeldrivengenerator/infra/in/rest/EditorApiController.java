@@ -1262,7 +1262,8 @@ public class EditorApiController {
                         .map(x -> withUseCases(x, x.useCases().stream()
                                 .map(u -> u.id().equals(command.id())
                                         ? new ExternalSystemUseCaseEntity(
-                                                u.id(), command.name(), u.description())
+                                                u.id(), command.name(), u.description(),
+                                                u.inputModelId(), u.outputModelId(), u.path())
                                         : u)
                                 .toList()))
                         .toList());
@@ -2512,7 +2513,8 @@ public class EditorApiController {
                         "Unknown external use case: " + command.targetId()));
         var steps = new ArrayList<>(source.steps() == null ? List.of() : source.steps());
         if (steps.stream().anyMatch(st -> target.id().equals(st.externalUseCaseId()))) return;
-        steps.add(new UseCaseStepEntity("step-ext-" + target.id(), "call" + capitalize(target.name()),
+        // like a call to one of ours: before the logic that reads its answer
+        steps.add(callInsertionIndex(steps), new UseCaseStepEntity("step-ext-" + target.id(), "call" + capitalize(target.name()),
                 io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseStepType.CallExternalUseCase,
                 null, null, null, null, null, null, null, null, null, null, null, target.id()));
         repository.save(withSteps(source, steps));

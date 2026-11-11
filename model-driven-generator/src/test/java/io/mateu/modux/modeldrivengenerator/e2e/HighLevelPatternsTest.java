@@ -82,6 +82,8 @@ class HighLevelPatternsTest {
         var client = read("ConsultarPrecioRestClient.java");
         assertTrue(client.contains("${CATALOGO_URL:http://localhost:8091}"), client);
         assertTrue(client.contains(".uri(\"/v1/consultarprecio\")"), client);
+        // a rule the other side applies reaches the person as that rule, not as an unexpected error
+        assertTrue(client.contains("onStatus(status -> status.is4xxClientError(), (req, res) -> { throw rejected(res); })"), client);
         // the callee answers over REST, though nobody flagged it exposedAsRest
         assertTrue(file("ConsultarPrecioController.java", "catalogo").isPresent());
     }
@@ -133,7 +135,56 @@ class HighLevelPatternsTest {
     void a_read_model_listing_shows_the_models_labels_and_money_with_two_decimals() throws Exception {
         var listing = read("CompraViewListing.java");
         assertTrue(listing.contains("@io.mateu.uidl.annotations.Label(\"Concierto\") String conciertoId"), listing);
-        assertTrue(listing.contains("rm.importe().setScale(2, java.math.RoundingMode.HALF_UP)"), listing);
+        assertTrue(listing.contains("setScale(2, java.math.RoundingMode.HALF_UP)"), listing);
+    }
+
+    @Test
+    void a_use_case_of_an_external_system_is_a_real_http_call_to_where_it_answers() throws Exception {
+        var useCase = read("CobrarUseCase.java");
+        assertTrue(useCase.contains("var pasarelaCobrar = pasarelaCobrarClient.call("), useCase);
+        assertTrue(useCase.contains("steps.cobrar(command, pasarelaCobrar)"), "its answer reaches the logic: " + useCase);
+        var client = read("PasarelaCobrarRestClient.java");
+        assertTrue(client.contains("${PASARELA_URL:http://localhost:9099}"), client);
+        assertTrue(client.contains(".uri(\"/cobrar\")"), client);
+        assertTrue(client.contains("BufferingClientHttpRequestFactory"), "with its Content-Length: " + client);
+        assertTrue(read("PasarelaCobrarClient.java").contains("record Response(Boolean aceptado, String motivo)"));
+        var all = Files.createTempDirectory("modux-patterns-ext");
+        generateCodeUseCase.handle(new GenerateCodeCommand("entradas", all.toString(), null, false));
+        var compose = Files.readString(all.resolve("docker-compose.yml"));
+        assertTrue(compose.contains("PASARELA_URL: ${PASARELA_URL:-http://host.docker.internal:9099}"),
+                "the partner answers outside the compose network: " + compose);
+    }
+
+    @Test
+    void a_projection_fed_from_outside_polls_its_source_and_mirrors_it() throws Exception {
+        // an external system's operation: GET at where it answers
+        var api = read("MovimientosProjection.java");
+        assertTrue(api.contains("@Scheduled("), api);
+        assertTrue(api.contains("${PASARELA_URL:http://localhost:9099}"), api);
+        assertTrue(api.contains(".uri(\"/movimientos\")"), api);
+        assertTrue(api.contains("entity.setImporte("), api);
+        assertTrue(api.contains("repository.deleteAll(gone)"), "what the source no longer has goes: " + api);
+        // a legacy table: over JDBC, from the environment
+        var table = read("RecintosProjection.java");
+        assertTrue(table.contains("${LEGADO_JDBC_URL:}"), table);
+        assertTrue(table.contains("SELECT * FROM recintos"), table);
+        assertTrue(table.contains("entity.setAforoMaximo("), table);
+        var all = Files.createTempDirectory("modux-patterns-poll");
+        generateCodeUseCase.handle(new GenerateCodeCommand("entradas", all.toString(), null, false));
+        var compose = Files.readString(all.resolve("docker-compose.yml"));
+        assertTrue(compose.contains("LEGADO_JDBC_URL: ${LEGADO_JDBC_URL:-}"), compose);
+    }
+
+    @Test
+    void a_grouped_query_is_a_panel_one_row_per_key_with_its_totals() throws Exception {
+        var panel = read("CompraViewListing.java");
+        assertTrue(panel.contains("\"CONFIRMADA\".equals(String.valueOf(rm.estado()))"), "only the confirmed ones: " + panel);
+        assertTrue(panel.contains("groupingBy(rm -> String.valueOf(rm.conciertoId())"), panel);
+        assertTrue(panel.contains("@io.mateu.uidl.annotations.Label(\"Compras\") String count"), panel);
+        assertTrue(panel.contains("mapToLong(Number::longValue).sum()"), "entries add up: " + panel);
+        assertTrue(panel.contains("reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add)"), "revenue adds up: " + panel);
+        // Analítica holds a view of Concierto too (one more line): the row names the concert
+        assertTrue(panel.contains("names.getById(key).map(v -> String.valueOf(v.artista()))"), panel);
     }
 
     private Optional<Path> file(String name, String under) throws Exception {
@@ -147,6 +198,6 @@ class HighLevelPatternsTest {
     private String read(String name) throws Exception {
         // google-java-format wraps where it likes: compare on single spaces
         return Files.readString(file(name, null).orElseThrow(() -> new AssertionError(name + " not generated")))
-                .replaceAll("\\s+", " ").replace("( ", "(").replace(" )", ")").replace(". ", ".");
+                .replaceAll("\\s+", " ").replace("( ", "(").replace(" )", ")").replace(". ", ".").replace(" .", ".");
     }
 }

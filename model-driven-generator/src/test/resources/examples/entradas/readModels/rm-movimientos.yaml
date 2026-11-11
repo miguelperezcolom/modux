@@ -1,0 +1,6 @@
+---
+id: "rm-movimientos"
+name: "MovimientoView"
+boundedContextId: "bc-pagos"
+modelId: "m-movimiento"
+projectId: "entradas"

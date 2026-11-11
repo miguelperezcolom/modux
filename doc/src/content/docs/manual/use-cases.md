@@ -130,6 +130,17 @@ custom steps after the call receive its answer as a parameter:
 ComprarResult comprar(ComprarCommand command, ConsultarPrecioClient.Response consultarPrecio);
 ```
 
+A call to an **external system's operation** (`CallExternalUseCase`, drawn from the use case to
+the operation) is the same kind of call, to a real process: `POST {path}` (default `/{name}`) at
+`{SYSTEM}_URL`, whose default is the system's `baseUrl`. The operation declares what it receives
+and answers (`inputModelId`, `outputModelId`; without an input model the use case's own input
+travels), and its answer reaches the steps after it. The compose file passes `{SYSTEM}_URL` on,
+pointing a `localhost` default at the host (`host.docker.internal`), since the partner is not part
+of the compose network.
+
+Either way, when the other side says no (a 4xx), the caller rejects with the same
+`BusinessRuleException` and the message the other side gave, not an unexpected error.
+
 ### The pipeline shape
 
 Every operation of an information system has the same shape: **gather data → transform it → write it somewhere or return it**. Each step type plays one of those roles:

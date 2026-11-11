@@ -1602,6 +1602,9 @@
             "$ref" : "#/$defs/ExternalApiOperationUseEntity"
           }
         },
+        "baseUrl" : {
+          "type" : "string"
+        },
         "cqrsExternalSystemIds" : {
           "description" : "References to existing 'cqrsExternalSystem' ids (referential integrity is checked by the linter).",
           "type" : "array",
@@ -1726,7 +1729,20 @@
           "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "inputModelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "name" : {
+          "type" : "string"
+        },
+        "outputModelId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'outputModel' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "path" : {
           "type" : "string"
         }
       },
@@ -3788,6 +3804,9 @@
     "ProxyApiEntity" : {
       "type" : "object",
       "properties" : {
+        "cacheTtlSeconds" : {
+          "type" : "integer"
+        },
         "description" : {
           "type" : "string"
         },
@@ -3804,6 +3823,9 @@
           "items" : {
             "$ref" : "#/$defs/ProxyOperationRouteEntity"
           }
+        },
+        "path" : {
+          "type" : "string"
         },
         "projectId" : {
           "type" : "string",
@@ -3851,6 +3873,12 @@
           "$ref" : "#/$defs/QueryCardinality"
         },
         "description" : {
+          "type" : "string"
+        },
+        "filter" : {
+          "type" : "string"
+        },
+        "groupBy" : {
           "type" : "string"
         },
         "id" : {

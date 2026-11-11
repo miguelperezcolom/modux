@@ -1,0 +1,20 @@
+---
+id: "m-movimiento"
+name: "Movimiento"
+fields:
+- id: "f-m-movimiento-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  label: "Compra"
+- id: "f-m-movimiento-importe"
+  name: "importe"
+  basicType: true
+  type: "money"
+  label: "Importe"
+- id: "f-m-movimiento-resultado"
+  name: "resultado"
+  basicType: true
+  type: "string"
+  label: "Resultado"
+projectId: "entradas"

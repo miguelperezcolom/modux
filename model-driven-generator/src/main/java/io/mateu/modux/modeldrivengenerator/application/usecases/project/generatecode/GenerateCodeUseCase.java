@@ -23,6 +23,8 @@ import io.mateu.modux.modeldrivengenerator.domain.aggregates.usecase.vo.UseCaseS
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ComponentEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DomainEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EntityEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemUseCaseEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.IntegrationEventEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.QueryOperationEntity;
@@ -755,7 +757,13 @@ public class GenerateCodeUseCase {
         }
         appModel.put("consumers", consumers);
 
-        idpFor(project).ifPresent(idp -> appModel.put("idp", idp));
+        idpFor(project).ifPresent(idp -> {
+            appModel.put("idp", idp);
+            // the keycloak client a person opening this service directly signs in with
+            keycloakAppClients(effectiveServices(project)).stream()
+                    .filter(c -> service.id().equals(c.get("serviceId"))).findFirst()
+                    .ifPresent(c -> appModel.put("oidcClientId", c.get("clientId")));
+        });
         createFile(appDir, appModel, "service-app-pom.ftl", "pom.xml");
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
         createFile(appDir, appModel, "application.ftl",
@@ -1258,6 +1266,85 @@ public class GenerateCodeUseCase {
         return rawName.endsWith("Projection") ? rawName : rawName + "Projection";
     }
 
+    /** The query operation a menu entry points at (its first one when it names none). */
+    private java.util.Optional<QueryOperationEntity> queryOperationOfMenuItem(UiMenuItemEntity item) {
+        if (item.queryServiceId() == null || item.queryServiceId().isBlank()) return java.util.Optional.empty();
+        return repository.findById(item.queryServiceId(), QueryServiceEntity.class)
+                .flatMap(qs -> qs.operations() == null ? java.util.Optional.empty() : qs.operations().stream()
+                        .filter(op -> item.queryOperationId() == null || item.queryOperationId().equals(op.id()))
+                        .findFirst());
+    }
+
+    /** {@code estado=CONFIRMADA,tipo=X}: the read model's accessor and the text it has to equal. */
+    private List<Map<String, Object>> filtersOf(String filter, List<ModelFieldEntity> fields) {
+        var out = new java.util.ArrayList<Map<String, Object>>();
+        for (var part : filter.split(",")) {
+            var eq = part.indexOf('=');
+            if (eq <= 0) throw new IllegalArgumentException("Query filter '" + filter + "': expected field=value");
+            var name = part.substring(0, eq).trim();
+            var field = fields.stream().filter(f -> name.equals(f.name())).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Query filter '" + filter + "': the read model has no field " + name));
+            out.add(Map.of("accessor", field.basicType() ? field.name() : field.name() + "Id",
+                    "value", part.substring(eq + 1).trim()));
+        }
+        return out;
+    }
+
+    /**
+     * A listing grouped by one field: the key, how many rows it stands for, and the sum of every
+     * numeric field. When the key names another aggregate ({@code conciertoId}) and this service
+     * holds a view of it, the row shows that view's name instead of the bare id.
+     */
+    private Map<String, Object> groupingOf(ProjectEntity project, ServiceEntity service, ReadModelEntity rm, String groupBy, List<ModelFieldEntity> fields) {
+        var key = fields.stream().filter(f -> groupBy.equals(f.name())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Query groupBy '" + groupBy + "': the read model " + rm.name() + " has no such field"));
+        Map<String, Object> g = new HashMap<>();
+        g.put("keyName", key.name());
+        g.put("keyAccessor", key.basicType() ? key.name() : key.name() + "Id");
+        g.put("keyLabel", key.label() != null && !key.label().isBlank() ? key.label() : humanize(key.name()));
+        var countLabel = rm.aggregateId() == null ? "Total" : repository.findById(rm.aggregateId(), AggregateEntity.class)
+                .map(a -> humanize(a.name()) + "s").orElse("Total");
+        g.put("countLabel", countLabel);
+        g.put("sums", fields.stream()
+                .filter(f -> f.basicType() && f.type() != null && !f.name().equals(key.name()))
+                .filter(f -> switch (f.type().name()) { case "integer", "number", "money" -> true; default -> false; })
+                .map(f -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("name", f.name());
+                    m.put("label", f.label() != null && !f.label().isBlank() ? f.label() : humanize(f.name()));
+                    m.put("integer", "integer".equals(f.type().name()));
+                    return m;
+                }).toList());
+        // conciertoId → a view of Concierto in this service: show what it calls itself
+        var referenced = key.name().replaceAll("Id$", "");
+        deployedUnits(service).stream()
+                .filter(u -> u.readModelIds() != null)
+                .flatMap(u -> u.readModelIds().stream()
+                        .map(id -> repository.findById(id, ReadModelEntity.class).orElse(null))
+                        .filter(java.util.Objects::nonNull)
+                        .filter(other -> !other.id().equals(rm.id()) && other.aggregateId() != null)
+                        .filter(other -> repository.findById(other.aggregateId(), AggregateEntity.class)
+                                .map(a -> a.name().equalsIgnoreCase(referenced)).orElse(false))
+                        .map(other -> Map.entry(u, other)))
+                .findFirst()
+                .ifPresent(e -> {
+                    var other = e.getValue();
+                    var otherFields = repository.findById(other.aggregateId(), AggregateEntity.class)
+                            .flatMap(a -> repository.findById(a.modelId(), ModelEntity.class))
+                            .map(m -> m.fields() == null ? List.<ModelFieldEntity>of() : m.fields()).orElse(List.of());
+                    otherFields.stream()
+                            .filter(f -> f.basicType() && f.type() != null && "string".equals(f.type().name()) && !"id".equals(f.name()))
+                            .findFirst()
+                            .ifPresent(nameField -> {
+                                var otherClass = toTypeName(other.name()).replaceAll("ReadModel$", "");
+                                g.put("lookupQueryService", project.packageName() + "." + boundedContextSlug(e.getKey().name())
+                                        + ".application.query." + otherClass + "ReadModelQueryService");
+                                g.put("lookupAccessor", nameField.name());
+                            });
+                });
+        return g;
+    }
+
     /** The read model a menu entry's query answers with, if it answers with one. */
     private java.util.Optional<ReadModelEntity> readModelOfMenuItem(UiMenuItemEntity item) {
         if (item.queryServiceId() == null || item.queryServiceId().isBlank()) return java.util.Optional.empty();
@@ -1416,6 +1503,18 @@ public class GenerateCodeUseCase {
                 // editor: use case → use case). What it answers is handed to the hooks after it.
                 if ("CallUseCase".equals(stepType) && step.useCaseId() != null) {
                     var remote = remoteCallOf(useCase.id(), step.useCaseId(), commandFieldNames);
+                    if (remote != null) {
+                        stepMap.put("type", "CallRemoteUseCase");
+                        stepMap.put("remote", remote);
+                        stepType = "CallRemoteUseCase";
+                        remoteResponses.add(remote);
+                    }
+                }
+                // A use case of an EXTERNAL system (one line in the editor: use case → the partner's
+                // use case) is the same kind of call: a client over HTTP to {SYSTEM}_URL, its answer
+                // handed to the hooks after it. The partner is a real process, not a hook.
+                if ("CallExternalUseCase".equals(stepType) && step.externalUseCaseId() != null) {
+                    var remote = externalCallOf(useCase, step.externalUseCaseId(), commandFieldNames);
                     if (remote != null) {
                         stepMap.put("type", "CallRemoteUseCase");
                         stepMap.put("remote", remote);
@@ -1586,8 +1685,119 @@ public class GenerateCodeUseCase {
         remote.put("var", uncapitalize(className));
         remote.put("service", serviceName(calleeService));
         remote.put("urlProperty", svcSlug.toUpperCase().replace("-", "_") + "_URL");
-        remote.put("port", calleeService.port() != null ? calleeService.port() : 8080);
+        remote.put("defaultUrl", "http://localhost:" + (calleeService.port() != null ? calleeService.port() : 8080));
         remote.put("path", "/" + apiVersion + "/" + callee.name().toLowerCase().replaceAll("[^a-z0-9]", "-"));
+        remote.put("request", request);
+        remote.put("response", response);
+        remote.put("hasResponse", !response.isEmpty());
+        return remote;
+    }
+
+    /** The external system offering that use case, and the use case itself. */
+    private java.util.Optional<Map.Entry<ExternalSystemEntity, ExternalSystemUseCaseEntity>> externalUseCase(String externalUseCaseId) {
+        return repository.findAllOfType(ExternalSystemEntity.class).stream()
+                .flatMap(x -> (x.useCases() == null ? List.<ExternalSystemUseCaseEntity>of() : x.useCases()).stream()
+                        .filter(u -> externalUseCaseId.equals(u.id()))
+                        .map(u -> Map.entry(x, u)))
+                .findFirst();
+    }
+
+    /**
+     * Where a projection fed from outside reads: GET on an external system's use case (its path,
+     * default {@code /{name}}) at {@code {SYSTEM}_URL}, or every row of one of its tables over JDBC
+     * at {@code {SYSTEM}_JDBC_URL}. Null for the projections fed by events or by an aggregate.
+     */
+    private Map<String, Object> pollSourceOf(ProjectionEntity projection) {
+        if (projection.sourceExternalUseCaseId() != null && !projection.sourceExternalUseCaseId().isBlank()) {
+            return externalUseCase(projection.sourceExternalUseCaseId()).map(e -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("kind", "api");
+                m.put("system", e.getKey().name());
+                m.put("source", e.getValue().name());
+                m.put("urlProperty", externalUrlProperty(e.getKey()));
+                m.put("defaultUrl", e.getKey().baseUrl() != null && !e.getKey().baseUrl().isBlank() ? e.getKey().baseUrl() : "http://localhost:8080");
+                m.put("path", e.getValue().path() != null && !e.getValue().path().isBlank() ? e.getValue().path()
+                        : "/" + e.getValue().name().toLowerCase().replaceAll("[^a-z0-9]", "-"));
+                return m;
+            }).orElse(null);
+        }
+        if (projection.sourceExternalTableId() != null && !projection.sourceExternalTableId().isBlank()) {
+            return repository.findAllOfType(ExternalSystemEntity.class).stream()
+                    .flatMap(x -> (x.tables() == null ? List.<io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ExternalSystemTableEntity>of() : x.tables()).stream()
+                            .filter(t -> projection.sourceExternalTableId().equals(t.id()))
+                            .map(t -> {
+                                var prefix = externalUrlProperty(x).replaceAll("_URL$", "");
+                                Map<String, Object> m = new HashMap<>();
+                                m.put("kind", "table");
+                                m.put("system", x.name());
+                                m.put("source", t.name());
+                                m.put("jdbcProperty", prefix + "_JDBC_URL");
+                                m.put("userProperty", prefix + "_JDBC_USER");
+                                m.put("passwordProperty", prefix + "_JDBC_PASSWORD");
+                                return m;
+                            }))
+                    .findFirst().orElse(null);
+        }
+        return null;
+    }
+
+    /** {@code LEGADO_JDBC_URL/_USER/_PASSWORD}: what the projections polling a legacy table need. */
+    private List<String> externalJdbcEnvs() {
+        return repository.findAllOfType(ProjectionEntity.class).stream()
+                .map(this::pollSourceOf).filter(java.util.Objects::nonNull)
+                .filter(m -> "table".equals(m.get("kind")))
+                .flatMap(m -> java.util.stream.Stream.of((String) m.get("jdbcProperty"), (String) m.get("userProperty"), (String) m.get("passwordProperty")))
+                .distinct().toList();
+    }
+
+    /** {@code PASARELA_URL → its baseUrl}, for every external system some use case calls or a projection polls. */
+    private List<Map.Entry<String, String>> externalUrls(ProjectEntity project) {
+        var called = repository.findAllOfType(UseCaseEntity.class).stream()
+                .flatMap(uc -> uc.steps() == null ? java.util.stream.Stream.empty() : uc.steps().stream())
+                .map(UseCaseStepEntity::externalUseCaseId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
+        // and the ones a projection polls
+        repository.findAllOfType(ProjectionEntity.class).stream()
+                .map(ProjectionEntity::sourceExternalUseCaseId).filter(java.util.Objects::nonNull).forEach(called::add);
+        return repository.findAllOfType(ExternalSystemEntity.class).stream()
+                .filter(x -> x.useCases() != null && x.useCases().stream().anyMatch(u -> called.contains(u.id())))
+                .map(x -> Map.entry(externalUrlProperty(x),
+                        x.baseUrl() != null && !x.baseUrl().isBlank() ? x.baseUrl() : "http://localhost:8080"))
+                .toList();
+    }
+
+    /** The environment variable that says where an external system answers: {@code PASARELA_URL}. */
+    static String externalUrlProperty(ExternalSystemEntity system) {
+        return system.name().toUpperCase().replaceAll("[^A-Z0-9]+", "_").replaceAll("^_|_$", "") + "_URL";
+    }
+
+    /**
+     * A call to an external system's use case: POST {@code {path}} (default {@code /{name}}) at
+     * {@code {SYSTEM}_URL}, sending its input model (or, when it declares none, the caller's
+     * input) and reading its output model.
+     */
+    private Map<String, Object> externalCallOf(UseCaseEntity caller, String externalUseCaseId, Set<String> commandFieldNames) {
+        var found = externalUseCase(externalUseCaseId).orElse(null);
+        if (found == null) return null;
+        var system = found.getKey();
+        var target = found.getValue();
+        var className = toTypeName(system.name()) + capitalize(toTypeName(target.name()));
+        var request = new java.util.ArrayList<Map<String, Object>>();
+        var inputModelId = target.inputModelId() != null && !target.inputModelId().isBlank() ? target.inputModelId() : caller.inputModelId();
+        fieldsOf(inputModelId).forEach(f -> request.add(Map.of(
+                "name", f.name(), "javaType", javaTypeOf(f),
+                "expr", commandFieldNames.contains(f.name()) ? "command." + f.name() + "()" : "null")));
+        var response = new java.util.ArrayList<Map<String, Object>>();
+        fieldsOf(target.outputModelId()).forEach(f -> response.add(Map.of("name", f.name(), "javaType", javaTypeOf(f))));
+        Map<String, Object> remote = new HashMap<>();
+        remote.put("className", className);
+        remote.put("var", uncapitalize(className));
+        remote.put("service", system.name());
+        remote.put("external", true);
+        remote.put("urlProperty", externalUrlProperty(system));
+        remote.put("defaultUrl", system.baseUrl() != null && !system.baseUrl().isBlank() ? system.baseUrl() : "http://localhost:8080");
+        remote.put("path", target.path() != null && !target.path().isBlank() ? target.path()
+                : "/" + target.name().toLowerCase().replaceAll("[^a-z0-9]", "-"));
         remote.put("request", request);
         remote.put("response", response);
         remote.put("hasResponse", !response.isEmpty());
@@ -2987,7 +3197,9 @@ public class GenerateCodeUseCase {
 
         createFile(appDir, model, "role-security.ftl",
                 "src/main/java/" + packageDir + "/infra/in/security/SecurityConfig.java");
-        if (!roles.isEmpty() && idpFor(project).isEmpty()) {
+        // one login for the whole system: the form's (roles, no IdP) or the IdP's — either way the
+        // system's own signed cookie is what every service then accepts
+        if (!roles.isEmpty() || idpFor(project).isPresent()) {
             model.put("securityPackage", project.packageName() + ".infra.in.security");
             createFile(appDir, model, "auth-cookie.ftl",
                     "src/main/java/" + packageDir + "/infra/in/security/ModuxAuthCookie.java");
@@ -3213,6 +3425,11 @@ public class GenerateCodeUseCase {
                                 && ("money".equals(f.type().name()) || "number".equals(f.type().name())));
                         return rf;
                     }).toList());
+                    queryOperationOfMenuItem(item).ifPresent(op -> {
+                        if (op.filter() != null && !op.filter().isBlank()) listingModel.put("filters", filtersOf(op.filter(), rmFields));
+                        if (op.groupBy() != null && !op.groupBy().isBlank())
+                            listingModel.put("grouping", groupingOf(project, service, rm, op.groupBy(), rmFields));
+                    });
                     var unitDir = serviceDir + "/" + boundedContextSlug(unit.name());
                     var pagesDir = "src/main/java/" + packageDir + "/" + moduleSlug + "/infra/in/ui/pages/" + className.toLowerCase();
                     createDir(unitDir, pagesDir);
@@ -3285,6 +3502,14 @@ public class GenerateCodeUseCase {
                 .map(sh -> sh.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"))
                 .toList());
 
+        // where the external systems answer: from the host (host.docker.internal) unless the
+        // environment says otherwise — the partner is not part of the compose network
+        model.put("externalUrls", externalUrls(project).stream().map(e -> Map.of(
+                "envName", e.getKey(),
+                "url", e.getValue().replaceFirst("//(localhost|127\\.0\\.0\\.1)([:/]|$)", "//host.docker.internal$2"))).toList());
+        model.put("externalJdbcEnvs", externalJdbcEnvs());
+        // a local keycloak runs in the compose too, with the realm up.sh generation writes
+        idpFor(project).filter(GenerateCodeUseCase::isLocalIdp).ifPresent(i -> model.put("localIdp", i));
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
         createDir(project.outputPath(), "postgres-init");
         createFile(project.outputPath(), model, "postgres-init.ftl",
@@ -3581,6 +3806,9 @@ public class GenerateCodeUseCase {
             model.put("ingressClass", env.ingressClassName() != null && !env.ingressClassName().isBlank() ? env.ingressClassName() : "nginx");
             model.put("tls", env.ingressTlsEnabled() == null || env.ingressTlsEnabled());
             model.put("certIssuer", env.certIssuer() != null && !env.certIssuer().isBlank() ? env.certIssuer() : null);
+            model.put("externalUrls", externalUrls(project).stream()
+                    .map(e -> Map.of("envName", e.getKey(), "url", e.getValue())).toList());
+            model.put("externalJdbcEnvs", externalJdbcEnvs());
             createFile(project.outputPath(), model, "deploy-k8s.ftl", "deploy/k8s/" + envName + ".yaml");
 
             Map<String, Object> t = new HashMap<>();
@@ -3629,6 +3857,45 @@ public class GenerateCodeUseCase {
         }
     }
 
+    /** A keycloak on this machine: the one up.sh and the compose file start themselves. */
+    static boolean isLocalIdp(Map<String, Object> idp) {
+        var url = String.valueOf(idp.get("url"));
+        return url.contains("://localhost") || url.contains("://127.0.0.1");
+    }
+
+    /**
+     * One public keycloak client per app (and per adapter-less service), matching the
+     * {@code @KeycloakSecured} clientIds the generated Homes carry.
+     */
+    private List<Map<String, Object>> keycloakAppClients(List<ServiceEntity> services) {
+        var projectServiceIds = services.stream().map(ServiceEntity::id).collect(java.util.stream.Collectors.toSet());
+        var appClients = new java.util.ArrayList<Map<String, Object>>();
+        var servicesWithAdapter = new java.util.HashSet<String>();
+        repository.findAllOfType(UiAdapterEntity.class).stream()
+                .filter(a -> a.serviceId() != null && projectServiceIds.contains(a.serviceId()))
+                .sorted(java.util.Comparator.comparing(UiAdapterEntity::name,
+                        java.util.Comparator.nullsLast(String::compareTo)))
+                .forEach(a -> {
+                    servicesWithAdapter.add(a.serviceId());
+                    var svc = services.stream()
+                            .filter(s -> s.id().equals(a.serviceId())).findFirst().orElse(null);
+                    var pathSlug = a.path() == null ? ""
+                            : a.path().replaceFirst("^/", "").replaceAll("[^a-z0-9-]", "");
+                    var clientId = !pathSlug.isBlank() ? pathSlug
+                            : (svc != null ? svc.name() : a.name())
+                                    .toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
+                    appClients.add(Map.of("clientId", clientId, "serviceId", a.serviceId(),
+                            "port", svc != null && svc.port() != null ? svc.port() : 8080));
+                });
+        services.stream()
+                .filter(s -> !servicesWithAdapter.contains(s.id()))
+                .forEach(s -> appClients.add(Map.of(
+                        "clientId", s.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
+                        "serviceId", s.id(),
+                        "port", s.port() != null ? s.port() : 8080)));
+        return appClients;
+    }
+
     private void generateUpSh(ProjectEntity project) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
@@ -3652,32 +3919,19 @@ public class GenerateCodeUseCase {
         // @KeycloakSecured clientIds the generated Homes carry. Only when an IdP is chosen.
         var idp = idpFor(project);
         model.put("idp", idp.orElse(null));
-        var appClients = new java.util.ArrayList<Map<String, Object>>();
-        if (idp.isPresent()) {
-            var servicesWithAdapter = new java.util.HashSet<String>();
-            repository.findAllOfType(UiAdapterEntity.class).stream()
-                    .filter(a -> a.serviceId() != null && projectServiceIds.contains(a.serviceId()))
-                    .sorted(java.util.Comparator.comparing(UiAdapterEntity::name,
-                            java.util.Comparator.nullsLast(String::compareTo)))
-                    .forEach(a -> {
-                        servicesWithAdapter.add(a.serviceId());
-                        var svc = services.stream()
-                                .filter(s -> s.id().equals(a.serviceId())).findFirst().orElse(null);
-                        var pathSlug = a.path() == null ? ""
-                                : a.path().replaceFirst("^/", "").replaceAll("[^a-z0-9-]", "");
-                        var clientId = !pathSlug.isBlank() ? pathSlug
-                                : (svc != null ? svc.name() : a.name())
-                                        .toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
-                        appClients.add(Map.of("clientId", clientId,
-                                "port", svc != null && svc.port() != null ? svc.port() : 8080));
-                    });
-            services.stream()
-                    .filter(s -> !servicesWithAdapter.contains(s.id()))
-                    .forEach(s -> appClients.add(Map.of(
-                            "clientId", s.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"),
-                            "port", s.port() != null ? s.port() : 8080)));
-        }
+        var appClients = idp.isPresent() ? keycloakAppClients(services) : List.<Map<String, Object>>of();
         model.put("appClients", appClients);
+        // a local keycloak (the IdP's issuer is on localhost) comes with its realm: the model's
+        // roles, one user per role and the clients of the shell and the apps — imported on start
+        // by up.sh and by the compose file alike
+        idp.filter(GenerateCodeUseCase::isLocalIdp).ifPresent(i -> {
+            var realm = new HashMap<String, Object>(model);
+            realm.put("roles", repository.findAllOfType(RoleEntity.class).stream()
+                    .filter(r -> inProject(r.projectId(), project)).map(RoleEntity::name).sorted().toList());
+            realm.put("hasShell", !((List<?>) model.get("shells")).isEmpty());
+            createDir(project.outputPath(), "keycloak");
+            createFile(project.outputPath(), realm, "keycloak-realm.ftl", "keycloak/" + i.get("realm") + "-realm.json");
+        });
         createFile(project.outputPath(), model, "up-sh.ftl", "up.sh");
         createFile(project.outputPath(), model, "down-sh.ftl", "down.sh");
         // run as ./up.sh, which is what their own output tells you
@@ -3819,7 +4073,7 @@ public class GenerateCodeUseCase {
         model.put("roles", shellRoles);
         createFile(shellDir, model, "uishell-security.ftl",
                 "src/main/java/" + packageDir + "/infra/config/SecurityConfig.java");
-        if (!shellRoles.isEmpty() && idpFor(project).isEmpty()) {
+        if (!shellRoles.isEmpty() || idpFor(project).isPresent()) {
             model.put("securityPackage", shellPackage + ".infra.config");
             createFile(shellDir, model, "auth-cookie.ftl",
                     "src/main/java/" + packageDir + "/infra/config/ModuxAuthCookie.java");
@@ -3861,6 +4115,16 @@ public class GenerateCodeUseCase {
                 }
                 model.put("readModel", rmModel);
             }
+        }
+
+        // fed from outside: an external system's operation or a legacy table, polled and mirrored
+        var poll = pollSourceOf(projection);
+        if (poll != null && model.get("readModel") != null && rmModelEntity != null && rmModelEntity.fields() != null) {
+            model.put("poll", poll);
+            model.put("fields", toFieldMaps(rmModelEntity.fields()));
+            createFile(boundedContextDir, model, "projection-poller.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/infra/in/projection/" + className + ".java");
+            return;
         }
 
         // Enrich each handler with payload fields + field mapping for auto-deserialization

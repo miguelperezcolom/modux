@@ -1,0 +1,15 @@
+---
+id: "m-cobro-resultado"
+name: "CobroResultado"
+fields:
+- id: "f-m-cobro-resultado-aceptado"
+  name: "aceptado"
+  basicType: true
+  type: "bool"
+  label: "Aceptado"
+- id: "f-m-cobro-resultado-motivo"
+  name: "motivo"
+  basicType: true
+  type: "string"
+  label: "Motivo"
+projectId: "entradas"

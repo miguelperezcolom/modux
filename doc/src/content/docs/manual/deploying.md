@@ -86,32 +86,17 @@ An environment without `ingressDomain` publishes nothing: the deploy prints the
 - **kubectl** with the environment's context; **kind** for kind clusters.
 - On the cluster, an ingress controller and, for TLS, cert-manager with the issuer you name.
 
-## Identity: the model's IdP becomes OIDC login
+## Identity: the model's IdP becomes the login
 
-> The `secure` profile and its secret are wired in each service's own `k8s/<service>.yaml`;
-> the environment manifests `modux:deploy` applies do not activate it yet.
+Declare an **IdP** element with its **issuer** and connect it to the apps: the shell signs people
+in there (OIDC login, a public client with PKCE) and every service accepts the system's cookie or
+the IdP's JWT — see [what an IdP generates](/manual/identity/#what-an-idp-generates).
 
-Declare an **IdP** element (Estratégico palette) with its **issuer** URI — e.g. a
-[Cloud-IAM](https://cloud-iam.com) managed Keycloak realm,
-`https://<cluster>.cloud-iam.com/auth/realms/<realm>` — and connect it to the **App**.
-Generation then wires the whole chain:
-
-- the app gains `spring-boot-starter-oauth2-client` and a **`secure` Spring profile**:
-  OIDC login against the issuer, and Keycloak realm roles (`realm_access.roles`) mapped
-  to the generated `ROLE_*` authorities;
-- **without the `secure` profile the app boots OPEN** — local runs and CI never depend
-  on the IdP being reachable;
-- the Kubernetes manifests activate `secure` and read the client credentials from the
-  **`modux-idp-credentials`** secret — required: without it the pod stops at
-  `CreateContainerConfigError` instead of crash-looping on an unresolvable placeholder:
-
-```bash
-kubectl create secret generic modux-idp-credentials \
-  --from-literal=client-id=<client> --from-literal=client-secret=<secret>
-```
-
-Create the client in your realm (confidential, redirect URI
-`https://<your-url>/login/oauth2/code/*`) and the login page is Keycloak's.
+- **Locally**, an issuer on `localhost` brings its Keycloak: the compose file (and `up.sh`) start
+  it with the generated realm — the model's roles, one user per role, the clients.
+- **On Kubernetes**, the manifests tell the shell where people enter (`MODUX_PUBLIC_URL`, from the
+  environment's host). The IdP is yours: create the realm roles and the public clients (`shell`,
+  redirect `https://<host>/*`). There are no client secrets to deploy.
 
 ## Troubleshooting
 

@@ -132,4 +132,41 @@ public final class ModuxAuthCookie extends GenericFilterBean {
         cookie.setAttribute("SameSite", "Lax");
         return cookie;
     }
+<#if idp??>
+
+    /**
+     * Who signs in at the identity provider, with the realm's roles as authorities ({@code ROLE_*}):
+     * keycloak carries them in the access token ({@code realm_access.roles}), which comes straight
+     * from the token endpoint, so it is read as it is.
+     */
+    static org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService withRealmRoles() {
+        var delegate = new org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService();
+        return new org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService() {
+            @Override
+            public org.springframework.security.oauth2.core.oidc.user.OidcUser loadUser(
+                    org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest request) {
+                var user = delegate.loadUser(request);
+                var authorities = new java.util.ArrayList<GrantedAuthority>(user.getAuthorities());
+                try {
+                    var claims = com.nimbusds.jwt.JWTParser.parse(request.getAccessToken().getTokenValue()).getJWTClaimsSet();
+                    var access = claims.getJSONObjectClaim("realm_access");
+                    if (access != null && access.get("roles") instanceof java.util.Collection<?> roles) {
+                        roles.forEach(r -> authorities.add(new SimpleGrantedAuthority("ROLE_" + r)));
+                    }
+                } catch (java.text.ParseException e) {
+                    // an opaque token: no realm roles
+                }
+                return new org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser(
+                        authorities, user.getIdToken(), user.getUserInfo(), "preferred_username");
+            }
+        };
+    }
+
+    /** Leaving the system leaves the identity provider too, and comes back to the start. */
+    static String idpLogoutUrl(Environment env, String clientId, String defaultPublicUrl) {
+        var publicUrl = env.getProperty("MODUX_PUBLIC_URL", defaultPublicUrl);
+        return "${idp.issuer}/protocol/openid-connect/logout?client_id=" + clientId
+                + "&post_logout_redirect_uri=" + java.net.URLEncoder.encode(publicUrl + "/", StandardCharsets.UTF_8);
+    }
+</#if>
 }

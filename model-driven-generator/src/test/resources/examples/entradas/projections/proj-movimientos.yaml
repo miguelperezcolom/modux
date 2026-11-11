@@ -1,0 +1,6 @@
+---
+id: "proj-movimientos"
+name: "Movimientos"
+readModelId: "rm-movimientos"
+sourceExternalUseCaseId: "ext-pasarela-movimientos"
+projectId: "entradas"

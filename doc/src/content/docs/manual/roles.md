@@ -49,15 +49,13 @@ HMAC with `MODUX_AUTH_SECRET`) that every service behind the gateway accepts. Ag
 keep using HTTP Basic. `mvn modux:deploy` creates a random secret per Kubernetes namespace; the
 local compose uses a development one. Declare an identity provider for real users.
 
-## IAM integration
+## With an identity provider
 
-If your project has an IAM provider configured (e.g. Keycloak), Modux generates:
-
-- Realm role definitions
-- Role-to-permission mapping
-- JWT claim extraction configuration
-
-The generated Spring Security configuration reads roles from the JWT token and maps them to the permissions defined here.
+With an [identity provider](/manual/identity/#what-an-idp-generates) connected to the apps, people
+sign in there and the same `MODUX_AUTH` cookie carries their **realm roles**: a realm role named
+like a model role (`CLIENTE`) is that role (`ROLE_CLIENTE`) for the use cases, the CRUDs and the
+menus. Agents and `curl` send the IdP's JWT instead, read the same way. A local Keycloak comes
+generated with one user per role.
 
 ## Securing operations
 

@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.4.0"
+version = "0.5.0"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,11 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.5.0</h4>
+            <ul>
+              <li>Release aligned with modux-maven-plugin 0.5.0: calls to external systems, projections polled from an external operation or a legacy table, grouped queries for panels, and the identity provider as the system's login (a local Keycloak with its realm).</li>
+              <li>A call to an external system is placed before the logic that reads its answer.</li>
+            </ul>
             <h4>0.4.0</h4>
             <ul>
               <li>Release aligned with modux-maven-plugin 0.4.0: high-level patterns from one line (projections, calls between services, cached proxies), model checks before generating, one login without an identity provider.</li>

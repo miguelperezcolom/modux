@@ -1,0 +1,10 @@
+---
+id: "qs-recintos"
+name: "Recintos"
+boundedContextId: "bc-catalogo"
+operations:
+- id: "qs-recintos-list"
+  name: "recintos"
+  outputModelId: "m-recinto"
+  cardinality: "Page"
+projectId: "entradas"

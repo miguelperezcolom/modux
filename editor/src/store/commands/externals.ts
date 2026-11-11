@@ -210,14 +210,16 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     if (!target) throw new CommandError(`Caso de uso externo desconocido: ${targetId}`);
     const steps = nested(source.steps);
     if (steps.some((step) => step.externalUseCaseId === targetId)) return;
-    store.patch('useCases', source.id, {
-      steps: [...steps, {
-        id: `step-ext-${targetId}`,
-        name: `call${capitalize(String(target.name ?? target.id))}`,
-        type: 'CallExternalUseCase',
-        externalUseCaseId: targetId,
-      }],
-    });
+    // like a call to one of ours: before the logic that reads its answer — mirrors EditorApiController
+    const call = {
+      id: `step-ext-${targetId}`,
+      name: `call${capitalize(String(target.name ?? target.id))}`,
+      type: 'CallExternalUseCase',
+      externalUseCaseId: targetId,
+    };
+    const firstOf = (type: string) => steps.findIndex((step) => step.type === type);
+    const at = [firstOf('Custom'), firstOf('PublishDomainEvent')].find((i) => i >= 0) ?? steps.length;
+    store.patch('useCases', source.id, { steps: [...steps.slice(0, at), call, ...steps.slice(at)] });
   },
 
   'remove-external-uc-call': (store, command) => {

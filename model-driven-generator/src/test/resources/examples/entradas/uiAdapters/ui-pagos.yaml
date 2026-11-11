@@ -8,5 +8,8 @@ menuItems:
 - label: "Pagos"
   id: "ui-pagos-0"
   aggregateId: "pago"
+- label: "Movimientos de la pasarela"
+  id: "ui-pagos-1"
+  queryServiceId: "qs-movimientos"
 appType: "APP"
 projectId: "entradas"

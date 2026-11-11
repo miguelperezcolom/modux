@@ -3,8 +3,10 @@ id: "bc-analitica"
 name: "Analitica"
 projectionIds:
 - "proj-compras"
+- "proj-conciertos-analitica"
 readModelIds:
 - "rm-compras"
+- "rm-conciertos-analitica"
 subdomainType: "GENERIC"
 projectId: "entradas"
 queryServiceIds:

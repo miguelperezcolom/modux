@@ -29,6 +29,11 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 <#if idp??>
+        <!-- people sign in at the model's identity provider (OIDC login) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>

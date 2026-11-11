@@ -1,0 +1,6 @@
+---
+id: "proj-conciertos-analitica"
+name: "ConciertosAnalitica"
+readModelId: "rm-conciertos-analitica"
+sourceAggregateId: "concierto"
+projectId: "entradas"

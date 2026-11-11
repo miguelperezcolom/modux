@@ -163,6 +163,14 @@ spec:
 <#list runnables?filter(x -> x.kind == "service" && x.name != r.name) as s>
             - {name: ${s.name?upper_case?replace("-","_")}_URL, value: "http://${s.name}:${s.port?c}"}
 </#list>
+<#list (externalUrls![]) as x>
+            - {name: ${x.envName}, value: "${x.url}"}
+</#list>
+<#list (externalJdbcEnvs![]) as j>
+            # a legacy table a projection polls: kubectl create secret generic ${projectSlug}-external --from-literal=${j?lower_case?replace("_","-")}=…
+            - name: ${j}
+              valueFrom: {secretKeyRef: {name: ${projectSlug}-external, key: ${j?lower_case?replace("_","-")}, optional: true}}
+</#list>
 <#elseif r.kind == "gateway">
 <#list runnables?filter(x -> x.kind == "service") as s>
             - {name: ${s.name?upper_case?replace("-","_")}_URL, value: "http://${s.name}:${s.port?c}"}
@@ -173,6 +181,11 @@ spec:
 <#elseif r.kind == "shell">
             # the shell asks the remote apps for their menus through the gateway
             - {name: MATEU_SELF_BASE_URL, value: "http://gateway:8088"}
+<#assign frontHosts = (runnables?filter(x -> x.kind == "gateway")?first.hosts)![]>
+<#if frontHosts?has_content>
+            # where people enter: the identity provider sends them back here after signing in
+            - {name: MODUX_PUBLIC_URL, value: "<#if tls>https<#else>http</#if>://${frontHosts?first}"}
+</#if>
 </#if>
           ports: [{containerPort: ${r.port?c}}]
           startupProbe:

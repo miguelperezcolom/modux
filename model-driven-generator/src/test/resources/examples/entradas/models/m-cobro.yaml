@@ -1,0 +1,20 @@
+---
+id: "m-cobro"
+name: "Cobro"
+fields:
+- id: "f-m-cobro-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  label: "Compra"
+- id: "f-m-cobro-importe"
+  name: "importe"
+  basicType: true
+  type: "money"
+  label: "Importe"
+- id: "f-m-cobro-tarjeta"
+  name: "tarjeta"
+  basicType: true
+  type: "string"
+  label: "Tarjeta"
+projectId: "entradas"

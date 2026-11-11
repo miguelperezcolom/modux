@@ -22,6 +22,22 @@ services:
 <#list project.services?filter(o -> o.name != svc.name) as o>
       ${o.name?upper_case?replace("[^A-Z0-9]","_",'r')}_URL: http://${o.name?lower_case?replace("[^a-z0-9]","-",'r')}:${(o.port!8080)?c}
 </#list>
+<#if localIdp??>
+      # the browser meets keycloak at localhost:8080 (the tokens' issuer); the service, inside the network
+      MODUX_IDP_BACKCHANNEL: http://keycloak:8080/realms/${localIdp.realm}
+</#if>
+<#-- where the external systems it calls answer: override with the variable of the same name -->
+<#list (externalUrls![]) as x>
+      ${x.envName}: ${r"${"}${x.envName}:-${x.url}${r"}"}
+</#list>
+<#-- a legacy table a projection polls: where it is and who reads it, from the environment -->
+<#list (externalJdbcEnvs![]) as j>
+      ${j}: ${r"${"}${j}:-${r"}"}
+</#list>
+<#if (externalUrls![])?has_content || (externalJdbcEnvs![])?has_content>
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+</#if>
     depends_on:
       - postgres
       - kafka
@@ -48,7 +64,28 @@ services:
       context: ./${sh}
     environment:
       MATEU_SELF_BASE_URL: http://gateway:8088
+<#if localIdp??>
+      MODUX_IDP_BACKCHANNEL: http://keycloak:8080/realms/${localIdp.realm}
+</#if>
 </#list>
+
+</#if>
+<#if localIdp??>
+  # the model's identity provider, on this machine: its realm (roles, one user per role, the
+  # clients of the shell and the apps) is imported from ./keycloak on start
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev --import-realm
+    ports:
+      - "8080:8080"
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # one issuer whoever asks: the browser at localhost, the services at keycloak:8080
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
 
 </#if>
   postgres:

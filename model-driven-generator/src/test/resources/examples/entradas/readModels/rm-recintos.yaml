@@ -1,0 +1,6 @@
+---
+id: "rm-recintos"
+name: "RecintoView"
+boundedContextId: "bc-catalogo"
+modelId: "m-recinto"
+projectId: "entradas"

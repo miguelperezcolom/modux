@@ -703,4 +703,14 @@ describe('use case calls', () => {
     const steps = store.get('useCases', 'uc-a')?.steps as { type: string }[];
     expect(steps.map((s) => s.type)).toEqual(['CallUseCase', 'Custom', 'PublishDomainEvent']);
   });
+
+  it('puts a call to an external system before the logic too', () => {
+    const store = model({
+      useCases: [{ id: 'uc-a', name: 'Cobrar', steps: [{ id: 's1', name: 'registrar', type: 'Custom' }] }],
+      externalSystems: [{ id: 'ext-p', name: 'Pasarela', useCases: [{ id: 'ext-p-cobrar', name: 'cobrar' }] }],
+    });
+    apply(store, { kind: 'add-external-uc-call', sourceId: 'uc-a', targetId: 'ext-p-cobrar' } as never);
+    const steps = store.get('useCases', 'uc-a')?.steps as { type: string }[];
+    expect(steps.map((s) => s.type)).toEqual(['CallExternalUseCase', 'Custom']);
+  });
 });
