@@ -198,4 +198,5 @@ matches the shape you are building before writing from scratch.
 
 Geometry (`diagrams/`) is written by the graphical editor in the IntelliJ plugin. You can edit
 it by hand, but positions you invent will look arbitrary — prefer leaving the diagram alone and
-letting auto-layout place new elements.
+letting auto-layout place new elements. A model with no geometry at all needs nothing: the editor
+lays out every view nobody has placed the first time it shows it.

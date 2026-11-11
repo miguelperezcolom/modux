@@ -101,6 +101,8 @@ out the gestures for the current view.
 - **Select first to scope it**: with elements selected, **✨ Auto-layout (N)** rearranges
   *only those* — kept where they are (their centroid doesn't move) so the rest of the
   diagram stays put. With nothing selected it re-lays the whole view.
+- **A model with no geometry yet** (written by hand, or from a spec) needs none of this:
+  the first time you open a view of it, it comes already laid out the same way.
 - **↻ Líneas** re-routes the **lines only**, on the current node positions — the
   companion for when you've placed the nodes yourself and just the lines look stale
   (e.g. after dragging a box). It moves nothing; it redraws each edge clean and

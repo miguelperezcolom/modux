@@ -18,6 +18,7 @@ import type { UiMenuEntryRef, UiComponentNodeRef } from './model.js';
 import { autoLayout } from './autolayout.js';
 import { routeEdgesAroundNodes } from './edge-routing.js';
 import { semanticLayout, semanticPartitions } from './semantic-layout.js';
+import { layoutableNodes, needsInitialLayout } from './initial-layout.js';
 import { derivedElementIds, hideDerived, markDerived } from './derived.js';
 import './modux-canvas.js';
 import './modux-tilt.js';
@@ -1052,6 +1053,32 @@ export class ModuxEditor extends LitElement {
       this.migrateLevelLayouts();
       this.migrateNestedGeometry();
     }
+  }
+
+  /** Sheets already offered an initial layout (key + view + lens), so it runs once each. */
+  private readonly _initialLayoutTried = new Set<string>();
+
+  protected updated(changed: PropertyValues): void {
+    if (['model', 'layout', '_view', '_activeViewId', '_canvasMode', '_yugo', '_tilt'].some((p) => changed.has(p))) {
+      this.maybeInitialLayout();
+    }
+  }
+
+  /**
+   * A view nobody ever placed (a model written from a spec carries no geometry) opens
+   * arranged by ELK instead of on its per-view template — no overlapping boxes, orthogonal
+   * lines, crossings minimised. Once per sheet; a sheet with any stored position is the
+   * author's and stays as it is.
+   */
+  private maybeInitialLayout(): void {
+    if (this._yugo || this._tilt) return;
+    const view = this._view;
+    const tried = `${this.layoutKey(view)}|${view}|${this._canvasMode}`;
+    if (this._initialLayoutTried.has(tried)) return;
+    const scene = this.sceneFor(view);
+    if (!scene.nodes.length) return; // the model may not have arrived yet: try again later
+    this._initialLayoutTried.add(tried);
+    if (needsInitialLayout(scene, this.viewLayout(view))) void this.runAutoLayout({ initial: true });
   }
 
   /**
@@ -4264,15 +4291,18 @@ export class ModuxEditor extends LitElement {
    * nodes are rearranged, kept in place (their centroid doesn't move) so the rest
    * of the diagram stays put. With nothing selected, the whole view is relaid.
    */
-  private async runAutoLayout(): Promise<void> {
+  private async runAutoLayout(opts?: { initial?: boolean }): Promise<void> {
+    const initial = opts?.initial ?? false;
     const view = this._view;
+    const key = this.layoutKey(view);
     const scene = this.sceneFor(view);
     if (!scene.nodes.length) return;
     // Nested children (aggregates/use cases) are derived from their container's
     // position, so only top-level nodes take part in the layout. Areas are frames:
     // the layout ignores them (they stay where their author framed them).
-    const topNodes = scene.nodes.filter((n) => !n.parentId && n.kind !== 'area');
-    const selection = this._multi.length ? this._multi : this._selectedId ? [this._selectedId] : [];
+    const topNodes = layoutableNodes(scene);
+    // The initial layout arranges the whole sheet, whatever happens to be selected.
+    const selection = initial ? [] : this._multi.length ? this._multi : this._selectedId ? [this._selectedId] : [];
     const scoped = selection.length > 0;
     const selSet = new Set(selection);
     const layoutNodes = scoped ? topNodes.filter((n) => selSet.has(n.id)) : topNodes;
@@ -4291,6 +4321,9 @@ export class ModuxEditor extends LitElement {
     // right meaning — driving side, domain, driven side — is preserved.
     const partitions = isPipeline ? undefined : semanticPartitions(semanticLayout(layoutScene));
     const result = await autoLayout(layoutScene, partitions ? { partitions } : undefined);
+    // ELK is asynchronous: the user may have switched views, or placed a box, meanwhile.
+    if (initial && (this._view !== view || this.layoutKey(view) !== key
+        || !needsInitialLayout(this.sceneFor(view), this.viewLayout(view)))) return;
     const current = this.viewLayout(view);
 
     // A scoped layout keeps the selection where it is: translate ELK's output so
@@ -4331,7 +4364,8 @@ export class ModuxEditor extends LitElement {
       ? [...new Set([...internalEdgeIds, ...boundaryEdgeIds])]
       : Object.keys(current.edges);
 
-    this.pushUndoEntry([
+    // The initial layout is where the view starts, not a step the user took: nothing to undo.
+    if (!initial) this.pushUndoEntry([
       ...layoutNodes.map((n) => ({
         kind: 'move-node' as const,
         view,
