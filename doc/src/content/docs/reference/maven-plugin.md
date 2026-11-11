@@ -10,63 +10,56 @@ The `modux-maven-plugin` lets you trigger Modux code generation from any Maven b
 ```xml
 <groupId>io.mateu.modux</groupId>
 <artifactId>modux-maven-plugin</artifactId>
-<version>0.1.0</version>
+<version>0.3.0</version>
 ```
+
+## Goal: `validate`
+
+**Default phase:** `validate`
+
+Checks the model before anything is generated from it, and fails the build on any error:
+
+- **Dangling references** — an `*Id` / `*Ids` field naming an element that does not exist.
+- **Duplicate ids** — the same id on two elements (only an element and its backing model may share one).
+- **Declarations that collide once generated** — two aggregates, entities, use cases, events or
+  read models of a context that become the same class (case aside: `Pedido` and `PEDIDO` cannot
+  live side by side on macOS); two bounded contexts that become the same package; two services
+  that become the same project or listen on the same port; a model field named after a Java
+  keyword (`class`, `default`…) or declared twice.
+- **The semantic rule catalog** — a saga step without compensation, a workflow that can loop
+  forever or that nothing starts, a module deployed by two services, and the rest of the lint.
+
+Errors stop the build; warnings are printed and the build goes on.
+
+| Parameter | Property | Default | Description |
+|---|---|---|---|
+| `modelPath` | `modux.modelPath` | the repository's model directory | Where the model is |
+| `ignoredReferences` | `modux.ignoredReferences` | — | Reference fields that legitimately point outside the model |
+| `reportOnly` | `modux.validateOnly` | `false` | Report the problems without failing the build |
 
 ## Goal: `generate`
 
 **Default phase:** `generate-sources`
 
-Reads the spec file, loads the project identified by `projectId`, and generates all code into `outputPath`.
+Generates the system from the model into the project's `outputPath`. It runs the same checks as
+`validate` first and generates nothing when the model has errors: a conflict is reported on the
+model element that causes it, not as a compiler error in the generated code.
 
-### Parameters
+Everything defaults off the model itself — the project, its output path and its package are
+facts the model carries; the parameters only override them.
 
-| Parameter | Property | Default | Required | Description |
-|---|---|---|---|---|
-| `projectId` | `modux.projectId` | — | **Yes** | ID of the project to generate, as defined in the spec store |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Absolute path to the YAML spec file |
-| `outputPath` | `modux.outputPath` | `${project.basedir}/generated` | No | Directory where generated code is written |
-| `packageName` | `modux.packageName` | `com.example` | No | Root Java package for generated classes |
-| `sourceOnly` | `modux.sourceOnly` | `false` | No | When `true`, skips the DevOps/IaC artifacts (Dockerfile, Kubernetes manifests, docker-compose, CI workflow, Terraform); generates the Maven project and Java sources only |
+| Parameter | Property | Default | Description |
+|---|---|---|---|
+| `modelPath` | `modux.modelPath` | the repository's model directory | Where the model is |
+| `projectId` | `modux.projectId` | the model's project | Only for a store that still holds several |
+| `outputPath` | `modux.outputPath` | the project's `outputPath` | Where the generated code goes |
+| `packageName` | `modux.packageName` | the project's `packageName` | Root Java package |
+| `sourceOnly` | `modux.sourceOnly` | `false` | Skip the DevOps/IaC artifacts; Maven projects and Java sources only |
+| `skipChecks` | `modux.skipChecks` | `false` | Generate even when the model has errors |
 
-### Minimal configuration
-
-```xml
-<plugin>
-    <groupId>io.mateu.modux</groupId>
-    <artifactId>modux-maven-plugin</artifactId>
-    <version>0.1.0</version>
-    <configuration>
-        <projectId>my-project-id</projectId>
-    </configuration>
-    <executions>
-        <execution>
-            <goals><goal>generate</goal></goals>
-        </execution>
-    </executions>
-</plugin>
-```
-
-### Full configuration example
-
-```xml
-<plugin>
-    <groupId>io.mateu.modux</groupId>
-    <artifactId>modux-maven-plugin</artifactId>
-    <version>0.1.0</version>
-    <configuration>
-        <projectId>acme-platform</projectId>
-        <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>
-        <outputPath>${project.basedir}/generated</outputPath>
-        <packageName>com.acme.platform</packageName>
-        <sourceOnly>false</sourceOnly>
-    </configuration>
-    <executions>
-        <execution>
-            <goals><goal>generate</goal></goals>
-        </execution>
-    </executions>
-</plugin>
+```bash
+mvn modux:validate    # check the model
+mvn modux:generate    # check it again, then generate
 ```
 
 ## Goal: `ai-complete`

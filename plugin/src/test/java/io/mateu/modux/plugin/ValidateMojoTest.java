@@ -118,4 +118,26 @@ class ValidateMojoTest {
 
         assertDoesNotThrow(mojo::execute);
     }
+
+    @Test
+    void a_model_whose_declarations_collide_fails_the_build(@TempDir Path dir) throws Exception {
+        var model = dir.resolve("model.yaml");
+        Files.writeString(model, """
+                projects:
+                  - id: proj-1
+                    name: Demo
+                    packageName: com.example
+                services:
+                  - id: svc-1
+                    name: Pedidos
+                    port: 8081
+                  - id: svc-2
+                    name: Cobros
+                    port: 8081
+                """);
+
+        var failure = assertThrows(MojoFailureException.class, mojoFor(model)::execute);
+
+        assertTrue(failure.getMessage().contains("error(es) en el modelo"), failure.getMessage());
+    }
 }

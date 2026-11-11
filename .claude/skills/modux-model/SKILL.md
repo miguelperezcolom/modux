@@ -140,12 +140,16 @@ lost.
 Always, after editing:
 
 ```bash
-mvn modux:validate     # referential integrity — catches rules 1 and 2 above
-mvn modux:generate     # generates into the project's declared outputPath
+mvn modux:validate     # references, duplicate ids, generation conflicts and the lint catalog
+mvn modux:generate     # checks again, then generates into the project's declared outputPath
 mvn -q test            # the generated code has to build
 ```
 
 `modux:validate` reports every dangling reference with the element and field that carries it.
+It also stops on declarations that collide once generated — two elements of a context that become
+the same class (case aside), two contexts that become one package, two services with the same name
+or port, a field named `class` or declared twice — and on the ERROR rules of the lint catalog.
+`modux:generate` runs the same checks and generates nothing while any remains.
 Fix the model, not the generated code.
 
 ## Use cases: what becomes code, what becomes a hook
