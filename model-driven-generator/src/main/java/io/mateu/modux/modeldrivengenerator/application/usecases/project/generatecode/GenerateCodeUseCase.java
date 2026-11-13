@@ -2080,6 +2080,13 @@ public class GenerateCodeUseCase {
     }
 
     /** The Java type a field travels as between services (enums and references as text). */
+    /** The words the generated UI adds on its own (a menu, a link) follow the project's language: English unless it says Spanish. */
+    static boolean speaksSpanish(ProjectEntity project) {
+        var locale = project.defaultLocale() != null && !project.defaultLocale().isBlank() ? project.defaultLocale()
+                : project.locales() != null && !project.locales().isEmpty() ? project.locales().get(0) : "";
+        return locale.toLowerCase().startsWith("es");
+    }
+
     private static String javaTypeOf(ModelFieldEntity f) {
         if (!f.basicType() || f.type() == null) return "String";
         return switch (f.type().name()) {
@@ -3810,7 +3817,8 @@ public class GenerateCodeUseCase {
             var className = aggregate.name() + "HistoryListing";
             var slug = aggregate.name().toLowerCase() + "historial";
             var moduleSlug = boundedContextSlug(unit.name());
-            var label = "Historial de " + (it.label() != null && !it.label().isBlank() ? it.label().toLowerCase() : aggregate.name());
+            var shown = it.label() != null && !it.label().isBlank() ? it.label() : aggregate.name();
+            var label = speaksSpanish(project) ? "Historial de " + shown.toLowerCase() : aggregate.name() + " history";
             var historyModel = buildBaseModel(project, service, unit);
             historyModel.put("className", className);
             historyModel.put("aggregateName", aggregate.name());

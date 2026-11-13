@@ -1,3 +1,4 @@
+<#assign uiEs = (project.defaultLocale!"")?lower_case?starts_with("es")>
 package ${project.packageName}.infra.in.ui;
 
 import io.mateu.uidl.annotations.Menu;
@@ -69,8 +70,8 @@ public class Home<#if idp??> implements WidgetSupplier</#if> {
                             .style("margin-right: 20px;")
                             .build())
                     .content(VerticalLayout.builder().content(List.of(
-                                    new Text("Usuario: " + who.getName()),
-                                    new Anchor("Salir", "/logout"))
+                                    new Text("<#if uiEs>Usuario<#else>User</#if>: " + who.getName()),
+                                    new Anchor("<#if uiEs>Salir<#else>Log out</#if>", "/logout"))
                             ).spacing(true)
                             .padding(true)
                             .build())

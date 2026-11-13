@@ -3,6 +3,7 @@ id: "entradas"
 name: "Entradas"
 outputPath: "generated"
 packageName: "es.entradas"
+defaultLocale: "es"
 serviceIds:
 - "svc-catalogo"
 - "svc-ventas"
