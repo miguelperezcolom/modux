@@ -137,5 +137,34 @@ workflow runs lists `SISTEMA` among its roles. Its password comes from
 `MODUX_SYSTEM_PASSWORD` (the services only create that user when it is set). Kafka
 subscriptions and scheduled triggers act as the same identity.
 
+A **business key** names the workflow and the thing the event is about
+(`prepago-${data.reservaId}`): the engine keeps keys unique across workflows, and the same
+thing can run again once its last run ended (`businessKeyPolicy: allowAfterFinished`).
+
+**Exclusive splits** become the condition of each branch, checked right after the split's
+source (a JEXL expression over the process variables — what a person submitted in a form
+among them). A branch whose condition does not hold never starts; when nothing is left to
+run, the process completes.
+
+### People's tasks
+
+A human step (a `roleId`) becomes a **USER_TASK**:
+
+- `assignment.candidateGroups` is its role: the task lands on the worklist of everyone with it;
+- with a `deadline` and an `escalationRoleId`, it is offered to that role too once the
+  deadline passes;
+- its `formPageId` is the form: the page's model, as an EventConductor form — what the
+  person submits becomes process variables, named as the fields.
+
+The system then also runs EventConductor's **forms app** (`formularios`, image
+`forms-standalone-app`, `EC_FORMS_IMAGE`), with the forms generated into `procesos/forms`. It
+is reached only through the gateway, at `/_forms` — the shell shows it as **Tareas** — and the
+gateway tells it who is signed in: it verifies the system's login cookie and forwards that user
+and their roles as a token (`IdentityBridge`), dropping whatever the browser sent.
+
+A reply that arrives before a wait is armed is lost (the engine does not buffer messages). When
+what is awaited happens outside the workflow, give the wait a `timeoutStepId` that **checks
+the current state** (a use case) and branch on it, rather than acting directly on the timeout.
+
 The engine's console answers at http://localhost:8105 (user `admin`, password
 `EC_ADMIN_PASSWORD`): every process, its steps, its variables and its history.

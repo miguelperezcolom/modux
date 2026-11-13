@@ -151,7 +151,8 @@ class WorkflowGenerationTest {
         var compose = Files.readString(output.resolve("docker-compose.yml"));
         assertThat(compose).contains("image: ${EC_ORCHESTRATOR_IMAGE:-miguelperezcolom/orchestrator-standalone-app:2.38.1}",
                 "WORKFLOW_DEFINITIONS_DIRS: /workflows", "./procesos/config:/config:ro",
-                "MODUX_SYSTEM_PASSWORD: ${MODUX_SYSTEM_PASSWORD:-sistema-local}", "CREATE DATABASE procesos");
+                "MODUX_SYSTEM_PASSWORD: ${MODUX_SYSTEM_PASSWORD:-sistema-local}", "CREATE DATABASE procesos",
+                "modux.definitions: \"");   // a changed definition recreates the engine on deploy
         // the use case a step runs answers over REST, and the system identity may sign in
         try (Stream<Path> walk = Files.walk(output)) {
             assertThat(walk.anyMatch(p -> p.getFileName().toString().equals("CobrarController.java"))).isTrue();
@@ -160,6 +161,69 @@ class WorkflowGenerationTest {
             var security = walk.filter(p -> p.getFileName().toString().equals("SecurityConfig.java"))
                     .filter(p -> p.toString().contains("reservas")).findFirst().orElseThrow();
             assertThat(Files.readString(security)).contains("withUsername(\"sistema\")", "roles(\"SISTEMA\")");
+        }
+    }
+
+    /**
+     * A person's task: on the worklist of its role, with its form, in EventConductor's forms app —
+     * which the system runs, behind the gateway, which tells it who is signed in.
+     */
+    @Test
+    void aHumanTaskLandsOnItsRolesWorklistWithItsForm(@TempDir Path tmp) throws Exception {
+        var output = tmp.resolve("out");
+        var model = model(tmp, output.toString());
+        Files.createDirectories(model.resolve("enums"));
+        Files.writeString(model.resolve("enums/enum-decision.yaml"),
+                "id: enum-decision\nvalues:\n  - {id: OK, name: APROBAR}\n  - {id: KO, name: RECHAZAR}\n");
+        Files.writeString(model.resolve("models/m-revision.yaml"), """
+                id: m-revision
+                name: Revision
+                fields:
+                  - id: f-decision
+                    name: decision
+                    enumId: enum-decision
+                    label: Decisión
+                    validations: [{id: v-decision, type: NotNull}]
+                  - id: f-comentario
+                    name: comentario
+                    basicType: true
+                    type: string
+                """);
+        Files.writeString(model.resolve("pages/pg-revision.yaml"), "id: pg-revision\nname: Revision\ntype: FORM\nmodelId: m-revision\n");
+        Files.writeString(model.resolve("roles/act-jefe.yaml"), "id: act-jefe\nname: Jefe\n");
+        var wf = model.resolve("workflows/wf-checkin.yaml");
+        Files.writeString(wf, Files.readString(wf).replace("    roleId: act-recep\n",
+                "    roleId: act-recep\n    formPageId: pg-revision\n    deadline: PT4H\n    escalationRoleId: act-jefe\n"));
+        repository.loadFrom(model.toString());
+
+        generateCode.handle(new GenerateCodeCommand("booking", output.toString(), null, false));
+
+        var form = new ObjectMapper().readTree(Files.readString(output.resolve("procesos/forms/Revision.form.json")));
+        assertThat(form.get("id").asText()).isEqualTo("form-revision");
+        // what the person submits becomes the process variables, named as the next use case reads them
+        assertThat(form.get("fields").get(0).get("id").asText()).isEqualTo("decision");
+        assertThat(form.get("fields").get(0).get("stereotype").asText()).isEqualTo("select");
+        assertThat(form.get("fields").get(0).get("options").get(1).get("value").asText()).isEqualTo("RECHAZAR");
+        assertThat(form.get("fields").get(0).get("required").asBoolean()).isTrue();
+
+        var definition = new ObjectMapper().readTree(Files.readString(output.resolve("procesos/workflows/Checkin.workflow.json")));
+        var task = java.util.stream.StreamSupport.stream(definition.get("steps").spliterator(), false)
+                .filter(st -> "s-revisar".equals(st.get("id").asText())).findFirst().orElseThrow();
+        assertThat(task.get("type").asText()).isEqualTo("USER_TASK");
+        assertThat(task.get("formId").asText()).isEqualTo("form-revision");
+        assertThat(task.get("assignment").get("candidateGroups").get(0).asText()).isEqualTo("Recepcion");
+        assertThat(task.get("escalation").get(0).get("after").asText()).isEqualTo("PT4H");
+        assertThat(task.get("escalation").get(0).get("to").get("candidateGroups").toString()).contains("Jefe");
+
+        var compose = Files.readString(output.resolve("docker-compose.yml"));
+        assertThat(compose).contains("formularios:", "EC_FORMS_IMAGE:-miguelperezcolom/forms-standalone-app:2.38.1",
+                "FORMS_DEFINITIONS_DIRS: /forms", "WORKFLOW_SECURITY_TRUST_FORWARDED_TOKEN: \"true\"");
+        var gateway = output.resolve("gateway/src/main/resources/application.yaml");
+        if (Files.exists(gateway)) {
+            assertThat(Files.readString(gateway)).contains("Path=/_forms/**");
+            try (Stream<Path> walk = Files.walk(output.resolve("gateway"))) {
+                assertThat(walk.anyMatch(p -> p.getFileName().toString().equals("IdentityBridge.java"))).isTrue();
+            }
         }
     }
 

@@ -123,13 +123,22 @@ public final class EventConductorWorkflowDefinition {
     }
 
     /** How a step reaches a use case: POST {@code path} on the {@code connection} (its service), with these fields. */
-    public record UseCaseCall(String connection, String path, List<String> fields) {}
+    public record UseCaseCall(String connection, String path, List<String> fields, List<String> outputs) {
+        public UseCaseCall(String connection, String path, List<String> fields) {
+            this(connection, path, fields, List.of());
+        }
+    }
 
     /**
      * What the definition needs to RUN, beyond its shape: how each target use case is reached over
      * HTTP and which fields each event carries (to correlate it with the process).
      */
-    public record Runtime(Function<String, UseCaseCall> callOf, Function<String, List<String>> fieldsOf) {}
+    public record Runtime(Function<String, UseCaseCall> callOf, Function<String, List<String>> fieldsOf,
+                          Function<String, String> roleNameOf) {
+        public Runtime(Function<String, UseCaseCall> callOf, Function<String, List<String>> fieldsOf) {
+            this(callOf, fieldsOf, roleId -> roleId);
+        }
+    }
 
     /**
      * The definition the engine runs: {@link #of} plus what makes it go on its own.
@@ -170,8 +179,13 @@ public final class EventConductorWorkflowDefinition {
             if (workflow.triggerCondition() != null && !workflow.triggerCondition().isBlank()) {
                 t.put("filter", workflow.triggerCondition());
             }
-            if (key != null) t.put("businessKey", "${data." + key + "}");
+            // the engine keeps a business key unique across ALL workflows: two of them started by the
+            // same event about the same thing must not collide, so the key names the workflow too
+            if (key != null) t.put("businessKey", slug(workflow.name()) + "-${data." + key + "}");
             definition.put("triggers", List.of(t));
+            // the same thing can happen again (an order rejected twice): a new run once the last one
+            // ended; while one runs, another start about the same thing joins it
+            definition.put("businessKeyPolicy", "allowAfterFinished");
         }
 
         var modelSteps = workflow.steps() == null ? List.<WorkflowStepEntity>of() : workflow.steps();
@@ -203,6 +217,12 @@ public final class EventConductorWorkflowDefinition {
                 http.put("method", "POST");
                 http.put("path", call.path());
                 http.put("body", body);
+                // what the use case answers becomes process variables, for the steps (and branches) after it
+                if (call.outputs() != null && !call.outputs().isEmpty()) {
+                    var output = new LinkedHashMap<String, Object>();
+                    call.outputs().forEach(f -> output.put(f, "body." + f));
+                    http.put("output", output);
+                }
                 out.put("http", http);
                 out.put("retries", 2);
             } else if (waits) {
@@ -211,19 +231,39 @@ public final class EventConductorWorkflowDefinition {
                 out.put("type", "WAIT_FOR_MESSAGE");
                 out.remove("topic");
                 out.put("messageName", event);
-                out.put("correlationExpression", "businessKey");
+                // the id the event is about, as the process holds it (the trigger's data are its variables)
+                out.put("correlationExpression", key != null ? key : "businessKey");
                 var onEvent = new LinkedHashMap<String, Object>();
                 onEvent.put("destination", destinationOf(event));
                 onEvent.put("type", "*");
                 if (eventKey != null) onEvent.put("correlationKey", "${data." + eventKey + "}");
                 out.put("onEvent", onEvent);
             }
+            if (st.roleId() != null && "USER_TASK".equals(out.get("type"))) {
+                // a person's task: on the worklist of everyone with the role; past its deadline it
+                // goes to the escalation role as well
+                var role = runtime.roleNameOf().apply(st.roleId());
+                out.put("assignment", Map.of("candidateGroups", List.of(role)));
+                if (st.deadline() != null && st.deadline().startsWith("P") && st.escalationRoleId() != null) {
+                    out.put("escalation", List.of(Map.of("after", st.deadline(), "action", "reassign",
+                            "to", Map.of("candidateGroups", List.of(role, runtime.roleNameOf().apply(st.escalationRoleId()))))));
+                }
+            }
             if (st.deadline() != null && !st.deadline().isBlank() && st.roleId() == null) {
                 if (st.deadline().startsWith("P")) out.put("timeout", st.deadline());
                 else out.put("deadline", st.deadline());
             }
             if (st.timeoutStepId() != null) out.put("onTimeoutStepId", st.timeoutStepId());
-            if (timeoutTargets.containsKey(st.id())) {
+            var into = gatewayInto(st.id(), gateways);
+            if (into != null && isExclusiveSplit(into)) {
+                // an exclusive branch: taken right after the split's source when its condition holds
+                out.remove("preconditionStepIds");
+                out.put("preconditions", List.of(Map.of("stepId", into.sourceIds().get(0),
+                        "expression", conditionOf(into, st.id()))));
+            } else if (into != null) {
+                out.remove("preconditionStepIds");
+                out.put("preconditionStepId", into.id());
+            } else if (timeoutTargets.containsKey(st.id())) {
                 // reached only when that step runs out of time, never down the normal path
                 out.remove("preconditionStepIds");
                 out.put("preconditions", List.of(Map.of("stepId", timeoutTargets.get(st.id()), "expression", "false")));
@@ -232,15 +272,30 @@ public final class EventConductorWorkflowDefinition {
             }
             steps.add(out);
         }
+        // the gateways: an exclusive split is no step of its own (its branches carry the conditions)
         generated.stream().filter(g -> modelSteps.stream().noneMatch(st -> st.id().equals(g.get("id"))))
                 .filter(g -> !"END".equals(g.get("type")))
-                .forEach(steps::add);   // the gateways
+                .filter(g -> gateways.stream().noneMatch(gw -> gw.id().equals(g.get("id")) && isExclusiveSplit(gw)))
+                .forEach(g -> {
+                    var gw = gateways.stream().filter(x -> x.id().equals(g.get("id"))).findFirst().orElse(null);
+                    var into = gw == null ? null : gatewayInto(gw.id(), gateways);
+                    if (into != null) {
+                        g.remove("preconditionStepIds");
+                        g.put("preconditionStepId", into.id());
+                    }
+                    steps.add(g);
+                });
 
         // the END: after the one last step, or after an XOR join of the several ways it can finish
         var referenced = new java.util.HashSet<String>();
         steps.forEach(st -> {
             if (st.get("preconditionStepId") instanceof String one) referenced.add(one);
             if (st.get("preconditionStepIds") instanceof List<?> many) many.forEach(m -> referenced.add(String.valueOf(m)));
+            // a branch taken on a condition continues its source; a timeout branch («false») does not:
+            // the waiting step that finishes in time is an ending of its own
+            if (st.get("preconditions") instanceof List<?> guarded) guarded.forEach(g -> {
+                if (g instanceof Map<?, ?> m && !"false".equals(m.get("expression"))) referenced.add(String.valueOf(m.get("stepId")));
+            });
         });
         var leaves = steps.stream().map(st -> (String) st.get("id"))
                 .filter(id -> !"start".equals(id) && !referenced.contains(id)).toList();
@@ -254,6 +309,24 @@ public final class EventConductorWorkflowDefinition {
         }
         definition.put("steps", steps);
         return definition;
+    }
+
+    /** The gateway whose outgoing link leads to {@code nodeId}, if any. */
+    private static WorkflowGatewayEntity gatewayInto(String nodeId, List<WorkflowGatewayEntity> gateways) {
+        return gateways.stream().filter(g -> g.targetIds() != null && g.targetIds().contains(nodeId))
+                .findFirst().orElse(null);
+    }
+
+    private static boolean isExclusiveSplit(WorkflowGatewayEntity gateway) {
+        return "SPLIT".equals(gateway.type()) && "EXCLUSIVE".equals(gateway.semantics())
+                && gateway.sourceIds() != null && !gateway.sourceIds().isEmpty();
+    }
+
+    /** The JEXL guarding one branch of an exclusive split (a branch with none is never taken). */
+    private static String conditionOf(WorkflowGatewayEntity split, String targetId) {
+        return split.branchConditions() == null ? "false" : split.branchConditions().stream()
+                .filter(c -> targetId.equals(c.targetId()) && c.expression() != null && !c.expression().isBlank())
+                .map(c -> c.expression()).findFirst().orElse("false");
     }
 
     /** The topic-independent name the engine knows an event by (mapped to its topic in configuration). */

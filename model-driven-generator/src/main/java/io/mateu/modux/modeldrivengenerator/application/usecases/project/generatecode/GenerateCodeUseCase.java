@@ -2360,6 +2360,16 @@ public class GenerateCodeUseCase {
                 .anyMatch(ids -> ids.contains(elementId));
     }
 
+    /** The EventConductor form a page's model becomes (a human task's form). */
+    private Map<String, Object> formDefinitionOf(PageEntity page) {
+        var fields = page.modelId() == null ? List.<ModelFieldEntity>of() : fieldsOf(page.modelId());
+        return io.mateu.modux.modeldrivengenerator.application.usecases.workflow.EventConductorFormDefinition.of(
+                page.name(), fields,
+                enumId -> repository.findById(enumId, EnumEntity.class)
+                        .map(e -> e.values() == null ? List.<String>of() : e.values().stream().map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumValueEntity::name).toList())
+                        .orElse(List.of()));
+    }
+
     /** The id of the form generated from a page, or null when that page generates none. */
     private String formIdOfPage(String pageId) {
         return repository.findById(pageId, PageEntity.class)
@@ -3202,8 +3212,8 @@ public class GenerateCodeUseCase {
         if ((pageType.equals("FORM") || pageType.equals("PAGE") || pageType.equals("WIZARD")) && page.modelId() != null) {
             var pageModelEntity = repository.findById(page.modelId(), ModelEntity.class).orElse(null);
             if (pageModelEntity != null && pageModelEntity.fields() != null && !pageModelEntity.fields().isEmpty()) {
-                createFile(boundedContextDir, model, "form-definition.ftl",
-                        "src/main/resources/forms/"
+                createFile(boundedContextDir, Map.of("definition", toPrettyJson(formDefinitionOf(page))),
+                        "workflow-definition-json.ftl", "src/main/resources/forms/"
                                 + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + ".form.json");
             }
         }
@@ -3598,6 +3608,8 @@ public class GenerateCodeUseCase {
 
     /** The version of EventConductor's orchestrator the generated system runs (overridable: EC_ORCHESTRATOR_IMAGE). */
     static final String EVENTCONDUCTOR_IMAGE = "miguelperezcolom/orchestrator-standalone-app:2.38.1";
+    /** Its forms app: the human tasks' forms and the worklist (overridable: EC_FORMS_IMAGE). */
+    static final String EVENTCONDUCTOR_FORMS_IMAGE = "miguelperezcolom/forms-standalone-app:2.38.1";
 
     /**
      * The runtime of the model's workflows: EventConductor's orchestrator, as is, with what the
@@ -3615,6 +3627,8 @@ public class GenerateCodeUseCase {
 
         var connections = new java.util.TreeMap<String, Map<String, Object>>();
         var destinations = new java.util.TreeMap<String, String>();
+        var humanTasks = false;
+        var mounted = new StringBuilder();   // what the engine reads from disk, to tell a change
         var runtime = new io.mateu.modux.modeldrivengenerator.application.usecases.workflow
                 .EventConductorWorkflowDefinition.Runtime(
                 useCaseId -> {
@@ -3632,12 +3646,15 @@ public class GenerateCodeUseCase {
                             : "/" + useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "-");
                     var fields = useCase.inputModelId() == null || useCase.inputModelId().isBlank() ? List.of("id")
                             : fieldsOf(useCase.inputModelId()).stream().map(ModelFieldEntity::name).toList();
+                    var outputs = useCase.outputModelId() == null || useCase.outputModelId().isBlank() ? List.<String>of()
+                            : fieldsOf(useCase.outputModelId()).stream().map(ModelFieldEntity::name).toList();
                     return new io.mateu.modux.modeldrivengenerator.application.usecases.workflow
-                            .EventConductorWorkflowDefinition.UseCaseCall(slug, "/" + apiVersion + path, fields);
+                            .EventConductorWorkflowDefinition.UseCaseCall(slug, "/" + apiVersion + path, fields, outputs);
                 },
                 eventName -> eventNamed(eventName)
                         .map(e -> fieldsOf(e.modelId()).stream().map(ModelFieldEntity::name).toList())
-                        .orElse(List.of()));
+                        .orElse(List.of()),
+                roleId -> repository.findById(roleId, RoleEntity.class).map(RoleEntity::name).orElse(roleId));
 
         createDir(project.outputPath(), "procesos/workflows");
         for (var workflow : workflows) {
@@ -3669,8 +3686,23 @@ public class GenerateCodeUseCase {
             }
             Map<String, Object> model = new HashMap<>();
             model.put("definition", toPrettyJson(definition));
+            mounted.append(model.get("definition"));
             createFile(project.outputPath(), model, "workflow-definition-json.ftl",
                     "procesos/workflows/" + capitalize(workflow.name()) + ".workflow.json");
+            // the forms of its human steps, for the forms app the worklist lives in
+            if (workflow.steps() != null) {
+                for (var st : workflow.steps()) {
+                    if (st.roleId() == null || st.formPageId() == null) continue;
+                    var page = repository.findById(st.formPageId(), PageEntity.class).orElse(null);
+                    if (page == null) continue;
+                    createDir(project.outputPath(), "procesos/forms");
+                    mounted.append(toPrettyJson(formDefinitionOf(page)));
+                    createFile(project.outputPath(), Map.of("definition", toPrettyJson(formDefinitionOf(page))),
+                            "workflow-definition-json.ftl", "procesos/forms/"
+                                    + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + ".form.json");
+                    humanTasks = true;
+                }
+            }
         }
 
         Map<String, Object> runtimeModel = new HashMap<>();
@@ -3681,6 +3713,11 @@ public class GenerateCodeUseCase {
         createDir(project.outputPath(), "procesos/config");
         createFile(project.outputPath(), runtimeModel, "procesos-config.ftl", "procesos/config/application.yaml");
         runtimeModel.put("image", EVENTCONDUCTOR_IMAGE);
+        // the definitions are mounted files: a change to them would not restart the engine, so the
+        // compose carries their hash and a different one recreates the container
+        mounted.append(runtimeModel.get("connections")).append(runtimeModel.get("destinations"));
+        runtimeModel.put("definitionsHash", sha256(mounted.toString()).substring(0, 16));
+        if (humanTasks) runtimeModel.put("formsImage", EVENTCONDUCTOR_FORMS_IMAGE);
         return runtimeModel;
     }
 
@@ -3696,6 +3733,24 @@ public class GenerateCodeUseCase {
             }
         }
         return java.util.Optional.empty();
+    }
+
+    private static String sha256(String text) {
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Whether a workflow has a person's task: then the system runs the forms app and its worklist. */
+    private boolean hasHumanTasks() {
+        return repository.findAllOfType(WorkflowEntity.class).stream()
+                .filter(workflow -> inScope(workflow.id()))
+                .filter(workflow -> homeContextOf(workflow) != null)
+                .flatMap(wf -> wf.steps() == null ? java.util.stream.Stream.<WorkflowStepEntity>empty() : wf.steps().stream())
+                .anyMatch(st -> st.roleId() != null && st.formPageId() != null);
     }
 
     /** The domain event with that name: the materialized one (with its topic) when there are several. */
@@ -4169,6 +4224,12 @@ public class GenerateCodeUseCase {
         model.put("proxies", proxies);
         var gatewayDir = project.outputPath() + "/gateway";
         var packageDir = (project.packageName() + ".gateway").replace(".", "/");
+        // the human tasks' worklist (EventConductor's forms app) under /_forms, with who is signed in
+        model.put("forms", hasHumanTasks());
+        if (hasHumanTasks()) {
+            createFile(gatewayDir, model, "gateway-identity-bridge.ftl",
+                    "src/main/java/" + packageDir + "/IdentityBridge.java");
+        }
         createFile(gatewayDir, model, "gateway-pom.ftl", "pom.xml");
         createFile(gatewayDir, model, "gateway-application.ftl",
                 "src/main/java/" + packageDir + "/ApiGatewayApplication.java");
@@ -4264,6 +4325,7 @@ public class GenerateCodeUseCase {
         model.put("shellPackage", shellPackage);
         model.put("shellClassName", shellClassName);
         model.put("resolvedServices", resolvedServices);
+        model.put("tasks", hasHumanTasks());
         idpFor(project).ifPresent(idp -> model.put("idp", idp));
 
         createFile(shellDir, model, "uishell-pom.ftl", "pom.xml");

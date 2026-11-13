@@ -46,6 +46,12 @@ public class ${shellClassName}Home<#if idp??> implements WidgetSupplier</#if> {
 
 </#if>
 </#list>
+<#if tasks!false>
+    /** The person's tasks of the workflows (EventConductor's worklist), through the gateway. */
+    @Menu
+    RemoteMenu tareas = new RemoteMenu("/_forms").withLabel("Tareas");
+
+</#if>
 <#else>
     // TODO: add RemoteMenu fields for each service
     // @Menu

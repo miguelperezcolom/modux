@@ -63,6 +63,9 @@ services:
 <#list composeShells as sh>
       SHELL_URL: http://${sh}:8100
 </#list>
+<#if procesos?? && procesos.formsImage??>
+      FORMS_URL: http://formularios:8106
+</#if>
 <#list composeShells as sh>
 
   ${sh}:
@@ -83,6 +86,9 @@ services:
   procesos:
     image: ${r"${"}EC_ORCHESTRATOR_IMAGE:-${procesos.image}${r"}"}
     restart: on-failure
+    labels:
+      # the generated definitions it mounts: a new hash recreates it on the next deploy
+      modux.definitions: "${procesos.definitionsHash}"
     environment:
       SERVER_PORT: "8105"
       WORKFLOW_MODE: kafka
@@ -111,6 +117,37 @@ services:
       kafka:
         condition: service_started
 
+<#if procesos.formsImage??>
+  # The people's tasks: EventConductor's forms app, with the forms of the human steps generated
+  # into ./procesos/forms. Only behind the gateway (/_forms, the shell's «Tareas»), which tells it
+  # who is signed in; that is why its own login is off and the forwarded identity is trusted.
+  formularios:
+    image: ${r"${"}EC_FORMS_IMAGE:-${procesos.formsImage}${r"}"}
+    restart: on-failure
+    labels:
+      modux.definitions: "${procesos.definitionsHash}"
+    environment:
+      SERVER_PORT: "8106"
+      WORKFLOW_MODE: kafka
+      WORKFLOW_PERSISTENCE: jpa
+      FORMS_PERSISTENCE: jpa
+      KAFKA_BROKERS: kafka:9092
+      DB_URL: jdbc:postgresql://postgres:5432/procesos
+      DB_USERNAME: user_app
+      DB_PASSWORD: user_password
+      DDL_AUTO: update
+      FORMS_DEFINITIONS_DIRS: /forms
+      SECURITY_ENABLED: "false"
+      WORKFLOW_SECURITY_TRUST_FORWARDED_TOKEN: "true"
+    volumes:
+      - ./procesos/forms:/forms:ro
+    depends_on:
+      postgres-databases:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
+
+</#if>
 </#if>
 <#if localIdp??>
   # the model's identity provider, on this machine: its realm (roles, one user per role, the

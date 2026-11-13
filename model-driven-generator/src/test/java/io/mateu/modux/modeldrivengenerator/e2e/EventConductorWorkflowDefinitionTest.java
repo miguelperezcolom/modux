@@ -186,12 +186,13 @@ class EventConductorWorkflowDefinitionTest {
     @SuppressWarnings("unchecked")
     void itStartsOnItsEventWhenItsConditionHoldsKeyedByWhatTheEventIsAbout() {
         var definition = prepago();
-        assertThat(definition).containsEntry("status", "ACTIVE").containsEntry("id", "prepago");
+        assertThat(definition).containsEntry("status", "ACTIVE").containsEntry("id", "prepago")
+                .containsEntry("businessKeyPolicy", "allowAfterFinished");
         var trigger = ((List<Map<String, Object>>) definition.get("triggers")).get(0);
         assertThat(trigger).containsEntry("destination", "reservacreada")
                 .containsEntry("type", "*")
                 .containsEntry("filter", "data.confirmada == false")
-                .containsEntry("businessKey", "${data.reservaId}");
+                .containsEntry("businessKey", "prepago-${data.reservaId}");
     }
 
     @Test
@@ -201,7 +202,7 @@ class EventConductorWorkflowDefinitionTest {
         var wait = stepNamed(definition, "esperar");
         assertThat(wait).containsEntry("type", "WAIT_FOR_MESSAGE")
                 .containsEntry("messageName", "ReservaConfirmada")
-                .containsEntry("correlationExpression", "businessKey")
+                .containsEntry("correlationExpression", "reservaId")
                 .containsEntry("deadline", "${fechaLimite}")
                 .containsEntry("onTimeoutStepId", "caducar")
                 .containsEntry("preconditionStepId", "start");
@@ -223,6 +224,45 @@ class EventConductorWorkflowDefinitionTest {
         assertThat((Map<String, Object>) call.get("http")).containsEntry("connection", "reservas")
                 .containsEntry("method", "POST").containsEntry("path", "/v1/caducar-reserva")
                 .containsEntry("body", Map.of("reservaId", "${reservaId}"));
+    }
+
+    @Test
+    void anExclusiveSplitIsTheConditionOfEachBranchAfterItsSource() {
+        var workflow = WorkflowEntity.builder().id("wf-rechazo").name("Rechazo").triggerEvent("PedidoRechazado")
+                .steps(List.of(
+                        step("decidir", "Decidir").toBuilder().roleId("role-ops").type("USER_TASK").build(),
+                        step("reenviar", "Reenviar").toBuilder().targetUseCaseId("uc-reenviar").build(),
+                        step("cancelar", "Cancelar").toBuilder().targetUseCaseId("uc-cancelar").build()))
+                .build();
+        var split = new WorkflowGatewayEntity("gw-decision", "Decisión", "SPLIT", "EXCLUSIVE", List.of("decidir"),
+                List.of("reenviar", "cancelar"), List.of(
+                        new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayBranchConditionEntity("reenviar", "decision != 'CANCELAR'"),
+                        new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayBranchConditionEntity("cancelar", "decision == 'CANCELAR'")), null);
+        var runtime = new EventConductorWorkflowDefinition.Runtime(
+                id -> new EventConductorWorkflowDefinition.UseCaseCall("ops", "/v1/" + id, List.of("pedidoId")),
+                event -> List.of("pedidoId"), role -> "OPERACIONES");
+        var definition = EventConductorWorkflowDefinition.runnable(workflow, List.of(split), pageId -> null, TOPIC, runtime);
+
+        assertThat(steps(definition)).noneMatch(st -> "FORK".equals(st.get("type")));
+        assertThat(stepNamed(definition, "reenviar")).containsEntry("preconditions",
+                List.of(Map.of("stepId", "decidir", "expression", "decision != 'CANCELAR'")));
+        assertThat(stepNamed(definition, "cancelar")).containsEntry("preconditions",
+                List.of(Map.of("stepId", "decidir", "expression", "decision == 'CANCELAR'")));
+        assertThat(stepNamed(definition, "finished")).containsEntry("joinType", "XOR")
+                .containsEntry("preconditionStepIds", List.of("reenviar", "cancelar"));
+        assertThat(stepNamed(definition, "decidir")).containsEntry("assignment", Map.of("candidateGroups", List.of("OPERACIONES")));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void whatAUseCaseAnswersBecomesProcessVariables() {
+        var workflow = WorkflowEntity.builder().id("wf-x").name("X").triggerEvent("PedidoEnviado")
+                .steps(List.of(step("comprobar", "Comprobar").toBuilder().targetUseCaseId("uc-estado").build())).build();
+        var runtime = new EventConductorWorkflowDefinition.Runtime(
+                id -> new EventConductorWorkflowDefinition.UseCaseCall("ops", "/v1/estado", List.of("reservaId"), List.of("estado")),
+                event -> List.of("reservaId"));
+        var http = (Map<String, Object>) stepNamed(EventConductorWorkflowDefinition.runnable(workflow, List.of(), id -> null, TOPIC, runtime), "comprobar").get("http");
+        assertThat(http).containsEntry("output", Map.of("estado", "body.estado"));
     }
 
     @Test
