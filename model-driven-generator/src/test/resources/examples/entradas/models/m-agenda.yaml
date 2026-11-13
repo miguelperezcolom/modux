@@ -1,0 +1,10 @@
+---
+id: "m-agenda"
+name: "Agenda"
+fields:
+- id: "f-m-agenda-conciertos"
+  name: "conciertos"
+  type: "array"
+  modelId: "m-concierto-fila"
+  label: "Conciertos"
+projectId: "entradas"

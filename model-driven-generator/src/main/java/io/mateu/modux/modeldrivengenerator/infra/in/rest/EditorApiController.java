@@ -1147,12 +1147,8 @@ public class EditorApiController {
             case "ui-app" -> repository.findById(command.id(), UiAdapterEntity.class)
                     .ifPresent(a -> repository.save(a.toBuilder().name(command.name()).build()));
             case "aggregate" -> repository.findById(command.id(), AggregateEntity.class)
-                    .ifPresent(a -> repository.save(new AggregateEntity(
-                            a.id(), command.name(), a.modelId(), a.persistenceType(), a.idType(),
-                            a.tableName(), a.tableSchema(), a.optimisticLockingEnabled(),
-                            a.eventSourcingEnabled(), a.snapshotFrequency(), a.operations(),
-                            a.invariants(), a.valueObjectIds(), a.lifecycle(), a.audited(),
-                            a.decisionIds(), null)));
+                    // a copy, not a positional rebuild: that one dropped title, description, editable…
+                    .ifPresent(a -> repository.save(a.toBuilder().name(command.name()).build()));
             case "entity" -> repository.findById(command.id(), EntityEntity.class)
                     .ifPresent(e -> repository.save(new EntityEntity(
                             e.id(), command.name(), e.modelId(), e.parentAggregateId(), e.isCollection(),
@@ -2673,11 +2669,8 @@ public class EditorApiController {
 
     /** Record copy with only operations replaced — every other field preserved verbatim. */
     static AggregateEntity withOperations(AggregateEntity a, List<OperationEntity> operations) {
-        return new AggregateEntity(
-                a.id(), a.name(), a.modelId(), a.persistenceType(), a.idType(),
-                a.tableName(), a.tableSchema(), a.optimisticLockingEnabled(),
-                a.eventSourcingEnabled(), a.snapshotFrequency(), operations,
-                a.invariants(), a.valueObjectIds(), a.lifecycle(), a.audited(), a.decisionIds(), null);
+        // a copy, not a positional rebuild: that one silently dropped every field added later (title…)
+        return a.toBuilder().operations(operations).build();
     }
 
     /** Record copy with only steps replaced — every other field preserved verbatim. */

@@ -59,6 +59,8 @@ public class ${aggregate.name}ViewModel implements Identifiable {
     List<${field.gridClass}> ${field.name} = new ArrayList<>();
 
     <#continue>
+    <#elseif field.stereotype?? && field.stereotype?has_content>
+    @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.${field.stereotype})
     <#elseif (field.primitiveType!"") == "json">
     @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.textarea)
     </#if>

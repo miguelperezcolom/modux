@@ -94,6 +94,31 @@ class ModuleCommandsTest {
         repository.deleteAllById(List.of("test-svc"), ServiceEntity.class);
     }
 
+    @Test
+    void renaming_an_aggregate_keeps_everything_else_it_declares() throws Exception {
+        var dir = Files.createTempDirectory("rename-aggregate");
+        repository.loadFrom(dir.resolve("model-driven-store.yaml").toAbsolutePath().toString());
+        apply("""
+                {"kind":"add-boundedContext","id":"ren-bc","name":"Contenidos"}""");
+        apply("""
+                {"kind":"add-aggregate","id":"ren-agg","name":"Borrador","boundedContextId":"ren-bc"}""");
+        var lifecycle = new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.LifecycleEntity(
+                "estado", "BORRADOR", List.of("BORRADOR", "PUBLICADA"), List.of(), List.of("BORRADOR"));
+        var agg = repository.findById("ren-agg", io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity.class).orElseThrow();
+        repository.save(agg.toBuilder().title("Números").description("Lo que se publica").editable(true)
+                .lifecycle(lifecycle).build());
+
+        apply("""
+                {"kind":"rename-element","type":"aggregate","id":"ren-agg","name":"Numero"}""");
+
+        var renamed = repository.findById("ren-agg", io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.AggregateEntity.class).orElseThrow();
+        assertThat(renamed.name()).isEqualTo("Numero");
+        assertThat(renamed.title()).isEqualTo("Números");
+        assertThat(renamed.description()).isEqualTo("Lo que se publica");
+        assertThat(renamed.editable()).isTrue();
+        assertThat(renamed.lifecycle().editableStates()).containsExactly("BORRADOR");
+    }
+
     private void apply(String commandJson) throws Exception {
         controller.apply(mapper.readValue(commandJson, EditorApiController.EditorCommand.class));
     }

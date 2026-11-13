@@ -15,6 +15,14 @@ services:
       SPRING_DATASOURCE_USERNAME: user_app
       SPRING_DATASOURCE_PASSWORD: user_password
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+<#if mail!false>
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+<#list notifyRoles![] as r>
+      # who the notifications to ${r} go to (comma-separated); locally, a mailbox in Mailpit
+      NOTIFY_${r}: ${r"${"}NOTIFY_${r}:-${r?lower_case}@${project.name?lower_case?replace("[^a-z0-9]","",'r')}.local}
+</#list>
+</#if>
 <#if procesos??>
       # the workflow engine calls the use cases as user «sistema» (role SISTEMA) with this password
       MODUX_SYSTEM_PASSWORD: ${r"${"}MODUX_SYSTEM_PASSWORD:-sistema-local${r"}"}
@@ -200,6 +208,15 @@ services:
         psql -tAc "SELECT 1 FROM pg_database WHERE datname = '${db}'" | grep -q 1 || psql -c "CREATE DATABASE ${db}"
 </#list>
 
+<#if mail!false>
+  # Local email: every email the system sends lands here — http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+</#if>
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment:

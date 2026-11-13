@@ -31,6 +31,19 @@ public class ${className} {
 
     final ${readModel.className}EntityRepository repository;
 
+    /** When the source last answered (null until it does): what «data as of» shows. */
+    private volatile java.time.LocalDateTime lastSuccess;
+    /** Why the last attempt failed, or null when it did not. */
+    private volatile String lastError;
+
+    public java.time.LocalDateTime lastSuccess() {
+        return lastSuccess;
+    }
+
+    public String lastError() {
+        return lastError;
+    }
+
 <#if poll.kind == "api">
     @Value("${r"${"}${poll.urlProperty}:${poll.defaultUrl}${r"}"}")
     String baseUrl;
@@ -53,6 +66,7 @@ public class ${className} {
         } catch (Exception e) {
             // the source is down: keep what we have, try again next time
             log.warn("${className}: could not read the source: {}", e.toString());
+            lastError = e.toString();
             return;
         }
         var seen = new HashSet<String>();
@@ -88,6 +102,8 @@ public class ${className} {
         }
         var gone = repository.findAll().stream().filter(e -> !seen.contains(e.getId())).toList();
         repository.deleteAll(gone);
+        lastSuccess = java.time.LocalDateTime.now();
+        lastError = null;
         log.debug("${className}: {} rows, {} gone", rows.size(), gone.size());
     }
 

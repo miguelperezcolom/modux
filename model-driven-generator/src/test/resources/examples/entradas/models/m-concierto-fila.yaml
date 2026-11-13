@@ -1,0 +1,30 @@
+---
+id: "m-concierto-fila"
+name: "ConciertoFila"
+fields:
+- id: "f-m-concierto-fila-id"
+  name: "id"
+  basicType: true
+  type: "string"
+  label: "Id"
+- id: "f-m-concierto-fila-artista"
+  name: "artista"
+  basicType: true
+  type: "string"
+  label: "Artista"
+- id: "f-m-concierto-fila-fecha"
+  name: "fecha"
+  basicType: true
+  type: "date"
+  label: "Fecha"
+- id: "f-m-concierto-fila-estado"
+  name: "estado"
+  basicType: true
+  type: "string"
+  label: "Estado"
+- id: "f-m-concierto-fila-vendidas"
+  name: "vendidas"
+  basicType: true
+  type: "integer"
+  label: "Vendidas"
+projectId: "entradas"

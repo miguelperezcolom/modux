@@ -1,0 +1,15 @@
+---
+id: "uc-buscarConciertos"
+name: "BuscarConciertos"
+title: "Buscar conciertos"
+exposedAsUi: true
+inputModelId: "m-filtro-conciertos"
+outputModelId: "m-agenda"
+steps:
+- id: "step-BuscarConciertos"
+  name: "consultar"
+  type: "Custom"
+  intent: "Lee los conciertos."
+pageTemplate: "SMART_SEARCH"
+itemUseCaseId: "uc-fichaConcierto"
+projectId: "entradas"

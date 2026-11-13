@@ -7,6 +7,10 @@
 <#list inputModel.fields as field><#if isGrid(field)><#assign hasGrids = true></#if></#list>
 </#if>
 <#assign outputGrids = []>
+<#assign outputRendered = []>
+<#if outputModel?? && outputModel.fields?has_content>
+<#list outputModel.fields as field><#if (field.stereotype!"") == "html" || (field.stereotype!"") == "richText" || (field.stereotype!"") == "markdown"><#assign outputRendered = outputRendered + [field]></#if></#list>
+</#if>
 <#if outputModel?? && outputModel.fields?has_content>
 <#list outputModel.fields as field><#if isGrid(field)><#assign hasGrids = true><#assign outputGrids = outputGrids + [field]></#if></#list>
 </#if>
@@ -117,6 +121,9 @@ ${req}    ${lbl}LocalDateTime ${field.name};
     <#elseif field.type == "array" || field.type == "json">
 ${req}    ${lbl}@Stereotype(FieldStereotype.textarea)
     String ${field.name};
+    <#elseif field.stereotype?? && field.stereotype?has_content>
+${req}    ${lbl}@Stereotype(FieldStereotype.${field.stereotype})
+    String ${field.name};
     <#else>
 ${req}    ${lbl}<@lookup field/><#if lookups?? && lookups[field.name]??>
 
@@ -146,6 +153,14 @@ ${req}    ${lbl}String ${field.name}Id;
 </#if>
     @Notice(theme = "success", fullWidth = true)
     String resultado = "";
+<#list outputRendered as field>
+
+    /** ${field.name}: shown rendered (${field.stereotype}), not as text in the notice. */
+    @io.mateu.uidl.annotations.ReadOnly
+    @Label("${((field.label?? && field.label?has_content)?then(field.label, field.name?cap_first))?j_string}")
+    @Stereotype(FieldStereotype.${(field.stereotype == "richText")?then("html", field.stereotype)})
+    String ${field.name}Resultado = "";
+</#list>
 <#list outputGrids as field>
 
     @io.mateu.uidl.annotations.ReadOnly
@@ -201,8 +216,12 @@ ${req}    ${lbl}String ${field.name}Id;
         ${f.name}Resultado = result.${f.name}() == null || result.${f.name}().isBlank() ? new ArrayList<>()
                 : objectMapper.readValue(result.${f.name}(), objectMapper.getTypeFactory().constructCollectionType(List.class, ${gridClasses[f.modelId]}.class));
 </#list>
-<#assign scalarOut = (outputModel.fields![])?filter(f -> !isGrid(f))>
-        resultado = <#if outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
+<#list outputRendered as f>
+        ${f.name}Resultado = result.${f.name}() != null ? result.${f.name}() : "";
+</#list>
+<#assign renderedNames = outputRendered?map(f -> f.name)>
+<#assign scalarOut = (outputModel.fields![])?filter(f -> !isGrid(f) && !renderedNames?seq_contains(f.name))>
+        resultado = <#if (outputGrids?has_content || outputRendered?has_content) && !scalarOut?has_content && !outputGrids?has_content>"${usecase.title!usecase.className}"<#elseif outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
 <#else>
         useCase.handle(new ${ucClass}Command(${args}));
         resultado = "${usecase.name} ejecutado";

@@ -88,6 +88,29 @@ The schema guards shape. These are the ones that break a model while still valid
   the aggregate is in the same context and has CRUD pages. The screen shows a searchable list.
 - **`validations` make a field required on screen**: `NotEmpty` for text, `NotNull` otherwise.
 
+9. **A lifecycle is enforced, not documented.** With `lifecycle` on an aggregate (`stateField`,
+   `initialState`, `transitions` naming `operationId`s) the generated aggregate is born in the
+   initial state, each operation runs only from the states its transitions leave and moves the
+   state itself — so an operation's `intent` must NOT set the state again. Mark the state field
+   `readOnly: true`. Every `fromState`/`toState` must be one of `states`.
+10. **An aggregate with operations loses its generic edit** — unless `editable: true`, and then only
+    in `lifecycle.editableStates` (a draft). `readOnly` fields keep their stored value on that edit.
+11. **What the caller must not give, the system supplies.** An operation's input field with
+    `systemValue` (`CURRENT_USER`, `NOW`, `TODAY`, `SEQUENCE`) is filled by the use case, never taken
+    from the command: «approved by», «requested at», an issue number without gaps. A «whoever asked
+    cannot approve» rule is then an invariant over two such fields — invariants are checked after
+    every operation.
+
+## Query use cases are Mateu page templates
+
+A use case exposed as UI is a form unless it names a `pageTemplate` — and for a query it almost
+always should: `DASHBOARD` (numbers as KPIs, `html`/`markdown` fields as tiles, lists as tables;
+`templateFields.items/chartLabel/chartValue` for a chart), `TODO_LIST` (`id`, `title`, `group`,
+`caption`), `CALENDAR` (`id`, `title`, `date`), `SMART_SEARCH` (the input as facets) and
+`ITEM_OVERVIEW` (one item, opened by id; `title`). Lists are output fields of type `array` of a
+model. `itemUseCaseId` names the `ITEM_OVERVIEW` (same bounded context) a row opens. A field with
+`stereotype: html|richText|markdown` is edited with an editor, shown rendered and stored whole.
+
 ## Workflows speak EventConductor's language
 
 A workflow is run by [EventConductor](https://eventconductor.mateu.io/), and modux generates its

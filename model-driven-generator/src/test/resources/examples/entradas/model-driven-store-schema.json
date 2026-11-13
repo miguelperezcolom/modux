@@ -90,6 +90,9 @@
         "description" : {
           "type" : "string"
         },
+        "editable" : {
+          "type" : "boolean"
+        },
         "eventSourcingEnabled" : {
           "type" : "boolean"
         },
@@ -1752,6 +1755,10 @@
       "type" : "string",
       "enum" : [ "integer", "string", "number", "date", "time", "dateTime", "bool", "array", "file", "status", "money", "component", "menu", "range", "action", "actionGroup", "dateRange" ]
     },
+    "FieldStereotype" : {
+      "type" : "string",
+      "enum" : [ "regular", "radio", "checkbox", "textarea", "toggle", "combobox", "select", "email", "password", "richText", "listBox", "html", "markdown", "image", "uploadableImage", "fileUpload", "icon", "link", "money", "grid", "color", "choice", "popover", "slider", "button", "stars", "searchable", "badge", "plainText", "bulletedList", "dateRange", "numberRange", "treeSelect", "signature", "camera", "multiSelect" ]
+    },
     "FileStorageProvider" : {
       "type" : "string",
       "enum" : [ "S3", "AzureBlob", "GCS", "Local", "Custom" ]
@@ -2331,6 +2338,12 @@
     "LifecycleEntity" : {
       "type" : "object",
       "properties" : {
+        "editableStates" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
         "initialState" : {
           "type" : "string"
         },
@@ -2564,6 +2577,15 @@
         },
         "priority" : {
           "type" : "integer"
+        },
+        "readOnly" : {
+          "type" : "boolean"
+        },
+        "stereotype" : {
+          "$ref" : "#/$defs/FieldStereotype"
+        },
+        "systemValue" : {
+          "type" : "string"
         },
         "type" : {
           "$ref" : "#/$defs/FieldDataType"
@@ -5166,6 +5188,11 @@
           "description" : "Reference to an existing 'inputModel' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
         },
+        "itemUseCaseId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'itemUseCase' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
         "mcpDescription" : {
           "type" : "string"
         },
@@ -5176,6 +5203,9 @@
           "type" : "string",
           "description" : "Reference to an existing 'outputModel' id (referential integrity is checked by the linter).",
           "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "pageTemplate" : {
+          "type" : "string"
         },
         "policy" : {
           "type" : "boolean"
@@ -5207,6 +5237,9 @@
           "items" : {
             "$ref" : "#/$defs/UseCaseStepEntity"
           }
+        },
+        "templateFields" : {
+          "$ref" : "#/$defs/Map(String,String)"
         },
         "timeoutMs" : {
           "type" : "integer"

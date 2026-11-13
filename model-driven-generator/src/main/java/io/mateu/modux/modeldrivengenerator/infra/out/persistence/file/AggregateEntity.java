@@ -38,8 +38,28 @@ public record AggregateEntity(
          */
         String dataAccess,
         /** Free-text description — shown on hover in the editor, edited in the ficha. */
-        String description
+        String description,
+        /**
+         * With operations, whether it can ALSO be edited field by field (its invariants decide in
+         * which states): a draft that is written freely and moves on through operations. By default
+         * an aggregate with operations changes only through them.
+         */
+        Boolean editable
 ) implements Identifiable {
+
+    /** Backward-compatible constructor (pre-editable callers). */
+    public AggregateEntity(String id, String name, String modelId,
+            AggregatePersistenceType persistenceType, AggregateIdType idType,
+            String tableName, String tableSchema, boolean optimisticLockingEnabled,
+            boolean eventSourcingEnabled, Integer snapshotFrequency, List<OperationEntity> operations,
+            List<InvariantEntity> invariants, List<String> valueObjectIds, LifecycleEntity lifecycle,
+            boolean audited, List<String> decisionIds, String title, String projectId, String dataAccess,
+            String description) {
+        this(id, name, modelId, persistenceType, idType, tableName, tableSchema,
+                optimisticLockingEnabled, eventSourcingEnabled, snapshotFrequency, operations,
+                invariants, valueObjectIds, lifecycle, audited, decisionIds, title, projectId,
+                dataAccess, description, null);
+    }
 
     /** Backward-compatible constructor (pre-description callers). */
     public AggregateEntity(String id, String name, String modelId,

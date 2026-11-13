@@ -1,0 +1,26 @@
+---
+id: "m-panel-ventas"
+name: "PanelVentas"
+fields:
+- id: "f-m-panel-ventas-entradasVendidas"
+  name: "entradasVendidas"
+  basicType: true
+  type: "integer"
+  label: "Entradas vendidas"
+- id: "f-m-panel-ventas-ingresos"
+  name: "ingresos"
+  basicType: true
+  type: "money"
+  label: "Ingresos"
+- id: "f-m-panel-ventas-novedades"
+  name: "novedades"
+  basicType: true
+  type: "string"
+  stereotype: "html"
+  label: "Novedades"
+- id: "f-m-panel-ventas-conciertos"
+  name: "conciertos"
+  type: "array"
+  modelId: "m-concierto-fila"
+  label: "Conciertos"
+projectId: "entradas"

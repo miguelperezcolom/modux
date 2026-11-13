@@ -30,6 +30,9 @@ Fields define the data held by the aggregate. Each field has:
 | **Type** | Java type: `String`, `Integer`, `Long`, `Boolean`, `LocalDate`, `LocalDateTime`, `BigDecimal`, `Enum`, `ValueObject`, or another aggregate ID |
 | **Required** | Whether the field is mandatory |
 | **Constraints** | Validation rules (e.g. min length, max length, regex, range) |
+| **Stereotype** | How Mateu shows it: `richText`, `html`, `markdown`, `textarea`… A formatted text is edited with an editor, shown rendered, and stored as `text` (no length limit) |
+| **Read-only** (`readOnly`) | Kept by the system, not typed by a person — a state, a number assigned on publishing, who asked for it. The form shows it read-only and the generic edit keeps the stored value whatever the command says |
+| **System value** (`systemValue`) | On an operation's input: the value comes from the system, not from the caller — `CURRENT_USER` (who runs the use case), `NOW`, `TODAY` or `SEQUENCE` (the next correlative number of that field, without gaps). See [Operations](/manual/operations/#values-the-system-supplies) |
 
 ### Persistence
 
@@ -61,13 +64,35 @@ and you declare one by dropping **«Invariante»** from the palette onto the
 aggregate. Supr retires it, F2 renames it, and double click opens the aggregate's
 form, where the conditions are detailed.
 
-### State machine
+### State machine (lifecycle)
 
-If your aggregate has a `status` or similar lifecycle field, you can define a state machine:
+If your aggregate has a state field, declare its lifecycle and the generator enforces it:
 
-- **States** — list of valid states
-- **Transitions** — allowed state changes (from → to)
-- **Guards** — conditions that must hold for a transition to be allowed
+```yaml
+lifecycle:
+  stateField: estado          # the model field that holds the state (default: status)
+  initialState: BORRADOR      # where every new one is born
+  states: [BORRADOR, EN_REVISION, RECHAZADA, PUBLICADA, RETIRADA]
+  editableStates: [BORRADOR, RECHAZADA]   # see «editable» below
+  transitions:
+    - { fromState: BORRADOR, toState: EN_REVISION, operationId: op-solicitar }
+    - { fromState: RECHAZADA, toState: EN_REVISION, operationId: op-solicitar }
+    - { fromState: EN_REVISION, toState: PUBLICADA, operationId: op-aprobar }
+```
+
+- A new aggregate starts in `initialState`.
+- Each operation runs only from the states its transitions leave — from any other it answers
+  `409 Conflict` («No se puede aprobar en estado BORRADOR») — and, once it has run, the aggregate is
+  in the transition's `toState`. The operation's own code never moves the state.
+- Mark the state field `readOnly`: nobody types it.
+
+### Editable, with operations
+
+An aggregate with operations changes only through them ([see why](/manual/operations/#an-aggregate-with-operations-has-no-generic-update)).
+A document that is written freely and then moves on — a draft that is requested, approved,
+published — needs both: set `editable: true`. Its form keeps **Edit**, and with
+`lifecycle.editableStates` the edit is accepted only in those states (a request in review is
+locked). Read-only fields keep their stored value on every edit.
 
 ## What gets generated
 

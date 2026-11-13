@@ -8,6 +8,14 @@ server:
 spring:
     application:
         name: ${service.name?lower_case?replace(" ","-")}
+<#if mail!false>
+    # the email provider (locally, Mailpit: http://localhost:8025 shows what was sent)
+    mail:
+        host: ${r"${"}MAIL_HOST:localhost${r"}"}
+        port: ${r"${"}MAIL_PORT:1025${r"}"}
+        username: ${r"${"}MAIL_USERNAME:${r"}"}
+        password: ${r"${"}MAIL_PASSWORD:${r"}"}
+</#if>
     # A rejected request says why (a business rule's message), not just its status. (Boot 4 reads
     # it here; server.error.* no longer reaches the MVC error controller.)
     web:

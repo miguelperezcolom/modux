@@ -43,6 +43,19 @@ fields:
   name: "estado"
   enumId: "enum-compra"
   label: "Estado"
+  readOnly: true
+- id: "f-model-compra-localizador"
+  name: "localizador"
+  basicType: true
+  type: "integer"
+  label: "Localizador"
+  readOnly: true
+- id: "f-model-compra-confirmadaPor"
+  name: "confirmadaPor"
+  basicType: true
+  type: "string"
+  label: "Confirmada por"
+  readOnly: true
 - id: "f-model-compra-motivo"
   name: "motivo"
   basicType: true

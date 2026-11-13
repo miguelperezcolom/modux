@@ -103,15 +103,11 @@ public final class ConsumptionApiDerivation {
 
     /** Copy of the provider exposed as gRPC, service/method names by convention. */
     private static UseCaseEntity exposedAsGrpc(UseCaseEntity uc, BoundedContextEntity providerBoundedContext) {
-        return new UseCaseEntity(uc.id(), uc.name(), uc.exposedAsRest(), true, uc.exposedAsMcp(),
-                uc.exposedAsAsync(), uc.exposedAsUi(), uc.inputModelId(), uc.outputModelId(),
-                uc.steps(), uc.allowedRoles(), uc.allowedScopes(), uc.apiVersion(), uc.mcpDescription(),
-                uc.restHttpMethod(), uc.restPath(), uc.asyncRetryCount(), uc.asyncDeadLetterQueue(),
-                uc.asyncOrderingKey(), uc.asyncTopicName(), uc.asyncConsumerGroup(), uc.cacheable(),
-                uc.cacheTtlSeconds(), uc.timeoutMs(), uc.transactionBoundary(), uc.idempotencyEnabled(),
-                uc.idempotencyKeyField(), uc.rateLimitEnabled(), uc.rateLimitRequestsPerSecond(),
-                uc.grpcServiceName() != null ? uc.grpcServiceName() : providerBoundedContext.name(),
-                uc.grpcMethodName() != null ? uc.grpcMethodName() : uc.name(),
-                uc.decisionIds(), uc.policy(), null);
+        return uc.toBuilder()
+                .exposedAsGrpc(true)
+                .grpcServiceName(uc.grpcServiceName() != null ? uc.grpcServiceName() : providerBoundedContext.name())
+                .grpcMethodName(uc.grpcMethodName() != null ? uc.grpcMethodName() : uc.name())
+                .projectId(null)
+                .build();
     }
 }

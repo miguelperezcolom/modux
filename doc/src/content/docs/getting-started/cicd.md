@@ -68,7 +68,7 @@ my-system-spec/
             <plugin>
                 <groupId>io.mateu.modux</groupId>
                 <artifactId>modux-maven-plugin</artifactId>
-                <version>0.5.0</version>
+                <version>0.6.0</version>
                 <configuration>
                     <projectId>YOUR_PROJECT_ID</projectId>
                     <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>

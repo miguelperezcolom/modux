@@ -9,6 +9,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.M
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.LifecycleTransitionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
@@ -359,7 +360,50 @@ public class GenerateCodeUseCase {
         boundedContextModel.put("project", projectToMap(project));
         boundedContextModel.put("service", serviceToMap(service));
         boundedContextModel.put("module", boundedContextToMap(boundedContext));
+        boundedContextModel.put("mail", mailEnabled(project));
         createFile(boundedContextDir, boundedContextModel, "module-pom.ftl", "pom.xml");
+        for (var n : emailNotifications(project, service)) {
+            if (!boundedContext.id().equals(n.get("ownerBoundedContextId"))) continue;
+            var nModel = buildBaseModel(project, service, boundedContext);
+            nModel.put("notification", n);
+            var nDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug(boundedContext.name()) + "/infra/in/async";
+            createDir(boundedContextDir, "src/main/java/" + nDir);
+            createFile(boundedContextDir, nModel, "notification-email.ftl",
+                    "src/main/java/" + nDir + "/" + n.get("className") + ".java");
+        }
+        {
+            // who is running the use case (four-eyes rules, «recorded by»…), over Spring Security
+            var bcPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug(boundedContext.name());
+            createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/application/out");
+            createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/infra/out/security");
+            createFile(boundedContextDir, boundedContextModel, "current-user.ftl",
+                    "src/main/java/" + bcPackageDir + "/application/out/CurrentUser.java");
+            createFile(boundedContextDir, boundedContextModel, "current-user-security.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/security/SpringSecurityCurrentUser.java");
+        }
+        if (usesSequences()) {
+            // correlative numbers kept by the system (fields with systemValue SEQUENCE)
+            var bcPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug(boundedContext.name());
+            createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/infra/out/persistence");
+            createFile(boundedContextDir, boundedContextModel, "sequences.ftl",
+                    "src/main/java/" + bcPackageDir + "/application/out/Sequences.java");
+            var seqPrefix = capitalize(boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+            createFile(boundedContextDir, boundedContextModel, "sequences-jpa.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/persistence/" + seqPrefix + "JpaSequences.java");
+            createFile(boundedContextDir, boundedContextModel, "sequence-entity.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/persistence/" + seqPrefix + "SequenceEntity.java");
+            createFile(boundedContextDir, boundedContextModel, "sequence-repository.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/persistence/" + seqPrefix + "SequenceRepository.java");
+        }
+        if (mailEnabled(project)) {
+            // the email port (for the custom zone and the notifications) and its SMTP adapter
+            var bcPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug(boundedContext.name());
+            createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/infra/out/mail");
+            createFile(boundedContextDir, boundedContextModel, "mail-sender.ftl",
+                    "src/main/java/" + bcPackageDir + "/application/out/MailSender.java");
+            createFile(boundedContextDir, boundedContextModel, "mail-sender-smtp.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/mail/SmtpMailSender.java");
+        }
 
         // source directories
         createDir(boundedContextDir, "src/main/java/" + packageDir + "/application/out");
@@ -738,6 +782,14 @@ public class GenerateCodeUseCase {
                         });
             }
         }
+        // the email notifications its contexts own: each one listens for its event
+        for (var n : emailNotifications(project, service)) {
+            Map<String, Object> c = new HashMap<>();
+            c.put("function", n.get("function"));
+            c.put("topic", n.get("topic"));
+            c.put("group", serviceName + "-notifications");
+            consumers.add(c);
+        }
         for (var bc : deployedUnits(service)) {
             for (var projectionId : bc.projectionIds() != null ? bc.projectionIds() : List.<String>of()) {
                 var projection = repository.findById(projectionId, ProjectionEntity.class).orElseThrow();
@@ -764,6 +816,7 @@ public class GenerateCodeUseCase {
                     .filter(c -> service.id().equals(c.get("serviceId"))).findFirst()
                     .ifPresent(c -> appModel.put("oidcClientId", c.get("clientId")));
         });
+        appModel.put("mail", mailEnabled(project));
         createFile(appDir, appModel, "service-app-pom.ftl", "pom.xml");
         createFile(appDir, appModel, "application-yaml.ftl", "src/main/resources/application.yaml");
         createFile(appDir, appModel, "application.ftl",
@@ -1162,7 +1215,11 @@ public class GenerateCodeUseCase {
             model.put("lookups", lookupsOf(project, service, boundedContext));
             model.put("enumOptions", enumOptionsOf(useCase));
 
-            createFile(boundedContextDir, model, "usecase-page.ftl",
+            var templateFile = pageTemplateFile(useCase);
+            if (templateFile != null) {
+                model.put("template", pageTemplateModel(project, boundedContext, useCase, gridClasses));
+            }
+            createFile(boundedContextDir, model, templateFile != null ? templateFile : "usecase-page.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + ucSlug
                             + "/" + ucClass + "Page.java");
         }
@@ -1467,6 +1524,8 @@ public class GenerateCodeUseCase {
 
         var enrichedSteps = new java.util.ArrayList<Map<String, Object>>();
         var needsStreamBridge = false;
+        var usesCurrentUser = false;
+        var usesSequences = false;
         var loadedAggregates = new java.util.HashSet<String>();
         // calls to a use case another service deploys: what each returned, for the hooks after it
         var remoteResponses = new java.util.ArrayList<Map<String, Object>>();
@@ -1505,6 +1564,24 @@ public class GenerateCodeUseCase {
                         for (var f : asList(input.get("fields"))) {
                             @SuppressWarnings("unchecked") var fm = (Map<String, Object>) f;
                             var name = (String) fm.get("name");
+                            // a value the system supplies (who runs it, when): not the caller's to give
+                            var systemValue = fm.get("systemValue") instanceof String sv ? sv : null;
+                            if (systemValue != null) {
+                                switch (systemValue) {
+                                    case "CURRENT_USER" -> { inputArgs.add("currentUser.username()"); usesCurrentUser = true; }
+                                    case "NOW" -> inputArgs.add("java.time.LocalDateTime.now()");
+                                    case "TODAY" -> inputArgs.add("java.time.LocalDate.now()");
+                                    case "SEQUENCE" -> {
+                                        // one series per aggregate and field: «Numero.numero»
+                                        var next = "sequences.next(\"" + callAgg.get("name") + "." + name + "\")";
+                                        inputArgs.add("integer".equals(String.valueOf(fm.get("type"))) ? "Math.toIntExact(" + next + ")" : next);
+                                        usesSequences = true;
+                                    }
+                                    default -> complete = false;
+                                }
+                                if (!complete) break;
+                                continue;
+                            }
                             if (!commandFieldNames.contains(name)) { complete = false; break; }
                             var basic = Boolean.TRUE.equals(fm.get("basicType"));
                             var suffixed = !basic && (fm.get("enumId") == null || fm.get("enumId").toString().isBlank())
@@ -1612,6 +1689,8 @@ public class GenerateCodeUseCase {
 
         map.put("steps", enrichedSteps);
         map.put("needsStreamBridge", needsStreamBridge);
+        map.put("usesCurrentUser", usesCurrentUser);
+        map.put("usesSequences", usesSequences);
         return map;
     }
 
@@ -1665,6 +1744,123 @@ public class GenerateCodeUseCase {
             }
         }
         return null;
+    }
+
+    /**
+     * The model's EMAIL notifications a service sends (its contexts own them), as what their
+     * consumer is generated from. None without an email provider: there is nothing to send with.
+     */
+    private List<Map<String, Object>> emailNotifications(ProjectEntity project, ServiceEntity service) {
+        if (!mailEnabled(project)) return List.of();
+        var owned = deployedUnits(service).stream().map(BoundedContextEntity::id).collect(java.util.stream.Collectors.toSet());
+        var out = new ArrayList<Map<String, Object>>();
+        for (var n : repository.findAllOfType(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.NotificationEntity.class)) {
+            if (n.ownerBoundedContextId() == null || !owned.contains(n.ownerBoundedContextId())) continue;
+            if (n.channels() == null || !n.channels().contains("EMAIL")) continue;
+            var event = n.eventId() == null ? null : repository.findById(n.eventId(), DomainEventEntity.class).orElse(null);
+            if (event == null) {
+                log.warn("la notificación '{}' no dice con qué evento sale (eventId)", n.name());
+                continue;
+            }
+            var topic = event.topicName() != null && !event.topicName().isBlank() ? event.topicName()
+                    : serviceEmitting(event.name()).map(sv -> io.mateu.modux.modeldrivengenerator.application
+                            .usecases.flow.expand.FlowExpander.topicOf(project.name(), sv.name(), event.name())).orElse(null);
+            if (topic == null) continue;
+            var className = toTypeName(n.name()) + "Notification";
+            var m = new HashMap<String, Object>();
+            m.put("name", n.name());
+            m.put("className", className);
+            m.put("function", uncapitalize(className));
+            m.put("topic", topic);
+            m.put("eventName", event.name());
+            m.put("ownerBoundedContextId", n.ownerBoundedContextId());
+            m.put("subject", n.subject());
+            m.put("body", n.body());
+            var expression = n.recipientExpression();
+            if (expression != null && !expression.isBlank()) {
+                m.put("recipientField", expression.substring(expression.lastIndexOf('.') + 1).trim());
+            }
+            m.put("roles", (n.recipientRoleIds() == null ? List.<String>of() : n.recipientRoleIds()).stream()
+                    .map(id -> repository.findById(id, RoleEntity.class).map(RoleEntity::name).orElse(id)).toList());
+            out.add(m);
+        }
+        return out;
+    }
+
+    /** Whether some model asks the system for a correlative number (systemValue SEQUENCE). */
+    private boolean usesSequences() {
+        return repository.findAllOfType(ModelEntity.class).stream()
+                .flatMap(m -> m.fields() == null ? java.util.stream.Stream.empty() : m.fields().stream())
+                .anyMatch(f -> "SEQUENCE".equals(f.systemValue()));
+    }
+
+    /** Whether the deployment declares an email provider: then the services can send email (MailSender). */
+    private boolean mailEnabled(ProjectEntity project) {
+        return repository.findById(DeploymentEntity.idFor(project.id()), DeploymentEntity.class)
+                .map(DeploymentEntity::emailProvider).isPresent();
+    }
+
+    /** The Mateu page template a use case's screen is drawn with; null = the plain form that runs it. */
+    private static String pageTemplateFile(UseCaseEntity useCase) {
+        if (useCase.pageTemplate() == null || useCase.pageTemplate().isBlank()) return null;
+        return switch (useCase.pageTemplate().trim().toUpperCase()) {
+            case "DASHBOARD" -> "pagetemplates/dashboard.ftl";
+            case "TODO_LIST" -> "pagetemplates/todo.ftl";
+            case "CALENDAR" -> "pagetemplates/calendar.ftl";
+            case "SMART_SEARCH" -> "pagetemplates/search.ftl";
+            case "ITEM_OVERVIEW" -> "pagetemplates/overview.ftl";
+            case "FORM" -> null;
+            default -> throw new IllegalArgumentException("Use case " + useCase.name() + ": unknown pageTemplate '"
+                    + useCase.pageTemplate() + "' (DASHBOARD, TODO_LIST, CALENDAR, SMART_SEARCH, ITEM_OVERVIEW or FORM)");
+        };
+    }
+
+    /**
+     * What a page template needs beyond the use case: which output fields play each part
+     * (templateFields), the list it shows (items: that field, its row class, its model) and the
+     * page an item opens (itemUseCaseId: an ITEM_OVERVIEW of the same context).
+     */
+    private Map<String, Object> pageTemplateModel(ProjectEntity project, BoundedContextEntity boundedContext,
+                                                  UseCaseEntity useCase, Map<String, String> gridClasses) {
+        var template = new HashMap<String, Object>();
+        var fields = useCase.templateFields() != null ? new HashMap<>(useCase.templateFields()) : new HashMap<String, String>();
+        template.put("fields", fields);
+        var output = useCase.outputModelId() == null ? List.<ModelFieldEntity>of() : fieldsOf(useCase.outputModelId());
+        var rowModels = new HashMap<String, Object>();
+        ModelFieldEntity items = null;
+        for (var f : output) {
+            if (!f.basicType() && f.modelId() != null && f.type() == FieldDataType.array) {
+                repository.findById(f.modelId(), ModelEntity.class).ifPresent(m -> rowModels.put(f.modelId(), fromJson(toJson(m))));
+                if (items == null && (fields.get("items") == null || fields.get("items").equals(f.name()))) items = f;
+            }
+        }
+        template.put("rowModels", rowModels);
+        if (items != null) {
+            fields.putIfAbsent("items", items.name());
+            template.put("itemsField", items.name());
+            template.put("itemsModelId", items.modelId());
+            template.put("rowClass", gridClasses.get(items.modelId()));
+        } else if (List.of("TODO_LIST", "CALENDAR", "SMART_SEARCH").contains(useCase.pageTemplate().trim().toUpperCase())) {
+            throw new IllegalArgumentException("Use case " + useCase.name() + ": a " + useCase.pageTemplate()
+                    + " page shows a list — its output needs an array of a model (templateFields.items names which)");
+        }
+        if (useCase.itemUseCaseId() != null && !useCase.itemUseCaseId().isBlank()) {
+            var itemUseCase = repository.findById(useCase.itemUseCaseId(), UseCaseEntity.class)
+                    .orElseThrow(() -> new IllegalArgumentException("Use case " + useCase.name()
+                            + ": itemUseCaseId " + useCase.itemUseCaseId() + " does not exist"));
+            if (!"ITEM_OVERVIEW".equalsIgnoreCase(String.valueOf(itemUseCase.pageTemplate()))
+                    || boundedContext.useCaseIds() == null || !boundedContext.useCaseIds().contains(itemUseCase.id())) {
+                throw new IllegalArgumentException("Use case " + useCase.name() + ": the item opens " + itemUseCase.name()
+                        + ", which has to be an ITEM_OVERVIEW of the same context");
+            }
+            var itemClass = toTypeName(itemUseCase.name());
+            var itemSlug = itemUseCase.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+            template.put("item", Map.of(
+                    "className", itemClass + "Page",
+                    "pageFqn", project.packageName() + "." + boundedContextSlug(boundedContext.name())
+                            + ".infra.in.ui.pages." + itemSlug + "." + itemClass + "Page"));
+        }
+        return template;
     }
 
     /** Whether a workflow step runs this use case: the engine reaches it over REST (HTTP_CALL). */
@@ -2933,7 +3129,8 @@ public class GenerateCodeUseCase {
                 // a list of value objects is kept as JSON: unbounded text, never varchar(255)
                 var jsonList = !f.basicType() && f.modelId() != null && !f.modelId().isBlank()
                         && f.type() == FieldDataType.array;
-                var type = f.basicType() ? sqlTypeForPrimitive(mapFieldDataType(f.type()))
+                var type = f.longText() ? "text"
+                        : f.basicType() ? sqlTypeForPrimitive(mapFieldDataType(f.type()))
                         : jsonList ? "text" : "varchar(255)";
                 columns.add(column(snakeCase("col_" + f.name()), type, false));
             }
@@ -2970,7 +3167,7 @@ public class GenerateCodeUseCase {
             for (var f : modelEntity.fields()) {
                 if ("id".equals(f.name())) continue;
                 if (f.basicType()) {
-                    columns.add(column(snakeCase("col_" + f.name()), sqlTypeForRawType(f.type()), false));
+                    columns.add(column(snakeCase("col_" + f.name()), f.longText() ? "text" : sqlTypeForRawType(f.type()), false));
                 } else {
                     columns.add(column(snakeCase("col_" + f.name() + "_id"), "varchar(255)", false));
                 }
@@ -3598,6 +3795,11 @@ public class GenerateCodeUseCase {
         model.put("externalJdbcEnvs", externalJdbcEnvs());
         // a local keycloak runs in the compose too, with the realm up.sh generation writes
         idpFor(project).filter(GenerateCodeUseCase::isLocalIdp).ifPresent(i -> model.put("localIdp", i));
+        model.put("mail", mailEnabled(project));
+        // the roles some email notification goes to: whose addresses the services read (NOTIFY_<ROLE>)
+        model.put("notifyRoles", services.stream().flatMap(svc -> emailNotifications(project, svc).stream())
+                .flatMap(n -> ((List<?>) n.getOrDefault("roles", List.of())).stream()).map(String::valueOf)
+                .map(r -> r.toUpperCase().replaceAll("[^A-Z0-9]", "_")).distinct().sorted().toList());
         var procesos = generateWorkflowRuntime(project);
         if (procesos != null) model.put("procesos", procesos);
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
@@ -4875,13 +5077,40 @@ public class GenerateCodeUseCase {
                         var opMap = fromJson(toJson(op));
                         // the operation's Input record exists only when its model has fields
                         opMap.put("hasInput", operationInputOf(op.inputModelId()) != null);
+                        // the lifecycle's transitions this operation makes: from which states, to which
+                        opMap.put("transitions", aggregate.lifecycle() == null ? List.of()
+                                : aggregate.lifecycle().transitions().stream()
+                                        .filter(t -> op.id() != null && op.id().equals(t.operationId()))
+                                        .filter(t -> t.toState() != null && !t.toState().isBlank())
+                                        .filter(t -> t.fromState() != null && !t.fromState().isBlank())
+                                        // one target per origin: the first declared wins
+                                        .collect(java.util.stream.Collectors.toMap(LifecycleTransitionEntity::fromState,
+                                                LifecycleTransitionEntity::toState, (a, b) -> a, java.util.LinkedHashMap::new))
+                                        .entrySet().stream()
+                                        .map(t -> Map.of("from", t.getKey(), "to", t.getValue()))
+                                        .toList());
                         return opMap;
                     })
                     .toList());
         }
+        // The explicit state machine: where it is born, which operations move it, when it can be edited
+        if (aggregate.lifecycle() != null && aggregate.lifecycle().initialState() != null
+                && !aggregate.lifecycle().initialState().isBlank()) {
+            var lc = new HashMap<String, Object>();
+            var stateField = aggregate.lifecycle().stateField() != null && !aggregate.lifecycle().stateField().isBlank()
+                    ? aggregate.lifecycle().stateField() : "status";
+            lc.put("stateField", stateField);
+            lc.put("initialState", aggregate.lifecycle().initialState());
+            lc.put("editableStates", aggregate.lifecycle().editableStates());
+            map.put("lifecycle", lc);
+        } else {
+            map.remove("lifecycle");
+        }
         // With operations the aggregate has behaviour: it changes through them, never by a
         // generic update that would overwrite its state and skip their rules.
-        map.put("behavioural", map.get("operations") instanceof List<?> ops && !ops.isEmpty());
+        // unless it is declared editable too (a draft written freely, moved on by operations).
+        map.put("behavioural", map.get("operations") instanceof List<?> ops && !ops.isEmpty()
+                && !Boolean.TRUE.equals(aggregate.editable()));
 
         if (!map.containsKey("invariants") || map.get("invariants") == null) {
             map.put("invariants", List.of());
@@ -4900,10 +5129,14 @@ public class GenerateCodeUseCase {
                             fieldMap.put("visible", true);
                             fieldMap.put("mandatory", f.validations() != null && f.validations().stream()
                                     .anyMatch(v -> List.of("NotNull", "NotEmpty", "NotBlank").contains(String.valueOf(v.type()))));
-                            fieldMap.put("readonly", false);
+                            // kept by the system (a state, a number, who asked): read-only in the form,
+                            // and the generic update keeps what is stored
+                            fieldMap.put("readonly", Boolean.TRUE.equals(f.readOnly()));
                             fieldMap.put("label", f.label());
                             fieldMap.put("priority", f.priority());
                             fieldMap.put("identifier", Boolean.TRUE.equals(f.identifier()));
+                            // how Mateu shows it (richText, html, markdown, textarea…)
+                            fieldMap.put("stereotype", f.stereotype() != null ? f.stereotype().name() : null);
                             // a list of another model has no class of its own: the aggregate keeps it as JSON,
                             // which is what the form's inline grid hands the command
                             var jsonList = !f.basicType() && f.modelId() != null && !f.modelId().isBlank()

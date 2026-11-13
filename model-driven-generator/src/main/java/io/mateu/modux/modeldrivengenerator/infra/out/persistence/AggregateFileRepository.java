@@ -122,7 +122,14 @@ public class AggregateFileRepository implements AggregateRepository {
                 // dataAccess is not modeled in the domain Aggregate yet — carry it over so a UI
                 // save never wipes the authored override (same doctrine as decisionIds above).
                 existing != null ? existing.decisionIds() : List.of(), null, null,
-                existing != null ? existing.dataAccess() : null));
+                existing != null ? existing.dataAccess() : null)
+                // nor title, description, project or editable: carried over too
+                .toBuilder()
+                .title(existing != null ? existing.title() : null)
+                .projectId(existing != null ? existing.projectId() : null)
+                .description(existing != null ? existing.description() : null)
+                .editable(existing != null ? existing.editable() : null)
+                .build());
         return entity;
     }
 

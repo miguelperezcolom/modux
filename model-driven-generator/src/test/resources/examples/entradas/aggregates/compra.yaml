@@ -6,6 +6,7 @@ persistenceType: "EVENT_SOURCED"
 operations:
 - id: "op-confirmar"
   name: "confirmar"
+  inputModelId: "model-op-confirmar"
   type: "CUSTOM"
   intent: "Una compra PENDIENTE pasa a CONFIRMADA; en otro estado se rechaza con «\
     La compra no está pendiente»."
@@ -20,5 +21,37 @@ operations:
   type: "CUSTOM"
   intent: "Una compra PENDIENTE pasa a CANCELADA; una confirmada no se cancela: «\
     Una compra confirmada no se puede cancelar»."
+invariants:
+- id: "inv-compra-entradas"
+  name: "entradasPositivas"
+  conditions:
+  - id: "inv-compra-entradas-c"
+    custom: true
+    description: "Una compra es de al menos una entrada."
+    errorMessage: "Compra al menos una entrada"
+lifecycle:
+  stateField: "estado"
+  initialState: "PENDIENTE"
+  states:
+  - "PENDIENTE"
+  - "CONFIRMADA"
+  - "RECHAZADA"
+  - "CANCELADA"
+  transitions:
+  - id: "t-confirmar"
+    fromState: "PENDIENTE"
+    toState: "CONFIRMADA"
+    operationId: "op-confirmar"
+  - id: "t-rechazar"
+    fromState: "PENDIENTE"
+    toState: "RECHAZADA"
+    operationId: "op-rechazar"
+  - id: "t-cancelar"
+    fromState: "PENDIENTE"
+    toState: "CANCELADA"
+    operationId: "op-cancelar"
+  editableStates:
+  - "PENDIENTE"
+editable: true
 title: "Compras"
 projectId: "entradas"

@@ -26,6 +26,32 @@ A **Use Case** is the primary unit of application behaviour in Modux. It sits in
 | **Transaction boundary** | `LOCAL` (single DB), `DISTRIBUTED` (2PC / XA), `SAGA` (compensating transactions) |
 | **Policy** | `policy: true` marks reaction/automation logic that has the *shape* of a use case but expresses no business case — the lilac sticky of an EventStorming. Policies stay out of business catalogs and UI derivations; they exist to be invoked by event reactions (subscriptions, flows, processes, workflows). The linter warns when a policy has no trigger (`policy-without-trigger`) or derives a UI (`policy-exposed-as-ui`) |
 
+### Page template (the UI first)
+
+A use case exposed as UI is drawn, by default, as a form: its input, a button, its result. A query
+use case usually wants one of **Mateu's page templates** instead — say which with `pageTemplate`,
+and map the template's slots to the output's fields with `templateFields`:
+
+| `pageTemplate` | What it draws | `templateFields` |
+|---|---|---|
+| `DASHBOARD` | The output's numbers as a band of KPIs (`MetricCard`), its `html`/`markdown` fields as tiles, its lists as tables | `items`, `chartLabel`, `chartValue` (a bar chart of one list), `chartType` |
+| `TODO_LIST` | The output's list as a to-do list, bucketed | `id`, `title`, `group`, `caption` |
+| `CALENDAR` | The output's list as events on a calendar | `id`, `title`, `date`, `endDate` |
+| `SMART_SEARCH` | The input as search facets, the output's list as results (plus free text) | — |
+| `ITEM_OVERVIEW` | One item: its key values on top, a tab per `html`/`markdown` content and per list. Opened by id from the URL, or from another page | `title` |
+
+`itemUseCaseId` names the `ITEM_OVERVIEW` use case (same bounded context) a row, an event or a card
+opens. The lists are output fields of type `array` of a model; that model's fields are the columns.
+
+```yaml
+id: uc-porRevisar
+name: PorRevisar
+outputModelId: m-pendientes          # publicaciones: array of m-pendiente-fila
+pageTemplate: TODO_LIST
+templateFields: { id: ref, title: titulo, group: tipo, caption: solicitadaPor }
+itemUseCaseId: uc-previsualizar      # an ITEM_OVERVIEW
+```
+
 ### Exposure
 
 A use case can be exposed through one or more inbound adapters simultaneously:
