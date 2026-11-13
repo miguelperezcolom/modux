@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 <#macro lookup field><#if lookups?? && lookups[field.name]??><#assign sup = lookups[field.name].suppliers>@io.mateu.uidl.annotations.Lookup(search = ${sup}IdOptionsSupplier.class, label = ${sup}IdLabelSupplier.class)</#if></#macro>
 <#assign ucSlug = usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
 <#assign ucClass = usecase.className>
@@ -221,12 +222,12 @@ ${req}    ${lbl}String ${field.name}Id;
 </#list>
 <#assign renderedNames = outputRendered?map(f -> f.name)>
 <#assign scalarOut = (outputModel.fields![])?filter(f -> !isGrid(f) && !renderedNames?seq_contains(f.name))>
-        resultado = <#if (outputGrids?has_content || outputRendered?has_content) && !scalarOut?has_content && !outputGrids?has_content>"${usecase.title!usecase.className}"<#elseif outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
+        resultado = <#if (outputGrids?has_content || outputRendered?has_content) && !scalarOut?has_content && !outputGrids?has_content>"${usecase.title!usecase.className}"<#elseif outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + <#if (f.type!"") == "money">java.util.Optional.ofNullable(result.${f.name}()).map(v -> v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()).orElse("")<#else>result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()</#if><#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
 <#else>
         useCase.handle(new ${ucClass}Command(${args}));
         resultado = "${usecase.name} ejecutado";
 </#if>
-        return List.of(new Message("${usecase.title!usecase.className}: hecho"), new State(this));
+        return List.of(new Message("${usecase.title!usecase.className}: <#if uiEs>hecho<#else>done</#if>"), new State(this));
     }
 
 }

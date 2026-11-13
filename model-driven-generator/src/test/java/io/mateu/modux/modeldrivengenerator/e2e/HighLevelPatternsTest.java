@@ -66,6 +66,16 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void an_operation_that_takes_a_correlative_number_runs_in_one_transaction() throws Exception {
+        // confirmar fills the purchase's localizador from a SEQUENCE, which needs the caller's transaction
+        var useCase = read("ConfirmarCompraUseCase.java");
+        assertTrue(useCase.contains("sequences.next("), useCase);
+        assertTrue(useCase.contains("@Transactional"), useCase);
+        // the Spanish model keeps its Spanish messages
+        assertTrue(useCase.contains(" no existe"), useCase);
+    }
+
+    @Test
     void an_aggregate_feeding_a_read_model_publishes_its_state_on_every_save_and_delete() throws Exception {
         var repo = read("ConciertoDBRepository.java");
         // it reads through a stored procedure (JDBC): a write is flushed, so reading it back in the
@@ -183,6 +193,10 @@ class HighLevelPatternsTest {
         var listing = read("CompraViewListing.java");
         assertTrue(listing.contains("@io.mateu.uidl.annotations.Label(\"Concierto\") String conciertoId"), listing);
         assertTrue(listing.contains("setScale(2, java.math.RoundingMode.HALF_UP)"), listing);
+        // and so does the message a use case's screen shows when it is done
+        var page = read("ComprarPage.java");
+        assertTrue(page.contains("\"Importe: \" + java.util.Optional.ofNullable(result.importe()).map(v -> v.setScale(2, java.math.RoundingMode.HALF_UP)"), page);
+        assertTrue(page.contains(": hecho\""), "a Spanish model, a Spanish message: " + page);
     }
 
     @Test

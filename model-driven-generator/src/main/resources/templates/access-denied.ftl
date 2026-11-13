@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.application;
 
 import org.aopalliance.intercept.MethodInvocation;
@@ -15,6 +16,6 @@ public class Forbidden implements MethodAuthorizationDeniedHandler {
 
     @Override
     public Object handleDeniedInvocation(MethodInvocation invocation, AuthorizationResult result) {
-        throw BusinessRuleException.forbidden("No tienes permiso para hacer esto.");
+        throw BusinessRuleException.forbidden("<#if uiEs>No tienes permiso para hacer esto.<#else>You are not allowed to do this.</#if>");
     }
 }

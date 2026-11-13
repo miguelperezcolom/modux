@@ -1,4 +1,4 @@
-<#assign uiEs = (project.defaultLocale!"")?lower_case?starts_with("es")>
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${shellPackage}.infra.in.ui;
 
 import io.mateu.uidl.annotations.FavIcon;

@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.${moduleSlug}.infra.in.ui.pages.${slug};
 
 import ${project.packageName}.${moduleSlug}.infra.out.persistence.${aggregateName}EventStore;
@@ -29,9 +30,9 @@ public class ${className} extends Crud<
     public record Row(
             @Label("${aggregateName}") String aggregateId,
             @Label("Nº") String sequence,
-            @Label("Qué pasó") String event,
-            @Label("Cuándo") String occurredAt,
-            @Label("Quién") String recordedBy,
+            @Label("<#if uiEs>Qué pasó<#else>What happened</#if>") String event,
+            @Label("<#if uiEs>Cuándo<#else>When</#if>") String occurredAt,
+            @Label("<#if uiEs>Quién<#else>Who</#if>") String recordedBy,
             @Label("Estado") String state) {}
 
     final ${aggregateName}EventStore events;
@@ -93,6 +94,6 @@ public class ${className} extends Crud<
     @Override public void deleteAllById(List<String> selectedIds, HttpRequest httpRequest) { throw readOnly${className}(); }
 
     private static UnsupportedOperationException readOnly${className}() {
-        return new UnsupportedOperationException("El historial no se modifica: es lo que pasó");
+        return new UnsupportedOperationException("<#if uiEs>El historial no se modifica: es lo que pasó<#else>The history cannot be changed: it is what happened</#if>");
     }
 }
