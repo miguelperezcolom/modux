@@ -583,6 +583,8 @@ public final class LintRules {
         public List<LintFinding> apply(ModelSnapshot m) {
             return m.projections().stream()
                     .filter(p -> p.rebuildStrategy() == null || p.rebuildStrategy().isBlank())
+                    // a state projection rebuilds itself: its source republishes the whole state on startup
+                    .filter(p -> p.sourceAggregateId() == null || p.sourceAggregateId().isBlank())
                     .map(p -> new LintFinding(id(), LintSeverity.WARNING, "Projection", p.id(), p.name(),
                             "No rebuild strategy — the read model cannot recover from projection bugs."))
                     .toList();

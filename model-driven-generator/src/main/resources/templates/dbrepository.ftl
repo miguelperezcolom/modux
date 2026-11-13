@@ -197,6 +197,19 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
         }
     }
 
+    /**
+     * Rebuild of the read models fed by this aggregate: on startup the whole current state is
+     * published again, so a consumer added later (or one that lost its data) catches up. The
+     * consumers upsert by id, so publishing twice is harmless. Turn it off with
+     * modux.state.republish-on-startup=false.
+     */
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void republishStateOnStartup(org.springframework.boot.context.event.ApplicationReadyEvent ready) {
+        if (!ready.getApplicationContext().getEnvironment()
+                .getProperty("modux.state.republish-on-startup", Boolean.class, true)) return;
+        repository.findAll().forEach(this::publishState);
+    }
+
     private void publishDeleted(Object id) {
         stateStream.send("${deletedTopic}", "{\"id\":\"" + id + "\"}");
     }

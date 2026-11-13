@@ -54,6 +54,9 @@ class HighLevelPatternsTest {
         assertTrue(repo.contains("publishState(saved);"), repo);
         assertTrue(repo.contains("stateStream.send(\"conciertoestado\""), repo);
         assertTrue(repo.contains("publishDeleted(selected.value())"), repo);
+        // rebuild: the whole state again on startup, so a read model added later catches up
+        assertTrue(repo.contains("repository.findAll().forEach(this::publishState);"), repo);
+        assertTrue(repo.contains("\"modux.state.republish-on-startup\", Boolean.class, true"), repo);
         // event-sourced too: after the events are appended
         var es = read("CompraEventSourcedRepository.java");
         assertTrue(es.contains("stateStream.send(\"compraestado\""), es);
@@ -173,6 +176,10 @@ class HighLevelPatternsTest {
         generateCodeUseCase.handle(new GenerateCodeCommand("entradas", all.toString(), null, false));
         var compose = Files.readString(all.resolve("docker-compose.yml"));
         assertTrue(compose.contains("LEGADO_JDBC_URL: ${LEGADO_JDBC_URL:-}"), compose);
+        // a service added after the first boot still finds its database
+        assertTrue(compose.contains("postgres-databases:"), compose);
+        assertTrue(compose.contains("datname = 'catalogo'\" | grep -q 1 || psql -c \"CREATE DATABASE catalogo\""), compose);
+        assertTrue(compose.contains("condition: service_completed_successfully"), compose);
     }
 
     @Test
@@ -191,6 +198,29 @@ class HighLevelPatternsTest {
         assertTrue(shell.contains(".withLabel(\"Informesdelcatálogo\").withPath(\"/catalogo-informes\")"), shell);
         // each app through its own gateway route
         assertTrue(shell.contains("newRemoteMenu(\"/_catalogo-informes\")"), shell);
+    }
+
+    @Test
+    void a_list_of_value_objects_is_an_inline_grid_in_the_crud_form() throws Exception {
+        var vm = read("ConciertoViewModel.java");
+        assertTrue(vm.contains("@InlineEditing @Stereotype(FieldStereotype.grid) List<ZonaFila> zonas = new ArrayList<>();"), vm);
+        assertTrue(vm.contains("toJson(zonas)"), "the command carries the rows as JSON: " + vm);
+        assertTrue(vm.contains("zonas = fromJson(dto.zonas(), ZonaFila.class);"), vm);
+        var row = read("ZonaFila.java");
+        assertTrue(row.contains("public class ZonaFila"), row);
+        assertTrue(row.contains("JsonIgnoreProperties(ignoreUnknown = true)"), "tolerant to what a hook adds: " + row);
+        assertTrue(row.contains("BigDecimal precio;"), row);
+        var baseline = Files.readString(file("V1__baseline.sql", "catalogo").orElseThrow());
+        assertTrue(baseline.contains("col_zonas text"), "JSON needs unbounded text: " + baseline);
+    }
+
+    @Test
+    void a_list_in_a_use_case_result_is_a_read_only_grid() throws Exception {
+        var page = read("ComprarPage.java");
+        assertTrue(page.contains("@Stereotype(FieldStereotype.grid) List<ZonaFila> zonasResultado = new ArrayList<>();"), page);
+        assertTrue(page.contains("objectMapper.readValue(result.zonas()"), page);
+        assertTrue(!page.contains("\"Zonas del recinto: \" + result.zonas()"), "no JSON in the notice: " + page);
+        assertTrue(file("ZonaFila.java", "comprar").isPresent(), "its row class next to the page");
     }
 
     @Test

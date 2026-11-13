@@ -32,4 +32,9 @@ fields:
   basicType: true
   type: "string"
   label: "Tarjeta"
+- id: "f-m-compra-realizada-zonas"
+  name: "zonas"
+  type: "array"
+  modelId: "m-zona"
+  label: "Zonas del recinto"
 projectId: "entradas"

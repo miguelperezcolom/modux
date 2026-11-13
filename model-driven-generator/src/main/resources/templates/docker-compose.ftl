@@ -39,8 +39,10 @@ services:
       - "host.docker.internal:host-gateway"
 </#if>
     depends_on:
-      - postgres
-      - kafka
+      postgres-databases:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_started
 
 </#list>
 <#if (composeShells![])?has_content>
@@ -99,6 +101,26 @@ services:
       - postgres_data:/var/lib/postgresql/data
       # One database per service, created on first boot by the generated init script.
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
+
+  # The init script runs on the volume's first boot only: a service added later would find no
+  # database. This one-shot creates whichever is missing on every start.
+  postgres-databases:
+    image: postgres:16-alpine
+    depends_on:
+      - postgres
+    environment:
+      PGHOST: postgres
+      PGUSER: user_app
+      PGPASSWORD: user_password
+      PGDATABASE: postgres
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        until pg_isready -q; do sleep 1; done
+<#list project.services as s>
+<#assign db = s.name?lower_case?replace("[^a-z0-9]","_",'r')>
+        psql -tAc "SELECT 1 FROM pg_database WHERE datname = '${db}'" | grep -q 1 || psql -c "CREATE DATABASE ${db}"
+</#list>
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1

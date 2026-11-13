@@ -990,6 +990,22 @@ public class GenerateCodeUseCase {
                         + "/" + aggregate.name() + "CrudOrchestrator.java");
         var viewModel = aggregateModel(project, service, boundedContext, aggregate);
         viewModel.put("lookups", lookupsOf(project, service, boundedContext));
+        // a list of value objects is edited as an inline grid: one row class per listed model
+        for (var f : (List<?>) ((Map<?, ?>) viewModel.get("aggregate")).get("fields")) {
+            if (f instanceof Map<?, ?> fm && fm.get("gridClass") instanceof String gridClass) {
+                repository.findById((String) fm.get("modelId"), ModelEntity.class).ifPresent(gm -> {
+                    Map<String, Object> filaModel = buildBaseModel(project, service, boundedContext);
+                    filaModel.put("rowPackage", project.packageName() + "." + boundedContext.name().toLowerCase()
+                            .replaceAll("[^a-z0-9]", "") + ".infra.in.ui.pages." + aggregatePackageName);
+                    filaModel.put("rowOwner", aggregate.name() + "ViewModel");
+                    filaModel.put("gridModel", fromJson(toJson(gm)));
+                    filaModel.put("gridClassName", gridClass);
+                    createFile(boundedContextDir, filaModel, "usecase-page-fila.ftl",
+                            "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
+                                    + "/" + gridClass + ".java");
+                });
+            }
+        }
         createFile(boundedContextDir, viewModel, "crud-viewmodel.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "ViewModel.java");
@@ -1118,9 +1134,11 @@ public class GenerateCodeUseCase {
 
             // Array fields backed by a model become inline-editable grids: resolve each
             // referenced model to a generated row class (one per model, next to the page).
+            // The output's lists get the same row classes, shown as read-only grids.
             var gridClasses = new HashMap<String, String>();
-            if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
-                repository.findById(useCase.inputModelId(), ModelEntity.class).ifPresent(im -> {
+            for (var modelId : java.util.stream.Stream.of(useCase.inputModelId(), useCase.outputModelId())
+                    .filter(id -> id != null && !id.isBlank()).distinct().toList()) {
+                repository.findById(modelId, ModelEntity.class).ifPresent(im -> {
                     for (var f : im.fields() != null ? im.fields() : List.<ModelFieldEntity>of()) {
                         if (!f.basicType() && f.modelId() != null && !f.modelId().isBlank()
                                 && f.type() != null && "array".equals(f.type().name())) {
@@ -2871,7 +2889,11 @@ public class GenerateCodeUseCase {
         if (modelEntity != null && modelEntity.fields() != null) {
             for (var f : modelEntity.fields()) {
                 if ("id".equals(f.name())) continue;
-                var type = f.basicType() ? sqlTypeForPrimitive(mapFieldDataType(f.type())) : "varchar(255)";
+                // a list of value objects is kept as JSON: unbounded text, never varchar(255)
+                var jsonList = !f.basicType() && f.modelId() != null && !f.modelId().isBlank()
+                        && f.type() == FieldDataType.array;
+                var type = f.basicType() ? sqlTypeForPrimitive(mapFieldDataType(f.type()))
+                        : jsonList ? "text" : "varchar(255)";
                 columns.add(column(snakeCase("col_" + f.name()), type, false));
             }
         }
@@ -2986,6 +3008,7 @@ public class GenerateCodeUseCase {
             case date -> "date";
             case time -> "time";
             case dateTime -> "timestamp";
+            case array -> "text"; // kept as JSON
             default -> "varchar(255)";
         };
     }
@@ -4683,6 +4706,12 @@ public class GenerateCodeUseCase {
                             if (f.basicType() || jsonList) {
                                 fieldMap.put("type", "Wrapper");
                                 fieldMap.put("primitiveType", jsonList ? "json" : mapFieldDataType(f.type()));
+                                if (jsonList) {
+                                    // the CRUD form edits it as an inline grid of this row class
+                                    fieldMap.put("modelId", f.modelId());
+                                    repository.findById(f.modelId(), ModelEntity.class).ifPresent(gm ->
+                                            fieldMap.put("gridClass", toTypeName(gm.name()) + "Fila"));
+                                }
                                 // money and number are both decimals; a listing shows money with 2 decimals
                                 fieldMap.put("money", f.type() == FieldDataType.money);
                             } else {
