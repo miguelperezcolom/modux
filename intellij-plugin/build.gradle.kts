@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.6.3"
+version = "0.6.4"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,10 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.4</h4>
+            <ul>
+              <li>The generated deployment is the same on every generation too (the definitions hash in the compose and deploy/targets.json): regenerating an unchanged model changes no file.</li>
+            </ul>
             <h4>0.6.3</h4>
             <ul>
               <li>Workflow definitions come out the same on every generation: a redeploy no longer recreates EventConductor when the model has not changed.</li>
