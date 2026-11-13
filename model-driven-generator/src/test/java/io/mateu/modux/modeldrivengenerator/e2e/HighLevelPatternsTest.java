@@ -275,6 +275,8 @@ class HighLevelPatternsTest {
         // item overview: loaded by id from the URL or from the page that opens it
         var ficha = read("FichaConciertoPage.java");
         assertTrue(ficha.contains("extends ItemOverview"), ficha);
+        // a list opening it (a smart search's Navigable view) shows the overview, not a form of its fields
+        assertTrue(ficha.contains("implements DetailContentSupplier"), ficha);
         assertTrue(ficha.contains("public FichaConciertoPage load(String id)"), ficha);
         assertTrue(ficha.contains("@Panel(title = \"Zonas\") Markdown zonasPanel;"), ficha);
     }
