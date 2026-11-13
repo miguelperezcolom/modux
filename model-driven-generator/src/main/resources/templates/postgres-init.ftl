@@ -3,3 +3,6 @@
 <#list project.services as s>
 CREATE DATABASE ${s.name?lower_case?replace("[^a-z0-9]","_",'r')};
 </#list>
+<#if procesos??>
+CREATE DATABASE procesos;
+</#if>

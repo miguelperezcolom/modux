@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:eventconductor:workflow-definition-schema",
+  "$id": "urn:eventconductor:workflow-definition-schema:1",
   "title": "WorkflowDefinition",
   "description": "Schema for an EventConductor workflow definition JSON file.",
   "type": "object",
@@ -10,6 +10,13 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The schema this file is written against, as an editor reads it for completion and inline validation — the README and the guides tell authors to put it here. It says nothing about the workflow itself and is ignored when the file is read; it is declared only because additionalProperties is false, and refusing the one key whose purpose is to help someone write the file correctly would be an odd way to validate it."
+    },
     "id": {
       "type": [
         "string",
@@ -39,6 +46,123 @@
       ],
       "description": "Optional free-text description of the workflow."
     },
+    "tags": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$",
+        "maxLength": 50
+      },
+      "description": "Tags: short labels for finding and grouping definitions — and the processes of those definitions — in the console (billing, team:payments, eu). Letters, digits, '.', '_', ':', '/' and '-', starting with a letter or digit, at most 50 characters, each once. Metadata: changing them mints no version. The Definitions page shows and searches them; the Processes page filters by Tag."
+    },
+    "retention": {
+      "description": "How long a finished process of this workflow is kept before the purge job deletes it, counted from when it ended: one ISO-8601 duration for every terminal status (P30D), or an object with one per terminal status ({ completed: P30D, error: P180D }; a status not listed falls back to the engine's workflow.processes.retention defaults). 'forever' keeps them whatever the defaults say. Unset: the engine defaults decide, and they are off unless configured. The whole process tree goes together — a child is purged with its root, never before. An ERROR process cannot be retried once purged, and its business key can be used again. Metadata: changing it mints no version.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "pattern": "^(forever|P([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?)$",
+          "description": "An ISO-8601 duration in days, hours, minutes or seconds counted from the process end (P30D, PT12H, P1DT12H — months and years are not durations: write P365D), or 'forever'."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "completed": {
+              "type": "string",
+              "pattern": "^(forever|P([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?)$",
+              "description": "An ISO-8601 duration in days, hours, minutes or seconds counted from the process end (P30D, PT12H, P1DT12H — months and years are not durations: write P365D), or 'forever'."
+            },
+            "cancelled": {
+              "type": "string",
+              "pattern": "^(forever|P([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?)$",
+              "description": "An ISO-8601 duration in days, hours, minutes or seconds counted from the process end (P30D, PT12H, P1DT12H — months and years are not durations: write P365D), or 'forever'."
+            },
+            "error": {
+              "type": "string",
+              "pattern": "^(forever|P([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?)$",
+              "description": "An ISO-8601 duration in days, hours, minutes or seconds counted from the process end (P30D, PT12H, P1DT12H — months and years are not durations: write P365D), or 'forever'."
+            },
+            "compensated": {
+              "type": "string",
+              "pattern": "^(forever|P([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?)$",
+              "description": "An ISO-8601 duration in days, hours, minutes or seconds counted from the process end (P30D, PT12H, P1DT12H — months and years are not durations: write P365D), or 'forever'."
+            },
+            "compensationFailed": {
+              "type": "string",
+              "pattern": "^(forever|P([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?)$",
+              "description": "An ISO-8601 duration in days, hours, minutes or seconds counted from the process end (P30D, PT12H, P1DT12H — months and years are not durations: write P365D), or 'forever'."
+            }
+          }
+        }
+      ]
+    },
+    "sensitiveVariables": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[A-Za-z_$*?][A-Za-z0-9_$.*?\\-]*$"
+      },
+      "description": "Variables whose values are sensitive: names or globs (* any run of characters, ? one; \"patient.*\" also covers patient). Stored and transported only encrypted (workflow.encryption.keys.<id> must be configured), masked in the console, REST and MCP, never a search attribute, kept out of LLM prompts unless the step sets llm.allowSensitiveVariables. Part of the version."
+    },
+    "searchAttributes": {
+      "type": "object",
+      "maxProperties": 20,
+      "propertyNames": {
+        "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "pattern": "\\$\\{",
+            "maxLength": 500,
+            "description": "A template over the process variables, e.g. \"${customerId}\": indexed as a keyword."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "type": "string",
+                "pattern": "\\$\\{",
+                "maxLength": 500,
+                "description": "A template over the process variables, e.g. \"${total}\"."
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "keyword",
+                  "text",
+                  "number",
+                  "date",
+                  "bool"
+                ],
+                "default": "keyword",
+                "description": "keyword: exact match; text: case-insensitive contains; number and date: exact match and ranges; bool: true or false."
+              }
+            }
+          }
+        ]
+      },
+      "description": "Search attributes: named values every process of this workflow is indexed by, computed from its variables whenever they change — customerId: \"${customerId}\", or amount: { value: \"${total}\", type: number }. At most 20; names are a letter then letters, digits and '_'. The Processes page, the REST API (attr.<name>=…), the MCP tools and batch operations filter by them. Part of the version: changing them mints one."
+    },
     "limitConcurrentExecutions": {
       "type": [
         "boolean",
@@ -64,6 +188,219 @@
       "description": "When the concurrency limit is reached, enqueue new requests instead of rejecting them.",
       "default": false
     },
+    "processLock": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "key"
+      ],
+      "description": "Serialize every instance of this definition by a key (a process-level lock). Instances that resolve to the same key run one at a time; the rest wait and are admitted in arrival order (FIFO). Null means no process-level serialization.",
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The lock domain. Two definitions serialize together only if they name the same lock. Defaults to this definition's id when absent."
+        },
+        "key": {
+          "type": "string",
+          "description": "A JEXL expression over the process variables giving the key to serialize by — e.g. bookingId to serialize by reservation.",
+          "minLength": 1
+        }
+      }
+    },
+    "syncInvocation": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "description": "Lets a caller start an instance over HTTP and wait, up to a deadline, for the reply a REPLY step emits. Null or absent means the definition cannot be invoked synchronously; asynchronous starts are unaffected either way.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the synchronous invocation endpoint accepts this definition. When true, at least one REPLY step must be reachable.",
+          "default": false
+        },
+        "onFailure": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "REPLY_IMMEDIATELY",
+            "REPLY_AFTER_COMPENSATION",
+            null
+          ],
+          "description": "When a process that fails before replying answers its caller: as soon as it fails (the answer says whether a compensation is under way), or once the saga rollback has finished.",
+          "default": "REPLY_IMMEDIATELY"
+        },
+        "onLockBusy": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "WAIT",
+            "FAIL",
+            null
+          ],
+          "description": "What an invocation does when the processLock is held by another instance: queue FIFO like any instance (a long wait becomes a 202 through the deadline), or refuse with 409 without creating an instance.",
+          "default": "WAIT"
+        },
+        "defaultDeadlineMs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "How long a caller waits when it does not say (Prefer: wait=N). 0 or absent means the engine default; always capped by workflow.sync.max-deadline-ms."
+        }
+      }
+    },
+    "startPolicy": {
+      "$ref": "#/$defs/StartPolicy"
+    },
+    "businessKeyPolicy": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "unique",
+        "allowAfterFinished",
+        "allowAfterFailed",
+        "terminateRunning",
+        null
+      ],
+      "default": "unique",
+      "description": "Whether a start may reuse a business key a process of this definition already holds (2.33): unique (the default — a second start collapses into the first process), allowAfterFinished (a new run once the holder ended, however), allowAfterFailed (once it ended other than COMPLETED), terminateRunning (a running holder is cancelled; an ended one hands the key over). A key held by another definition's process is never reused. Applies to every start path, update-with-start included. See the 'Long-running processes' guide."
+    },
+    "updates": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Named updates a running process of this definition accepts: validated writes that answer with a result, over POST /workflow/api/processes/{id}/updates/{name}, MCP, Kafka (process-update-requested) or update-with-start. Applied atomically under the process lock; a refusal changes nothing. Any number of updates over a process's life. Part of the version: a process accepts the updates of the version it runs.",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,99}$",
+            "description": "Unique in the definition; the {name} of POST /workflow/api/processes/{id}/updates/{name}."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What the update is for, shown in the console and the MCP tools."
+          },
+          "accepts": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "JSON Schema (2020-12) the payload must satisfy; a payload that does not is refused with 400 and nothing is recorded."
+          },
+          "acceptedWhile": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Step ids: the update is accepted only while one of them is waiting (PENDING or RUNNING); otherwise 409 NOT_ACCEPTING. Absent: accepted whenever the process is RUNNING or PENDING."
+          },
+          "validate": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "Guards evaluated in order against the payload and the variables before the update; the first that is not true refuses it with 422 and its message. Nothing changes.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "expression"
+              ],
+              "properties": {
+                "expression": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "A JEXL expression over payload, the process variables and businessKey; must be true."
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The refusal the caller gets when it is not true."
+                }
+              }
+            }
+          },
+          "set": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Variables the update writes: name → JEXL expression over payload, the variables (as they were before the update) and businessKey. A value that is not text is stored as JSON. Payload fields a set writes into a sensitive variable are sealed in the update's record and in transit."
+          },
+          "completes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A WAIT_FOR_MESSAGE step the update resumes, so the flow moves on; it must be waiting (otherwise 409)."
+          },
+          "reply": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A JEXL expression, evaluated after the update's variables are written, whose value (as JSON) is the update's result. Neither reply nor replyTemplate: the result is {}."
+          },
+          "replyTemplate": {
+            "description": "A JSON template (as a REPLY's replyTemplate; payload is in scope) for the result. Not together with reply."
+          },
+          "sensitive": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Payload fields never shown: the recorded copy of the payload (console, REST, MCP) carries a mask instead."
+          },
+          "allowSensitiveVariables": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Let validate and reply/replyTemplate read the definition's sensitiveVariables. They answer the caller (a refusal or a result is an oracle on what they read), so an update that reads one without opting in is refused at load, and at runtime sensitive variables are left out of their context. A result that may read them is recorded sealed and given in clear only to the request that sent the update. set may always read them.",
+            "default": false
+          }
+        }
+      }
+    },
     "draftOfId": {
       "type": [
         "string",
@@ -77,6 +414,26 @@
         "null"
       ],
       "description": "Spring cron expression (six fields, seconds first, e.g. \"0 0 9 * * MON-FRI\"). While the definition is ACTIVE, the engine automatically creates a process instance at each occurrence. Null means no scheduled starts."
+    },
+    "schedules": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Scheduled starts, each with its own cron, optional zone and initial process variables. While the definition is ACTIVE, the engine creates a process instance at each occurrence of each schedule. cronExpression keeps working as the shorthand for one schedule without variables; both may be set. Schedules can also be declared in a cron.yaml file next to the definitions.",
+      "items": {
+        "$ref": "#/$defs/CronSchedule"
+      }
+    },
+    "triggers": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Event triggers: the domain events that start a process of this definition, beside cronExpression and schedules. Each names a destination (workflow.events.destinations.<name>), a CloudEvents type, an optional filter, business key and variable mapping over the event. Listed on the definition's Triggers tab and on Workflow → Events, where they are paused and resumed; what each received event started is on Workflow → Received events (and GET /workflow/api/events/received).",
+      "items": {
+        "$ref": "#/$defs/EventTrigger"
+      }
     },
     "status": {
       "type": [
@@ -124,6 +481,35 @@
       "minimum": 0,
       "default": 0
     },
+    "maxSteps": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "description": "Cap on the total number of step executions one process instance of this definition may ever hold, runtime injections included (a DYNAMIC step's worker can inject new steps at runtime). 0 or null falls back to the engine-wide workflow.dynamic.max-steps-per-process default; any positive value overrides it for this definition's processes. A backstop against runaway injection.",
+      "minimum": 0,
+      "default": 0
+    },
+    "requiredScopes": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Flow authorization: the scopes a caller must ALL hold to create a process of this definition. Evaluated against the caller's snapshot at creation. Empty or absent means open. Enforced only when workflow.security.flow-authorization.enabled."
+    },
+    "requiredRoles": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "description": "Flow authorization: the roles a caller must ALL hold to create a process of this definition. See requiredScopes."
+    },
     "steps": {
       "type": "array",
       "description": "Ordered list of steps that make up the workflow.",
@@ -131,9 +517,265 @@
       "items": {
         "$ref": "#/$defs/Step"
       }
+    },
+    "layout": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Where each step's node sits on the diagram, keyed by step id — the arrangement whoever authored this workflow made by hand in the graph editor. The only key here that says nothing about what the workflow does, and the only one written by a tool rather than by a person: the editor rewrites it as nodes are dragged. Absent means the graph is laid out automatically, which is what happens to any step with no entry here (including the steps a DYNAMIC step injects at runtime). An entry naming a step that does not exist is ignored rather than refused — it is a stale coordinate, not a broken workflow.",
+      "additionalProperties": {
+        "$ref": "#/$defs/NodePosition"
+      }
     }
   },
   "$defs": {
+    "CronSchedule": {
+      "title": "CronSchedule",
+      "type": "object",
+      "description": "One scheduled start: at every occurrence of cron, read in zone, a process instance is created with variables as its initial variables.",
+      "additionalProperties": false,
+      "required": [
+        "cron"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "maxLength": 100,
+          "description": "Optional name of the schedule (letters, digits, '.', '_', '-'), unique across the engine. A pause is kept under it, and a schedule created from the admin UI, REST API or MCP with the same id is replaced by this entry when the definition is imported: the file owns it from then on. Absent means the engine derives an id from the workflow and the entry's content."
+        },
+        "cron": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Spring cron expression (six fields, seconds first, e.g. \"0 0 9 * * MON-FRI\")."
+        },
+        "zone": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "IANA time zone the expression is read in (e.g. Europe/Madrid). Absent means the engine's workflow.time.zone (the JVM's zone unless configured)."
+        },
+        "variables": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Initial process variables for each start, by name. Values are strings (numbers and booleans are read as their text).",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      }
+    },
+    "EventTrigger": {
+      "title": "EventTrigger",
+      "type": "object",
+      "description": "One event trigger: when a domain event of type arrives on destination and filter holds, the engine starts a process of this definition with variables as its initial variables. While the definition is ACTIVE and the trigger is not paused (Workflow → Events, REST or MCP); a PAUSED definition's process is created already paused, as for a schedule; a DISABLED or ARCHIVED definition starts nothing. Idempotent: the same event (CloudEvents source + id) starts at most one process per trigger, whatever the channel and however many times it is delivered.",
+      "additionalProperties": false,
+      "required": [
+        "destination",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "maxLength": 100,
+          "description": "Optional name of the trigger (letters, digits, '.', '_', '-'), unique in the definition. A pause is kept under it and the default business key carries it. Absent means derived from the type (com.acme.booking.created; a second trigger with the same type gets -2)."
+        },
+        "destination": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "description": "A logical destination, mapped to a topic by workflow.events.destinations.<name>.topic — the same names PUBLISH_EVENT publishes to, never a topic itself. In kafka mode the engine consumes the topics of the destinations that some trigger or onEvent names (consumer group workflow.events.consumer.group); events also arrive through POST /workflow/api/events/{destination}, the publishInboundEvent MCP tool, the embedded InboundEventService and, in embedded mode, from this engine's own PUBLISH_EVENT steps."
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The CloudEvents type to match (ce_type), e.g. com.acme.booking.created. '*' matches any run of characters (com.acme.booking.*); a lone '*' matches every event on the destination, including plain records that carry no type."
+        },
+        "filter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional JEXL boolean expression over the event, without ${...} (e.g. data.channel == 'web' && data.nights > 1). The event is used only when it evaluates to true; an expression that cannot be evaluated counts as false and is recorded as an ERROR receipt. Evaluated over the event context: id, source, type, subject, time, key (the Kafka record key, or the key given to the REST/MCP inject), destination, datacontenttype, data (the payload parsed as JSON — objects are maps, so data.bookingId — or its raw text) and extensions (any other CloudEvents attribute)."
+        },
+        "businessKey": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional text template over the event for the started process's business key (e.g. \"booking-${data.bookingId}\"). Absent means <definition>-evt-<trigger>-<16 hex of a SHA-256 of the event's source and id>, so a redelivered event collapses into the process it already started. A given key is honoured as given: two different events that render the same key start one process. Evaluated over the event context: id, source, type, subject, time, key (the Kafka record key, or the key given to the REST/MCP inject), destination, datacontenttype, data (the payload parsed as JSON — objects are maps, so data.bookingId — or its raw text) and extensions (any other CloudEvents attribute)."
+        },
+        "variables": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The variables, by name, each a payload template over the event (\"${data.bookingId}\"; a leaf that is exactly one expression keeps its type, and a non-string value becomes its JSON text, as process variables are strings). Absent means every top-level member of data when data is a JSON object; {} means none. Evaluated over the event context: id, source, type, subject, time, key (the Kafka record key, or the key given to the REST/MCP inject), destination, datacontenttype, data (the payload parsed as JSON — objects are maps, so data.bookingId — or its raw text) and extensions (any other CloudEvents attribute).",
+          "additionalProperties": true
+        },
+        "startPolicy": {
+          "$ref": "#/$defs/StartPolicy",
+          "description": "This trigger's own flow control; its key is a template over the event. Absent: the definition's startPolicy, if any."
+        }
+      }
+    },
+    "EventWait": {
+      "title": "EventWait",
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "WAIT_FOR_MESSAGE (and an HTTP_CALL / PUBLISH_EVENT awaitReply): a domain event that is this step's message. An event of type arriving on destination for which filter holds becomes the message messageName with the correlation key and variables rendered from it, dispatched like any message — so the step's correlationExpression, deadline, timeout and onTimeoutStepId apply unchanged, and the message API can still complete the wait by messageName. The same event (source + id) is correlated at most once per message and key.",
+      "additionalProperties": false,
+      "required": [
+        "destination",
+        "type"
+      ],
+      "properties": {
+        "destination": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "description": "A logical destination, mapped to a topic by workflow.events.destinations.<name>.topic — the same names PUBLISH_EVENT publishes to, never a topic itself. In kafka mode the engine consumes the topics of the destinations that some trigger or onEvent names (consumer group workflow.events.consumer.group); events also arrive through POST /workflow/api/events/{destination}, the publishInboundEvent MCP tool, the embedded InboundEventService and, in embedded mode, from this engine's own PUBLISH_EVENT steps."
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The CloudEvents type to match (ce_type), e.g. com.acme.booking.created. '*' matches any run of characters (com.acme.booking.*); a lone '*' matches every event on the destination, including plain records that carry no type."
+        },
+        "correlationKey": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional text template over the event for the correlation key it carries (e.g. \"${data.bookingId}\"); it must equal the value of the step's correlationExpression over the process. Absent means the event's key (the Kafka record key or the key given to the inject), else its subject. Evaluated over the event context: id, source, type, subject, time, key (the Kafka record key, or the key given to the REST/MCP inject), destination, datacontenttype, data (the payload parsed as JSON — objects are maps, so data.bookingId — or its raw text) and extensions (any other CloudEvents attribute)."
+        },
+        "filter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional JEXL boolean expression over the event, without ${...} (e.g. data.channel == 'web' && data.nights > 1). The event is used only when it evaluates to true; an expression that cannot be evaluated counts as false and is recorded as an ERROR receipt. Evaluated over the event context: id, source, type, subject, time, key (the Kafka record key, or the key given to the REST/MCP inject), destination, datacontenttype, data (the payload parsed as JSON — objects are maps, so data.bookingId — or its raw text) and extensions (any other CloudEvents attribute)."
+        },
+        "variables": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The variables the message merges into the process, by name, each a payload template over the event (\"${data.bookingId}\"; a leaf that is exactly one expression keeps its type, and a non-string value becomes its JSON text, as process variables are strings). Absent means every top-level member of data when data is a JSON object; {} means none. Evaluated over the event context: id, source, type, subject, time, key (the Kafka record key, or the key given to the REST/MCP inject), destination, datacontenttype, data (the payload parsed as JSON — objects are maps, so data.bookingId — or its raw text) and extensions (any other CloudEvents attribute).",
+          "additionalProperties": true
+        }
+      }
+    },
+    "AwaitReply": {
+      "title": "AwaitReply",
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "HTTP_CALL / PUBLISH_EVENT only: the reply the step waits for after sending its request — asynchronous request/response in one step. The wait is armed in the same unit of work that sends the request (the event's outbox row, the HTTP task's dispatch), so a reply can never arrive before the step is waiting for it. The step completes when the reply is correlated, its variables merged into the process; an HTTP_CALL's 2xx response (and its output mapping) is recorded when it comes first, but does not complete the step. The step's timeout, deadline, retries and onTimeoutStepId bound the whole exchange; a retry sends the request again and waits again. Same fields and meaning as on a WAIT_FOR_MESSAGE.",
+      "additionalProperties": false,
+      "required": [
+        "messageName",
+        "correlationExpression"
+      ],
+      "properties": {
+        "messageName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of the message that is the reply — sent to POST /workflow/api/messages, the upstream topic, a SEND_MESSAGE, or made from a domain event by onEvent."
+        },
+        "correlationExpression": {
+          "type": "string",
+          "minLength": 1,
+          "description": "JEXL expression over the process variables that yields the key the reply must carry ('businessKey' correlates by business key). Choose a key the request carries, so the other side can echo it."
+        },
+        "onEvent": {
+          "$ref": "#/$defs/EventWait"
+        }
+      }
+    },
+    "NodePosition": {
+      "title": "NodePosition",
+      "type": "object",
+      "description": "A node's top-left corner on the diagram canvas, in whole pixels.",
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "integer",
+          "description": "Distance from the canvas' left edge to the node's left edge."
+        },
+        "y": {
+          "type": "integer",
+          "description": "Distance from the canvas' top edge to the node's top edge."
+        }
+      }
+    },
+    "Moment": {
+      "description": "A moment in business terms, from the process's data — e.g. 3 days before check-in at 09:00 hotel time. A plain string is its date.",
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "description": "The date alone: a template rendering to an ISO date, date-time or offset date-time, e.g. ${checkinDate}."
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "date"
+          ],
+          "properties": {
+            "date": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A template rendering to an ISO date (2026-08-01), date-time (2026-08-01T15:00) or offset date-time; e.g. ${checkinDate}."
+            },
+            "offset": {
+              "type": "string",
+              "pattern": "^[+-]?P(\\d+Y)?(\\d+M)?(\\d+W)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+(\\.\\d{1,9})?S)?)?$",
+              "description": "ISO-8601 offset added to the date, may be negative: -P3D (three calendar days before), P1DT6H, -PT30M. Days and up are calendar arithmetic in the zone (DST-safe); hours and below are elapsed time."
+            },
+            "at": {
+              "type": "string",
+              "pattern": "^\\d{2}:\\d{2}(:\\d{2})?$",
+              "description": "Time of day set after the offset, in the zone, e.g. 09:00."
+            },
+            "zone": {
+              "type": "string",
+              "description": "IANA time zone (Europe/Madrid) or a template rendering to one (${hotelZone}). Default: workflow.time.zone (the JVM zone unless configured)."
+            },
+            "ifPast": {
+              "type": "string",
+              "enum": [
+                "fire",
+                "timeout"
+              ],
+              "description": "TIMER until only — when the moment has already passed as the step starts: fire (default) completes the timer at once; timeout ends it TIMEOUT, which follows onTimeoutStepId if set and fails the process otherwise."
+            }
+          }
+        }
+      ]
+    },
     "Step": {
       "title": "Step",
       "type": "object",
@@ -164,13 +806,23 @@
             "ACTION",
             "JOIN",
             "FORK",
+            "CHOICE",
             "END",
             "USER_TASK",
             "PROCESS",
             "TIMER",
             "WAIT_FOR_MESSAGE",
             "SEND_MESSAGE",
-            "RULE"
+            "RULE",
+            "DYNAMIC",
+            "LOCK",
+            "UNLOCK",
+            "REPLY",
+            "PUBLISH_EVENT",
+            "HTTP_CALL",
+            "LLM_CALL",
+            "CONTINUE_AS_NEW",
+            "AGENT"
           ]
         },
         "name": {
@@ -184,6 +836,20 @@
             "null"
           ],
           "description": "Optional description of what this step does."
+        },
+        "lockName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "LOCK/UNLOCK only: the lock domain (e.g. \"booking\"). Together with lockKey it names the lock; every step and process sharing the pair is serialized against each other. Ignored on other step types."
+        },
+        "lockKey": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "LOCK/UNLOCK only: a JEXL expression over the process variables giving the key that is locked — e.g. bookingId to serialize by reservation. Ignored on other step types."
         },
         "preconditionStepId": {
           "type": [
@@ -207,7 +873,7 @@
             "array",
             "null"
           ],
-          "description": "The incoming links of this step, each with its own guard. Takes precedence over preconditionStepIds and preconditionStepId when non-empty. A link is satisfied when its step has completed AND its expression holds; a link whose guard is false is not satisfied, so a step waiting for all of its links waits until it becomes true.",
+          "description": "The incoming links of this step, each with its own guard. Takes precedence over preconditionStepIds and preconditionStepId when non-empty. A link is satisfied when its step has completed AND its expression holds; a link whose guard is false is not satisfied, so a step waiting for all of its links waits until it becomes true — unless the link says onFalse: DISCARD, which makes it a route not taken instead.",
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -225,6 +891,19 @@
                   "null"
                 ],
                 "description": "JEXL expression over the process variables, evaluated once that step has completed. Absent means the link has no condition."
+              },
+              "onFalse": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "WAIT",
+                  "DISCARD",
+                  null
+                ],
+                "description": "What a false condition on this link means. WAIT (the default) leaves the link unsatisfied and the step waits, to be released if the variables change; the process is not completed around it. DISCARD treats the route as not taken, so the step is a branch the flow did not go down and the process may finish and cancel it — the meaning a step-level preconditionExpression has always had.",
+                "default": "WAIT"
               }
             }
           }
@@ -234,7 +913,7 @@
             "string",
             "null"
           ],
-          "description": "JEXL expression evaluated against process variables. Step is skipped if the expression returns false."
+          "description": "JEXL expression evaluated against process variables. Step is skipped if the expression returns false. The older, step-wide spelling of a condition: it is folded into every one of the step's links (as an onFalse: DISCARD guard), so prefer preconditions[].expression, which can say something different of each route."
         },
         "parallel": {
           "type": [
@@ -249,7 +928,25 @@
             "string",
             "null"
           ],
-          "description": "Kafka topic (or logical destination) to dispatch the task to. Required for ACTION steps."
+          "default": "downstream",
+          "description": "Logical destination this step's task is dispatched to, so a step may be handed to a worker pool of its own. Optional: omitted (the default) means the shared 'downstream' destination, where every task went before per-step routing existed. In Kafka mode a topic with no binding of its own becomes a dynamic destination, created on first use. Embedded mode has one in-process executor and no transport to route over, so it takes every task whatever this says. The step's cancellation follows its task to the same destination. When a task contract is referenced (see `task`), its topic is the default and an explicit `topic` here overrides it."
+        },
+        "priority": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100,
+          "description": "ACTION, HTTP_CALL, LLM_CALL and RULE only (2.33): 0–100, higher first; absent means 50. Honoured by the HTTP worker queue, the embedded worker pool and the queue of a rate-limited topic; carried on the task for Kafka workers (a topic keeps its own order)."
+        },
+        "task": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[^@]+(@[0-9]+)?$",
+          "description": "ACTION only: the task contract this step runs, as `<id>` or `<id>@<version>`. A bare id is pinned to the latest version when the definition is imported, so the reference dispatched to the worker is always fully qualified and a definition never changes contract without someone editing the file. The contract's topic becomes the step's default destination unless `topic` is set here."
         },
         "formId": {
           "type": [
@@ -280,7 +977,312 @@
           "items": {
             "type": "string"
           },
-          "description": "PROCESS only: names of the child process variables copied back into the parent when the child completes. Empty or absent means none."
+          "description": "PROCESS: names of the child process variables copied back into the parent when the child completes. Empty or absent means none. Any step: the names sensitiveOutputs marks sensitive."
+        },
+        "sensitiveOutputs": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "True: this step's outputVariables are sensitive — added to the definition's sensitiveVariables (encrypted at rest and in transit, masked in the console, REST and MCP). Requires outputVariables."
+        },
+        "replyVariables": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "REPLY only: the process variables the reply is made of — the reply is a JSON object with one member per listed variable. Mutually exclusive with replyExpression; neither means an empty object (a plain acknowledgement)."
+        },
+        "replyExpression": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "REPLY only: a JEXL expression over the process variables whose value is the reply — e.g. {'bookingId': bookingId, 'status': 'CONFIRMED'}. Mutually exclusive with replyVariables and replyTemplate."
+        },
+        "http": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "description": "HTTP_CALL only: the request, rendered from the process state by the engine and made by the built-in http-call worker task. Exactly one of connection and url.",
+          "properties": {
+            "connection": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A named connection (workflow.http.connections.<name>): base URL, auth, timeouts, common headers."
+            },
+            "method": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "HEAD",
+                null
+              ],
+              "default": "GET"
+            },
+            "url": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "An absolute URL (template), instead of a connection. Subject to workflow.http.allowed-hosts; internal addresses are refused."
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "With a connection: the path (template) under its base URL."
+            },
+            "query": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Query parameters; values are templates."
+            },
+            "headers": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Request headers; values are templates. Never secrets — use auth."
+            },
+            "body": {
+              "description": "A structured body template, sent as JSON. Exclusive with bodyTemplate."
+            },
+            "bodyTemplate": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A text body template, sent as is (set Content-Type in headers)."
+            },
+            "successStatus": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "integer"
+              },
+              "description": "Statuses that complete the step. Default: any 2xx."
+            },
+            "output": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Process variable → JEXL over {status, headers, body} (body parsed when JSON)."
+            },
+            "auth": {
+              "description": "A named auth profile (workflow.http.auth.<name>), or an inline block {type: basic|bearer|api-key|oauth2-client-credentials|none, ...} whose credential fields (token, password, value, clientSecret) must be ${secret:NAME} references.",
+              "type": [
+                "string",
+                "object",
+                "null"
+              ]
+            },
+            "retryOn": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "description": "Failures the step's retries apply to: 5xx, 4xx, io or specific codes. Default [5xx, io] — a 4xx is not retried."
+            }
+          }
+        },
+        "llm": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "description": "LLM_CALL only: what to ask a language model. The engine renders system and prompt from the process state; the built-in llm-call worker task calls the model on a named connection (provider, model and API key are configuration, never the definition's).",
+          "properties": {
+            "connection": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A named connection (workflow.llm.connections.<name>): provider (anthropic, openai), model, base URL, API key, defaults."
+            },
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Overrides the connection's model, e.g. claude-sonnet-5-5."
+            },
+            "system": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The system prompt (text template over the process variables)."
+            },
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The user message (text template over the process variables)."
+            },
+            "temperature": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 2,
+              "description": "Sampling temperature. Omitted unless set — current Claude models accept only the default."
+            },
+            "maxTokens": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "description": "The most output tokens. Default the connection's (4096)."
+            },
+            "responseSchema": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "description": "A JSON Schema: the answer must be one JSON document valid against it. Parsed and validated; an invalid answer fails the step (LLM_INVALID_OUTPUT, retried per retries)."
+            },
+            "output": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Process variable → JEXL over {text, json, usage, model, finishReason} (json: the parsed answer, with responseSchema)."
+            },
+            "outputVariable": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The variable that receives the answer's text (with responseSchema, the JSON document)."
+            },
+            "usageVariable": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The variable that receives the token usage: {model, inputTokens, outputTokens, totalTokens}."
+            },
+            "allowSensitiveVariables": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "True to let system and prompt read the definition's sensitive variables (their values then leave the engine for the model provider). Without it, a prompt naming one is refused at load and the prompt context leaves them out."
+            }
+          },
+          "required": [
+            "connection",
+            "prompt"
+          ]
+        },
+        "event": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "description": "PUBLISH_EVENT only: the domain event to publish. Written to the outbox with the step's completion — published if and only if the step completed.",
+          "required": [
+            "destination",
+            "type"
+          ],
+          "properties": {
+            "destination": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A logical destination, mapped to a topic by workflow.events.destinations.<name> — never a topic itself."
+            },
+            "type": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The event type (CloudEvents type), e.g. com.acme.booking.confirmed."
+            },
+            "key": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Template for the message key. Default: the business key, else the process id."
+            },
+            "payload": {
+              "description": "The payload as a structured template (JSON/YAML with ${...} leaves). Exclusive with payloadTemplate and payloadVariables."
+            },
+            "payloadTemplate": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The payload as a text template. Exclusive with payload and payloadVariables."
+            },
+            "payloadVariables": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "description": "The payload is an object of these process variables."
+            },
+            "format": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "binary",
+                "structured",
+                "plain",
+                null
+              ],
+              "description": "CloudEvents binary (default: ce_* headers) or structured (JSON envelope), or plain (the payload alone). Null takes the destination's format."
+            }
+          }
+        },
+        "onEvent": {
+          "$ref": "#/$defs/EventWait"
+        },
+        "awaitReply": {
+          "$ref": "#/$defs/AwaitReply"
+        },
+        "replyTemplate": {
+          "description": "REPLY only: the reply as a structured template — JSON/YAML whose string leaves may hold ${...} JEXL expressions. A leaf that is exactly one expression keeps its type; text around expressions makes a string. Mutually exclusive with replyVariables and replyExpression."
         },
         "duration": {
           "type": [
@@ -297,6 +1299,17 @@
             "null"
           ],
           "description": "TIMER only: name of a process variable holding an ISO 8601 date (2026-08-01) or date-time (2026-08-01T15:00); the timer fires when that moment passes. Takes precedence over duration."
+        },
+        "until": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Moment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "TIMER only: the moment to wait for, from the process's data — {date, offset, at, zone, ifPast} or a date template. Unlike untilVariable it follows the process's variables while the timer waits. Exclusive with duration and untilVariable."
         },
         "messageName": {
           "type": [
@@ -331,6 +1344,17 @@
           "description": "Maximum execution time. Use an ISO 8601 duration string (e.g. PT30S, PT5M, PT1H30M) or an integer in milliseconds. 0 or null means no timeout.",
           "default": 0
         },
+        "deadline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Moment"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "ACTION, USER_TASK, RULE, WAIT_FOR_MESSAGE, PROCESS, HTTP_CALL, LLM_CALL and a PUBLISH_EVENT with awaitReply: a moment by which the step must have finished, from the process's data ({date, offset, at, zone}, no ifPast). Reaching it is a timeout (onTimeoutStepId or failure) that retries do not extend; with timeout too, the earlier wins."
+        },
         "retries": {
           "type": [
             "integer",
@@ -340,29 +1364,58 @@
           "minimum": 0,
           "default": 0
         },
+        "compensable": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether this step must be compensated (undone) when the process fails. When a step fails after exhausting its retries, the compensations of every compensable step that COMPLETED SUCCESSFULLY run sequentially in reverse execution order (saga rollback) — the step that failed is not compensated, having committed nothing to undo — and the process ends COMPENSATED.",
+          "default": false
+        },
         "rollbackable": {
           "type": [
             "boolean",
             "null"
           ],
-          "description": "Whether this step must be compensated (undone) when the process fails. When any step fails after exhausting its retries, the compensations of ALL executed rollbackable steps run sequentially in reverse execution order (saga rollback), and the process ends COMPENSATED.",
-          "default": false
+          "deprecated": true,
+          "description": "Deprecated alias for `compensable`, kept so definitions written before the rename still validate. Use `compensable`."
         },
         "compensationStepId": {
           "type": [
             "string",
             "null"
           ],
-          "description": "ID of the step that undoes this step's effect. Run during saga rollback (in reverse execution order) when the process fails. Only relevant when rollbackable is true. The compensation step needs no preconditions of its own: being named here is what makes it reachable, and the rollback pipeline starts it directly. (Definitions written before that anchor it to a precondition and guard it with preconditionExpression 'false'; still supported.)"
+          "description": "ID of the step that undoes this step's effect. Run during saga rollback (in reverse execution order) when the process fails. Only relevant when compensable is true. The compensation step needs no preconditions of its own: being named here is what makes it reachable, and the rollback pipeline starts it directly. (Definitions written before that anchor it to a precondition and guard it with preconditionExpression 'false'; still supported.)"
+        },
+        "onTimeoutStepId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "ID of the step to run when THIS step times out (its timeout elapses with the step unfinished, after retries are exhausted). Instead of failing the process, flow routes to this step — the step's own on-timeout branch, a native alternative to racing the step against a parallel TIMER. The timed-out step ends TIMEOUT and is not counted as a process failure while it carries this. Unlike compensationStepId, which undoes steps that already succeeded, this routes forward (a timed-out step never succeeded, so there is nothing to compensate)."
         },
         "maxSuccessfulExecutions": {
           "type": [
             "integer",
             "null"
           ],
-          "description": "Cap on how many times this step may successfully run within one process instance (runtime backstop against runaway loops). 0 or null inherits the workflow's defaultMaxStepExecutions.",
+          "description": "Cap on how many times this step may successfully run within one process instance — enforced when a repeat or loopBack would run it again (the step then fails). 0 or null inherits the workflow's defaultMaxStepExecutions; both 0 = only the loop's own maxIterations and workflow.loops.max-iterations bound it.",
           "minimum": 0,
           "default": 0
+        },
+        "compensateLosers": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "XOR JOIN only: true abandons the branches the join did not go on with — their waiting or running steps are cancelled and their completed compensable steps compensated, newest first, as a cleanup beside the flow. Absent/false: the other branches run on."
+        },
+        "compensateAbandoned": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "END only: true also compensates, as a cleanup, the compensable steps that completed on the branches this END cuts short. Absent/false: only work that completed after the END cancelled it is compensated."
         },
         "joinType": {
           "type": [
@@ -376,22 +1429,489 @@
           ],
           "description": "JOIN only: how the join merges its incoming branches. AND (default) is a parallel/synchronizing join that waits for ALL branches to complete; XOR is an exclusive join that proceeds as soon as ANY one branch completes. Null is treated as AND.",
           "default": "AND"
-        }
-      },
-      "if": {
-        "properties": {
-          "type": {
-            "const": "ACTION"
+        },
+        "requiredScopes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Flow authorization: the scopes the caller must ALL hold for this step to run, on top of the definition-level requirement. Evaluated against the process's creation snapshot. Empty/absent = no step-level restriction. Enforced only when workflow.security.flow-authorization.enabled."
+        },
+        "requiredRoles": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Flow authorization: the roles the caller must ALL hold for this step to run. See requiredScopes."
+        },
+        "forEach": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "ACTION, USER_TASK, PROCESS, HTTP_CALL, LLM_CALL and RULE only: multi-instance — run this step once per element of a list. Each iteration is its own task (own id, retries, timeout, compensation) and sees the process variables with `as` and `indexAs` laid over them; nothing it reports is written to the process — `output` collects it. One iteration failing for good fails the step. See the 'Loops and multi-instance' guide.",
+          "additionalProperties": false,
+          "required": [
+            "items"
+          ],
+          "properties": {
+            "items": {
+              "type": "string",
+              "description": "JEXL over the process variables giving the list to run over. A variable holding a JSON array or object is read as that structure here (e.g. `order.lines`). Evaluated once, when the step starts."
+            },
+            "as": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The variable an iteration finds its element in. Default: item. Objects reach workers as JSON text and HTTP/LLM templates as structure (`${item.id}`)."
+            },
+            "indexAs": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The variable an iteration finds its 0-based position in. Default: index."
+            },
+            "mode": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "parallel",
+                "sequential",
+                null
+              ],
+              "description": "parallel (default): every iteration may run at once, up to maxConcurrency. sequential: one at a time, in list order.",
+              "default": "parallel"
+            },
+            "maxConcurrency": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1,
+              "description": "parallel only: the most iterations in flight at once. Absent = no limit."
+            },
+            "output": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "A process variable that receives, when the step completes, a JSON array with one element per item, in item order (null for an iteration that did not complete)."
+            },
+            "outputElement": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "JEXL over what one iteration reported (plus `as`/`indexAs`) giving its element of `output`. Default: an object of everything it reported."
+            },
+            "completion": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "all (default): every iteration completes. any: the first completed iteration completes the step and cancels the rest. Anything else is a JEXL condition, checked after each completed iteration over the process variables, the output gathered so far and completedIterations/totalIterations/activeIterations.",
+              "default": "all"
+            }
           }
         },
-        "required": [
-          "type"
-        ]
-      },
-      "then": {
-        "required": [
-          "topic"
-        ]
+        "repeat": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "ACTION, USER_TASK, PROCESS, HTTP_CALL, LLM_CALL and RULE only: run this step again until a condition holds — the polling pattern. Each time it completes, `until` is evaluated once; while it is false the step runs again (as a new execution) after `delay`. Exclusive with forEach.",
+          "additionalProperties": false,
+          "required": [
+            "until",
+            "maxIterations"
+          ],
+          "properties": {
+            "until": {
+              "type": "string",
+              "description": "JEXL condition that ends the repetition, over the process variables (with what the run just reported) plus `iteration`, the 1-based number of that run."
+            },
+            "maxIterations": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The most times the step may run, the first included. Needing one more fails the step (final, not retried)."
+            },
+            "delay": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ],
+              "description": "Wait before each new run: milliseconds, or an ISO-8601 duration (e.g. PT30S). 0 or absent = at once."
+            }
+          }
+        },
+        "loopBack": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "An explicit back-edge: when this step completes and `while` holds, every step on a path from `to` to this one (both included) runs again — with fresh executions, so JOINs, XOR joins and CHOICE latches inside start over; variables carry over. Ordinary precondition cycles stay an error. Not on START, END or REPLY.",
+          "additionalProperties": false,
+          "required": [
+            "to",
+            "maxIterations"
+          ],
+          "properties": {
+            "to": {
+              "type": "string",
+              "description": "The step the loop goes back to; must be upstream of this step."
+            },
+            "while": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "JEXL condition over the process variables plus `iteration` (1-based number of the pass that just ended). Absent = always: put the loopBack on a CHOICE branch to make the CHOICE the condition."
+            },
+            "maxIterations": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The most times the section may run, the first pass included. Needing one more fails this step (final)."
+            },
+            "delay": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ],
+              "description": "Wait before each new run: milliseconds, or an ISO-8601 duration (e.g. PT30S). 0 or absent = at once."
+            }
+          }
+        },
+        "assignment": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "USER_TASK only: who the task is for and how urgent it is, rendered from the process when the task is created. A task that names an assignee or candidates is visible and claimable only by them (and by task admins); one that names nobody is open to whoever may work on its form. See the 'Human tasks: assignment and escalation' guide.",
+          "additionalProperties": false,
+          "properties": {
+            "assignee": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The user the task is assigned to: a name or a ${...} template over the process variables (an iteration's item too). Empty renders as unassigned."
+            },
+            "candidateUsers": {
+              "type": [
+                "array",
+                "string",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "description": "Users who may claim the task. A list of names or ${...} templates, or one template giving a list (a JSON array or a comma-separated text)."
+            },
+            "candidateGroups": {
+              "type": [
+                "array",
+                "string",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "description": "Groups whose members may claim the task — a group is one of the caller's roles (workflow.security.claims.roles). A list of names or ${...} templates, or one template giving a list (a JSON array or a comma-separated text)."
+            },
+            "priority": {
+              "type": [
+                "integer",
+                "string",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100,
+              "description": "0-100, higher is more urgent (default 50), or a ${...} template giving one."
+            },
+            "dueDate": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "When the task is due: an ISO-8601 duration from its creation (P3D, PT4H), an ISO date or date-time, or a ${...} template giving either. Past it the task is overdue."
+            },
+            "followUpDate": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "When someone should look at the task again, in the same forms as dueDate."
+            }
+          }
+        },
+        "escalation": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "USER_TASK only: what happens while the task stays open, each entry `after` a duration from the task's creation, listed in the order they fire. Timer-driven (the deadline scan; the test kit's advanceTime skips to them), each fires once and is recorded on the process timeline. A retry of the step starts its escalations over.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "after"
+            ],
+            "properties": {
+              "after": {
+                "type": "string",
+                "description": "ISO-8601 duration from the task's creation, e.g. PT48H or P2D."
+              },
+              "action": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "reassign",
+                  "notify",
+                  "escalateTo",
+                  null
+                ],
+                "description": "reassign: the task is for `to` from now on (assignee and candidates replaced). notify: nothing changes on the task — the escalation is recorded and announced (a task lifecycle event, and publishEvent if declared). escalateTo: the task is closed and the process goes on at the step in `escalateTo`, as onTimeoutStepId routes a timed-out step (must be the last entry; not on a forEach step). Absent: escalateTo if `escalateTo` names a step, reassign if there is a `to`, else notify."
+              },
+              "to": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false,
+                "description": "reassign only: who the task is for from now on. Templates over the process variables.",
+                "properties": {
+                  "assignee": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "The user the task is assigned to: a name or a ${...} template over the process variables (an iteration's item too). Empty renders as unassigned."
+                  },
+                  "candidateUsers": {
+                    "type": [
+                      "array",
+                      "string",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Users who may claim the task. A list of names or ${...} templates, or one template giving a list (a JSON array or a comma-separated text)."
+                  },
+                  "candidateGroups": {
+                    "type": [
+                      "array",
+                      "string",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Groups whose members may claim the task — a group is one of the caller's roles (workflow.security.claims.roles). A list of names or ${...} templates, or one template giving a list (a JSON array or a comma-separated text)."
+                  }
+                }
+              },
+              "escalateTo": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "escalateTo only: the id of the step the process goes on at. Give that step a precondition on this one that never holds by the normal route (e.g. preconditions: [{stepId: <this>, expression: \"false\"}])."
+              },
+              "publishEvent": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "additionalProperties": false,
+                "description": "An event to publish when the escalation fires — the shape of a PUBLISH_EVENT's event, rendered from the process (plus `escalation` = {level, action, after}). Published through the outbox with the escalation. The hook for a notification.",
+                "required": [
+                  "destination",
+                  "type"
+                ],
+                "properties": {
+                  "destination": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "A logical destination, mapped to a topic by workflow.events.destinations.<name> — never a topic itself."
+                  },
+                  "type": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The event type (CloudEvents type), e.g. com.acme.booking.confirmed."
+                  },
+                  "key": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Template for the message key. Default: the business key, else the process id."
+                  },
+                  "payload": {
+                    "description": "The payload as a structured template (JSON/YAML with ${...} leaves). Exclusive with payloadTemplate and payloadVariables."
+                  },
+                  "payloadTemplate": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "The payload as a text template. Exclusive with payload and payloadVariables."
+                  },
+                  "payloadVariables": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The payload is an object of these process variables."
+                  },
+                  "format": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "enum": [
+                      "binary",
+                      "structured",
+                      "plain",
+                      null
+                    ],
+                    "description": "CloudEvents binary (default: ce_* headers) or structured (JSON envelope), or plain (the payload alone). Null takes the destination's format."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "continueAsNew": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "CONTINUE_AS_NEW only (2.33): the run ends COMPLETED (outcome continued) and a fresh run of the definition starts with the same business key and these variables, the two linked (continuedFrom/continuedAs). No step may follow it.",
+          "additionalProperties": false,
+          "properties": {
+            "version": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "same",
+                "latest",
+                null
+              ],
+              "default": "same",
+              "description": "same: the definition snapshot this run runs; latest: the definition as the engine has it now."
+            },
+            "variables": {
+              "description": "Absent: every variable. A list of names: those. A map: name → template over the process (${month + 1}).",
+              "oneOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "agent": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "ref",
+            "outputVariable"
+          ],
+          "properties": {
+            "ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "taskPrompt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "input": {
+              "description": "Explicit structured input template. Absent defaults to {}."
+            },
+            "outputVariable": {
+              "type": "string",
+              "minLength": 1
+            },
+            "allowSensitiveVariables": {
+              "type": [
+                "boolean",
+                "null"
+              ],
+              "description": "true to let taskPrompt and input read the definition's sensitiveVariables: they leave the engine for the agent runtime. Without it a definition whose agent reads one is refused at load."
+            },
+            "mcp": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "rag": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "peers": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "description": "AGENT: published catalogue agent; absent capability lists inherit and [] disables. Model and credentials belong to the catalogue."
+        }
       },
       "allOf": [
         {
@@ -449,6 +1969,11 @@
               {
                 "required": [
                   "untilVariable"
+                ]
+              },
+              {
+                "required": [
+                  "until"
                 ]
               }
             ]
@@ -510,12 +2035,153 @@
         {
           "if": {
             "properties": {
-              "rollbackable": {
+              "type": {
+                "const": "REPLY"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "replyVariables",
+                    "replyExpression"
+                  ],
+                  "properties": {
+                    "replyVariables": {
+                      "type": "array",
+                      "minItems": 1
+                    },
+                    "replyExpression": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                {
+                  "required": [
+                    "replyVariables",
+                    "replyTemplate"
+                  ],
+                  "properties": {
+                    "replyVariables": {
+                      "type": "array",
+                      "minItems": 1
+                    },
+                    "replyTemplate": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                },
+                {
+                  "required": [
+                    "replyExpression",
+                    "replyTemplate"
+                  ],
+                  "properties": {
+                    "replyExpression": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "replyTemplate": {
+                      "not": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "HTTP_CALL"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "http"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "LLM_CALL"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "llm"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "PUBLISH_EVENT"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "event"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "awaitReply": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "awaitReply"
+            ]
+          },
+          "then": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "HTTP_CALL",
+                  "PUBLISH_EVENT"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "compensable": {
                 "const": true
               }
             },
             "required": [
-              "rollbackable"
+              "compensable"
             ]
           },
           "then": {
@@ -523,8 +2189,130 @@
               "compensationStepId"
             ]
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "AGENT"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "agent"
+            ],
+            "properties": {
+              "agent": {
+                "type": "object"
+              },
+              "retries": {
+                "const": 0,
+                "description": "AGENT failures are final; durable recovery/redelivery preserves the invocation. Explicit process restart creates a new invocation."
+              }
+            }
+          }
         }
       ]
+    },
+    "StartPolicy": {
+      "title": "StartPolicy",
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Per-key flow control of starts (2.33): debounce, throttle and/or singleton, counted per rendered key. Order: debounce → singleton → throttle → start. On a definition it applies to REST and sync-invocation starts and to the triggers that declare none; on a trigger, to that trigger's starts. See the 'Flow control' guide.",
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "debounce"
+          ]
+        },
+        {
+          "required": [
+            "throttle"
+          ]
+        },
+        {
+          "required": [
+            "singleton"
+          ]
+        }
+      ],
+      "properties": {
+        "key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "description": "Text template rendering the key the policy counts by — over the event for a trigger's own policy (\"${data.customerId}\"), over the start's variables plus businessKey and workflowId for a definition's (\"${customerId}\"). Absent: one key for every start. A key that does not render, or renders empty, refuses the start (an ERROR receipt, or 400)."
+        },
+        "debounce": {
+          "type": "string",
+          "pattern": "^P(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+(\\.\\d+)?S)?)?$",
+          "description": "ISO-8601 duration: the first start of a key opens a quiet period; each further start replaces the waiting one (the last one's data and business key win) and pushes the period back. When it ends, the last start goes on (singleton, throttle). Not allowed on a definition invocable synchronously."
+        },
+        "maxWait": {
+          "type": "string",
+          "pattern": "^P(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+(\\.\\d+)?S)?)?$",
+          "description": "ISO-8601 duration, with debounce and not shorter than it: the longest a start waits after the key's first start, however often the key keeps changing. Equal to debounce, the window is fixed and counted from the first start."
+        },
+        "throttle": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "At most limit starts per key per fixed window of period (the window opens with its first start).",
+          "additionalProperties": false,
+          "required": [
+            "limit",
+            "period"
+          ],
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000,
+              "description": "Starts admitted per window."
+            },
+            "period": {
+              "type": "string",
+              "pattern": "^P(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+(\\.\\d+)?S)?)?$",
+              "description": "The window, an ISO-8601 duration (PT1M, PT1H, P1D)."
+            },
+            "onLimit": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "queue",
+                "drop",
+                null
+              ],
+              "default": "queue",
+              "description": "Over the limit: queue (FIFO, released as windows open — a synchronous caller is refused instead) or drop."
+            }
+          }
+        },
+        "singleton": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "skip",
+            "replace",
+            null
+          ],
+          "description": "While the last start of the key is still running: skip the new one (REST answers 200 with the running process), or replace — cancel the running one and start the new one."
+        }
+      }
     }
   }
 }

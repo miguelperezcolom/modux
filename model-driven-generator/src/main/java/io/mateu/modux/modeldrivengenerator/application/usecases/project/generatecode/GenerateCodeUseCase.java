@@ -1120,7 +1120,8 @@ public class GenerateCodeUseCase {
                             + "/custom/Default" + ucClass + "Steps.java");
         }
 
-        if (useCase.exposedAsRest() || calledThroughInboundAcl(boundedContext, useCase) || calledRemotely(useCase)) {
+        if (useCase.exposedAsRest() || calledThroughInboundAcl(boundedContext, useCase) || calledRemotely(useCase)
+                || targetOfAWorkflow(useCase)) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/rest");
             createFile(boundedContextDir, model, "usecase-rest-controller.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
@@ -1664,6 +1665,13 @@ public class GenerateCodeUseCase {
             }
         }
         return null;
+    }
+
+    /** Whether a workflow step runs this use case: the engine reaches it over REST (HTTP_CALL). */
+    private boolean targetOfAWorkflow(UseCaseEntity useCase) {
+        return repository.findAllOfType(WorkflowEntity.class).stream()
+                .flatMap(wf -> wf.steps() == null ? java.util.stream.Stream.<WorkflowStepEntity>empty() : wf.steps().stream())
+                .anyMatch(st -> useCase.id().equals(st.targetUseCaseId()));
     }
 
     /** Whether a use case of another service calls this one: then it answers over REST. */
@@ -3580,10 +3588,122 @@ public class GenerateCodeUseCase {
         model.put("externalJdbcEnvs", externalJdbcEnvs());
         // a local keycloak runs in the compose too, with the realm up.sh generation writes
         idpFor(project).filter(GenerateCodeUseCase::isLocalIdp).ifPresent(i -> model.put("localIdp", i));
+        var procesos = generateWorkflowRuntime(project);
+        if (procesos != null) model.put("procesos", procesos);
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
         createDir(project.outputPath(), "postgres-init");
         createFile(project.outputPath(), model, "postgres-init.ftl",
                 "postgres-init/create-databases.sql");
+    }
+
+    /** The version of EventConductor's orchestrator the generated system runs (overridable: EC_ORCHESTRATOR_IMAGE). */
+    static final String EVENTCONDUCTOR_IMAGE = "miguelperezcolom/orchestrator-standalone-app:2.38.1";
+
+    /**
+     * The runtime of the model's workflows: EventConductor's orchestrator, as is, with what the
+     * model says mounted into it — the definitions ({@code procesos/workflows}, imported at start)
+     * and its configuration ({@code procesos/config/application.yaml}): the topic of every event a
+     * workflow starts on or waits for, and a connection to every service whose use cases its
+     * steps run, authenticated as the system identity. Null when the model has no workflow.
+     */
+    private Map<String, Object> generateWorkflowRuntime(ProjectEntity project) {
+        var workflows = repository.findAllOfType(WorkflowEntity.class).stream()
+                .filter(workflow -> inScope(workflow.id()))
+                .filter(workflow -> homeContextOf(workflow) != null)
+                .toList();
+        if (workflows.isEmpty()) return null;
+
+        var connections = new java.util.TreeMap<String, Map<String, Object>>();
+        var destinations = new java.util.TreeMap<String, String>();
+        var runtime = new io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                .EventConductorWorkflowDefinition.Runtime(
+                useCaseId -> {
+                    var useCase = repository.findById(useCaseId, UseCaseEntity.class).orElse(null);
+                    var service = useCase == null ? null : serviceOfUseCase(useCaseId);
+                    if (service == null) return null;
+                    var slug = serviceName(service).replaceAll("[^a-z0-9-]", "-");
+                    var port = service.port() != null ? service.port() : 8080;
+                    connections.put(slug, Map.of("name", slug,
+                            "envName", slug.toUpperCase().replace("-", "_") + "_URL",
+                            "url", "http://" + slug + ":" + port));
+                    var apiVersion = useCase.apiVersion() != null && !useCase.apiVersion().isBlank() ? useCase.apiVersion() : "v1";
+                    if (!apiVersion.startsWith("v")) apiVersion = "v" + apiVersion;
+                    var path = useCase.restPath() != null && !useCase.restPath().isBlank() ? useCase.restPath()
+                            : "/" + useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "-");
+                    var fields = useCase.inputModelId() == null || useCase.inputModelId().isBlank() ? List.of("id")
+                            : fieldsOf(useCase.inputModelId()).stream().map(ModelFieldEntity::name).toList();
+                    return new io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                            .EventConductorWorkflowDefinition.UseCaseCall(slug, "/" + apiVersion + path, fields);
+                },
+                eventName -> eventNamed(eventName)
+                        .map(e -> fieldsOf(e.modelId()).stream().map(ModelFieldEntity::name).toList())
+                        .orElse(List.of()));
+
+        createDir(project.outputPath(), "procesos/workflows");
+        for (var workflow : workflows) {
+            var gateways = repository.findAllOfType(WorkflowGatewayEntity.class).stream()
+                    .filter(g -> workflow.id().equals(workflowGraph.workflowOf(g.id()).orElse(null)))
+                    .toList();
+            var definition = io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                    .EventConductorWorkflowDefinition.runnable(workflow, gateways, this::formIdOfPage,
+                            io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                                    .EventConductorWorkflowDefinition.topicPrefix(project.name(), workflow.name()),
+                            runtime);
+            // every event it starts on or waits for, on the topic its publisher sends it to
+            var events = new java.util.ArrayList<String>();
+            if (workflow.triggerEvent() != null) events.add(workflow.triggerEvent());
+            if (workflow.steps() != null) workflow.steps().stream()
+                    .filter(st -> st.completionEventName() != null && st.targetUseCaseId() == null && st.roleId() == null)
+                    .forEach(st -> events.add(st.completionEventName()));
+            for (var event : events) {
+                var topic = eventNamed(event).map(DomainEventEntity::topicName).filter(t -> t != null && !t.isBlank())
+                        .or(() -> serviceEmitting(event).map(sv -> io.mateu.modux.modeldrivengenerator.application
+                                .usecases.flow.expand.FlowExpander.topicOf(project.name(), sv.name(), event)));
+                if (topic.isPresent()) {
+                    destinations.put(io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                            .EventConductorWorkflowDefinition.destinationOf(event), topic.get());
+                } else {
+                    log.warn("el workflow '{}' espera el evento '{}', que no sale a ningún topic: publícalo"
+                            + " (un flow que lo dispare, o publishAsIntegrationEvent)", workflow.name(), event);
+                }
+            }
+            Map<String, Object> model = new HashMap<>();
+            model.put("definition", toPrettyJson(definition));
+            createFile(project.outputPath(), model, "workflow-definition-json.ftl",
+                    "procesos/workflows/" + capitalize(workflow.name()) + ".workflow.json");
+        }
+
+        Map<String, Object> runtimeModel = new HashMap<>();
+        runtimeModel.put("project", projectToMap(project));
+        runtimeModel.put("connections", List.copyOf(connections.values()));
+        runtimeModel.put("destinations", destinations.entrySet().stream()
+                .map(e -> Map.of("name", e.getKey(), "topic", e.getValue())).toList());
+        createDir(project.outputPath(), "procesos/config");
+        createFile(project.outputPath(), runtimeModel, "procesos-config.ftl", "procesos/config/application.yaml");
+        runtimeModel.put("image", EVENTCONDUCTOR_IMAGE);
+        return runtimeModel;
+    }
+
+    /** The service whose context declares the event (and so publishes it). */
+    private java.util.Optional<ServiceEntity> serviceEmitting(String eventName) {
+        for (var sv : repository.findAllOfType(ServiceEntity.class)) {
+            for (var bc : deployedUnits(sv)) {
+                if (bc.domainEventIds() != null && bc.domainEventIds().stream()
+                        .map(id -> repository.findById(id, DomainEventEntity.class).orElse(null))
+                        .anyMatch(e -> e != null && eventName.equals(e.name()))) {
+                    return java.util.Optional.of(sv);
+                }
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /** The domain event with that name: the materialized one (with its topic) when there are several. */
+    private java.util.Optional<DomainEventEntity> eventNamed(String name) {
+        return repository.findAllOfType(DomainEventEntity.class).stream()
+                .filter(e -> name.equals(e.name()))
+                .sorted(java.util.Comparator.comparing((DomainEventEntity e) -> e.topicName() == null || e.topicName().isBlank()))
+                .findFirst();
     }
 
     private void generateCiWorkflow(ProjectEntity project) {

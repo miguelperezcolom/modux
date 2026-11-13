@@ -161,6 +161,80 @@ class EventConductorWorkflowDefinitionTest {
                 .isEqualTo("booking.workflow.check-in");
     }
 
+    /** A booking on prepayment: wait for its confirmation until its own deadline; if it does not come, expire it. */
+    private static Map<String, Object> prepago() {
+        var workflow = WorkflowEntity.builder().id("wf-prepago").name("Prepago")
+                .triggerEvent("ReservaCreada").triggerCondition("data.confirmada == false")
+                .steps(List.of(
+                        step("esperar", "Esperar el cobro").toBuilder().type("ACTION")   // the store's default
+                                .completionEventName("ReservaConfirmada").deadline("${fechaLimite}")
+                                .timeoutStepId("caducar").build(),
+                        step("caducar", "Caducar").toBuilder().targetUseCaseId("uc-caducar").build()))
+                .build();
+        var runtime = new EventConductorWorkflowDefinition.Runtime(
+                useCaseId -> new EventConductorWorkflowDefinition.UseCaseCall("reservas", "/v1/caducar-reserva", List.of("reservaId")),
+                event -> List.of("reservaId", "confirmada", "fechaLimite"));
+        return EventConductorWorkflowDefinition.runnable(workflow, List.of(), pageId -> null, TOPIC, runtime);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> stepNamed(Map<String, Object> definition, String id) {
+        return steps(definition).stream().filter(s -> id.equals(s.get("id"))).findFirst().orElseThrow();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void itStartsOnItsEventWhenItsConditionHoldsKeyedByWhatTheEventIsAbout() {
+        var definition = prepago();
+        assertThat(definition).containsEntry("status", "ACTIVE").containsEntry("id", "prepago");
+        var trigger = ((List<Map<String, Object>>) definition.get("triggers")).get(0);
+        assertThat(trigger).containsEntry("destination", "reservacreada")
+                .containsEntry("type", "*")
+                .containsEntry("filter", "data.confirmada == false")
+                .containsEntry("businessKey", "${data.reservaId}");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void aWaitListensForItsEventUntilItsDeadlineAndThenTakesItsTimeoutBranch() {
+        var definition = prepago();
+        var wait = stepNamed(definition, "esperar");
+        assertThat(wait).containsEntry("type", "WAIT_FOR_MESSAGE")
+                .containsEntry("messageName", "ReservaConfirmada")
+                .containsEntry("correlationExpression", "businessKey")
+                .containsEntry("deadline", "${fechaLimite}")
+                .containsEntry("onTimeoutStepId", "caducar")
+                .containsEntry("preconditionStepId", "start");
+        assertThat((Map<String, Object>) wait.get("onEvent")).containsEntry("destination", "reservaconfirmada")
+                .containsEntry("correlationKey", "${data.reservaId}");
+        // the timeout branch is reached only that way, and both ways meet before the end
+        assertThat(stepNamed(definition, "caducar")).containsEntry("preconditions",
+                List.of(Map.of("stepId", "esperar", "expression", "false")));
+        assertThat(stepNamed(definition, "finished")).containsEntry("joinType", "XOR")
+                .containsEntry("preconditionStepIds", List.of("esperar", "caducar"));
+        assertThat(stepNamed(definition, "end")).containsEntry("preconditionStepId", "finished");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void aStepWithAUseCaseCallsItOverHttpAsTheSystem() {
+        var call = stepNamed(prepago(), "caducar");
+        assertThat(call).containsEntry("type", "HTTP_CALL").doesNotContainKey("topic");
+        assertThat((Map<String, Object>) call.get("http")).containsEntry("connection", "reservas")
+                .containsEntry("method", "POST").containsEntry("path", "/v1/caducar-reserva")
+                .containsEntry("body", Map.of("reservaId", "${reservaId}"));
+    }
+
+    @Test
+    void theRunnableDefinitionSpeaksOnlyTheEnginesLanguage() {
+        var known = EventConductorSchema.stepTypes();
+        var declared = EventConductorSchema.stepFields();
+        assertThat(steps(prepago())).allSatisfy(s -> {
+            assertThat(known).contains((String) s.get("type"));
+            assertThat(declared).containsAll(s.keySet());
+        });
+    }
+
     private static WorkflowGatewayEntity gateway(String id, String type, String semantics) {
         return new WorkflowGatewayEntity(id, id, type, List.of("s1"), List.of())
                 .toBuilder().semantics(semantics).build();

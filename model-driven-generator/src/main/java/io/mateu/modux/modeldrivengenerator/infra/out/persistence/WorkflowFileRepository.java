@@ -35,7 +35,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
         // decisionIds are not modeled in the domain Workflow yet — carry them over from the stored
         // entity so a UI save never wipes what was authored in the YAML store.
         var existing = repository.findById(entity.getId().id(), WorkflowEntity.class).orElse(null);
-        var stepEntities = toStepEntities(entity.getSteps());
+        // triggerCondition and each step's timeoutStepId are not in the domain either: carried over too
+        var stepEntities = carryTimeouts(toStepEntities(entity.getSteps()), existing);
         loopValidator.assertWorkflowBounded(entity.getId().id(), stepEntities);
         repository.save(new WorkflowEntity(
                 entity.getId().id(),
@@ -48,7 +49,8 @@ public class WorkflowFileRepository implements WorkflowRepository {
                 stepEntities,
                 entity.getOnCompletionEventName(),
                 existing != null ? existing.decisionIds() : List.of(), null,
-                entity.getDefaultMaxStepExecutions()));
+                entity.getDefaultMaxStepExecutions(),
+                existing != null ? existing.triggerCondition() : null));
         return entity;
     }
 
@@ -65,6 +67,15 @@ public class WorkflowFileRepository implements WorkflowRepository {
                         s.description(), s.type(), s.handoffWorkflowId(), s.roleId(),
                         s.deadline(), s.escalationRoleId(), s.compensationUseCaseId(),
                         s.formPageId(), s.maxSuccessfulExecutions()))
+                .toList();
+    }
+
+    private static List<WorkflowStepEntity> carryTimeouts(List<WorkflowStepEntity> steps, WorkflowEntity existing) {
+        if (existing == null || existing.steps() == null) return steps;
+        var timeouts = new java.util.HashMap<String, String>();
+        existing.steps().forEach(s -> { if (s.timeoutStepId() != null) timeouts.put(s.id(), s.timeoutStepId()); });
+        return steps.stream()
+                .map(s -> timeouts.containsKey(s.id()) ? s.toBuilder().timeoutStepId(timeouts.get(s.id())).build() : s)
                 .toList();
     }
 

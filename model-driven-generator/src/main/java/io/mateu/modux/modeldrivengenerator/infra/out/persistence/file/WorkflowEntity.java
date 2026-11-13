@@ -34,8 +34,21 @@ public record WorkflowEntity(
         String projectId
 ,
         /** Default cap on successful runs per step (null = unbounded); a step may override it. */
-        Integer defaultMaxStepExecutions
+        Integer defaultMaxStepExecutions,
+        /**
+         * Only the trigger events this holds for start the workflow: a JEXL expression over the
+         * event, its payload as {@code data} (e.g. {@code data.confirmada == false}). Null = all.
+         */
+        String triggerCondition
 ) implements Identifiable {
+    /** Backward-compatible constructor (pre-triggerCondition callers and stores). */
+    public WorkflowEntity(String id, String name, String description, String triggerAggregateId,
+                          String triggerDomainServiceId, String triggerUseCaseId, String triggerEvent,
+                          List<WorkflowStepEntity> steps, String onCompletionEventName,
+                          List<String> decisionIds, String projectId, Integer defaultMaxStepExecutions) {
+        this(id, name, description, triggerAggregateId, triggerDomainServiceId, triggerUseCaseId,
+                triggerEvent, steps, onCompletionEventName, decisionIds, projectId, defaultMaxStepExecutions, null);
+    }
 
     /** Backward-compatible constructor (pre-defaultMaxStepExecutions callers and stores). */
     public WorkflowEntity(String id, String name, String description, String triggerAggregateId,

@@ -132,6 +132,37 @@ class WorkflowGenerationTest {
                 .isEqualTo("reservas/reservas/src/main/resources/workflows/Checkin.workflow.json");
     }
 
+    /**
+     * The workflows RUN: on EventConductor's orchestrator, as is, with the generated definitions and
+     * configuration mounted; it reaches the use cases over REST as the system identity.
+     */
+    @Test
+    void theWorkflowsRunOnEventConductorsOrchestrator(@TempDir Path tmp) throws Exception {
+        var output = tmp.resolve("out");
+        repository.loadFrom(model(tmp, output.toString()).toString());
+
+        generateCode.handle(new GenerateCodeCommand("booking", output.toString(), null, false));
+
+        var definition = Files.readString(output.resolve("procesos/workflows/Checkin.workflow.json"));
+        assertThat(definition).contains("\"type\" : \"HTTP_CALL\"", "\"path\" : \"/v1/cobrar\"", "\"status\" : \"ACTIVE\"");
+        var config = Files.readString(output.resolve("procesos/config/application.yaml"));
+        assertThat(config).contains("base-url: ${RESERVAS_URL:http://reservas:8080}", "auth: sistema",
+                "username: sistema", "password: ${MODUX_SYSTEM_PASSWORD}");
+        var compose = Files.readString(output.resolve("docker-compose.yml"));
+        assertThat(compose).contains("image: ${EC_ORCHESTRATOR_IMAGE:-miguelperezcolom/orchestrator-standalone-app:2.38.1}",
+                "WORKFLOW_DEFINITIONS_DIRS: /workflows", "./procesos/config:/config:ro",
+                "MODUX_SYSTEM_PASSWORD: ${MODUX_SYSTEM_PASSWORD:-sistema-local}", "CREATE DATABASE procesos");
+        // the use case a step runs answers over REST, and the system identity may sign in
+        try (Stream<Path> walk = Files.walk(output)) {
+            assertThat(walk.anyMatch(p -> p.getFileName().toString().equals("CobrarController.java"))).isTrue();
+        }
+        try (Stream<Path> walk = Files.walk(output)) {
+            var security = walk.filter(p -> p.getFileName().toString().equals("SecurityConfig.java"))
+                    .filter(p -> p.toString().contains("reservas")).findFirst().orElseThrow();
+            assertThat(Files.readString(security)).contains("withUsername(\"sistema\")", "roles(\"SISTEMA\")");
+        }
+    }
+
     /** The whole point: a human step reaches the engine AS a human step. */
     @Test
     void theHumanStepIsAUserTaskAndNotAnAction(@TempDir Path tmp) throws Exception {

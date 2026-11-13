@@ -122,6 +122,152 @@ public final class EventConductorWorkflowDefinition {
         return out;
     }
 
+    /** How a step reaches a use case: POST {@code path} on the {@code connection} (its service), with these fields. */
+    public record UseCaseCall(String connection, String path, List<String> fields) {}
+
+    /**
+     * What the definition needs to RUN, beyond its shape: how each target use case is reached over
+     * HTTP and which fields each event carries (to correlate it with the process).
+     */
+    public record Runtime(Function<String, UseCaseCall> callOf, Function<String, List<String>> fieldsOf) {}
+
+    /**
+     * The definition the engine runs: {@link #of} plus what makes it go on its own.
+     *
+     * <ul>
+     *   <li>A <b>trigger</b> on the trigger event's destination (one per event, see
+     *       {@link #destinationOf}), filtered by the workflow's {@code triggerCondition}; the business
+     *       key is the event's id field ({@code reservaId}), so every later event about the same thing
+     *       finds its process.</li>
+     *   <li>A step with a use case is an <b>HTTP_CALL</b> to it: the use cases already have their REST
+     *       endpoint, and the engine calls them as the system identity (the connection's auth).</li>
+     *   <li>A step waiting for an event (a completion event and nothing to run) is a
+     *       <b>WAIT_FOR_MESSAGE</b> on that event, correlated by the same id. Its {@code deadline} is a
+     *       duration ({@code PT2H}) or a moment from the process data ({@code ${fechaLimite}}).</li>
+     *   <li>{@code timeoutStepId}: when the step runs out of time the flow goes there instead of
+     *       failing. That step is reached only that way (precondition {@code false}), and both outcomes
+     *       meet in an XOR join before the END.</li>
+     * </ul>
+     */
+    public static Map<String, Object> runnable(WorkflowEntity workflow,
+                                               List<WorkflowGatewayEntity> gateways,
+                                               Function<String, String> formIdOf,
+                                               String topicPrefix,
+                                               Runtime runtime) {
+        var definition = new LinkedHashMap<String, Object>();
+        definition.put("id", slug(workflow.name()));
+        definition.put("version", 1);
+        definition.putAll(of(workflow, gateways, formIdOf, topicPrefix));
+        definition.put("status", "ACTIVE");
+
+        var trigger = workflow.triggerEvent();
+        var key = trigger == null ? null : keyField(runtime.fieldsOf().apply(trigger), null);
+        if (trigger != null && !trigger.isBlank()) {
+            var t = new LinkedHashMap<String, Object>();
+            t.put("id", "on-" + slug(trigger));
+            t.put("destination", destinationOf(trigger));
+            t.put("type", "*");   // our events travel as plain JSON records: no CloudEvents type
+            if (workflow.triggerCondition() != null && !workflow.triggerCondition().isBlank()) {
+                t.put("filter", workflow.triggerCondition());
+            }
+            if (key != null) t.put("businessKey", "${data." + key + "}");
+            definition.put("triggers", List.of(t));
+        }
+
+        var modelSteps = workflow.steps() == null ? List.<WorkflowStepEntity>of() : workflow.steps();
+        var timeoutTargets = new java.util.HashMap<String, String>();   // target → the step that times out
+        modelSteps.forEach(st -> { if (st.timeoutStepId() != null) timeoutTargets.put(st.timeoutStepId(), st.id()); });
+
+        @SuppressWarnings("unchecked")
+        var generated = (List<Map<String, Object>>) definition.get("steps");
+        var byId = new LinkedHashMap<String, Map<String, Object>>();
+        generated.forEach(g -> byId.put((String) g.get("id"), g));
+        var steps = new ArrayList<Map<String, Object>>();
+        steps.add(new LinkedHashMap<>(Map.of("id", "start", "type", "START", "name", "Start")));
+
+        for (var st : modelSteps) {
+            var out = byId.get(st.id());
+            if (out == null) continue;
+            var call = st.targetUseCaseId() == null ? null : runtime.callOf().apply(st.targetUseCaseId());
+            var waits = call == null && st.roleId() == null && st.completionEventName() != null
+                    && !st.completionEventName().isBlank()
+                    // the store's default type: a step with an event to await and nothing to run waits
+                    && (st.type() == null || List.of("ACTION", "TASK", "WAIT_FOR_MESSAGE").contains(st.type()));
+            if (call != null) {
+                out.put("type", "HTTP_CALL");
+                out.remove("topic");
+                var body = new LinkedHashMap<String, Object>();
+                call.fields().forEach(f -> body.put(f, "${" + f + "}"));
+                var http = new LinkedHashMap<String, Object>();
+                http.put("connection", call.connection());
+                http.put("method", "POST");
+                http.put("path", call.path());
+                http.put("body", body);
+                out.put("http", http);
+                out.put("retries", 2);
+            } else if (waits) {
+                var event = st.completionEventName();
+                var eventKey = keyField(runtime.fieldsOf().apply(event), key);
+                out.put("type", "WAIT_FOR_MESSAGE");
+                out.remove("topic");
+                out.put("messageName", event);
+                out.put("correlationExpression", "businessKey");
+                var onEvent = new LinkedHashMap<String, Object>();
+                onEvent.put("destination", destinationOf(event));
+                onEvent.put("type", "*");
+                if (eventKey != null) onEvent.put("correlationKey", "${data." + eventKey + "}");
+                out.put("onEvent", onEvent);
+            }
+            if (st.deadline() != null && !st.deadline().isBlank() && st.roleId() == null) {
+                if (st.deadline().startsWith("P")) out.put("timeout", st.deadline());
+                else out.put("deadline", st.deadline());
+            }
+            if (st.timeoutStepId() != null) out.put("onTimeoutStepId", st.timeoutStepId());
+            if (timeoutTargets.containsKey(st.id())) {
+                // reached only when that step runs out of time, never down the normal path
+                out.remove("preconditionStepIds");
+                out.put("preconditions", List.of(Map.of("stepId", timeoutTargets.get(st.id()), "expression", "false")));
+            } else if (!out.containsKey("preconditionStepIds")) {
+                out.put("preconditionStepId", "start");
+            }
+            steps.add(out);
+        }
+        generated.stream().filter(g -> modelSteps.stream().noneMatch(st -> st.id().equals(g.get("id"))))
+                .filter(g -> !"END".equals(g.get("type")))
+                .forEach(steps::add);   // the gateways
+
+        // the END: after the one last step, or after an XOR join of the several ways it can finish
+        var referenced = new java.util.HashSet<String>();
+        steps.forEach(st -> {
+            if (st.get("preconditionStepId") instanceof String one) referenced.add(one);
+            if (st.get("preconditionStepIds") instanceof List<?> many) many.forEach(m -> referenced.add(String.valueOf(m)));
+        });
+        var leaves = steps.stream().map(st -> (String) st.get("id"))
+                .filter(id -> !"start".equals(id) && !referenced.contains(id)).toList();
+        if (leaves.size() > 1) {
+            steps.add(new LinkedHashMap<>(Map.of("id", "finished", "type", "JOIN", "name", "Finished",
+                    "joinType", "XOR", "preconditionStepIds", leaves)));
+            steps.add(new LinkedHashMap<>(Map.of("id", "end", "type", "END", "name", "End", "preconditionStepId", "finished")));
+        } else {
+            steps.add(new LinkedHashMap<>(Map.of("id", "end", "type", "END", "name", "End",
+                    "preconditionStepId", leaves.isEmpty() ? "start" : leaves.get(0))));
+        }
+        definition.put("steps", steps);
+        return definition;
+    }
+
+    /** The topic-independent name the engine knows an event by (mapped to its topic in configuration). */
+    public static String destinationOf(String eventName) {
+        return slug(eventName);
+    }
+
+    /** The field of an event that says which thing it is about: {@code preferred} if it has it, else its first {@code …Id}. */
+    private static String keyField(List<String> fields, String preferred) {
+        if (fields == null || fields.isEmpty()) return null;
+        if (preferred != null && fields.contains(preferred)) return preferred;
+        return fields.stream().filter(f -> f.endsWith("Id")).findFirst().orElse(null);
+    }
+
     /** What the workflow's ACTION topics are namespaced under. */
     public static String topicPrefix(String projectName, String workflowName) {
         return slug(projectName) + ".workflow." + slug(workflowName);

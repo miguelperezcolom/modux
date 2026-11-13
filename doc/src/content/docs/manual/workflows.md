@@ -109,3 +109,33 @@ transitions, worklists, deadlines and compensations out. FORM and WIZARD pages a
 emit an **EventConductor form definition**, which is how a human step's `formPageId`
 becomes the form the task presents. The distribution level of the context map shows
 both engines as infrastructure the deployed services lean on.
+
+### Running them
+
+When the model has workflows, the generated system runs them on **EventConductor's
+orchestrator, as is** — a `procesos` service in `docker-compose.yml` (image
+`miguelperezcolom/orchestrator-standalone-app`, pinned to the release modux targets;
+`EC_ORCHESTRATOR_IMAGE` runs another build). Modux generates what the model says and
+mounts it:
+
+- `procesos/workflows/*.workflow.json` — the definitions, imported at start.
+- `procesos/config/application.yaml` — the topic of every event a workflow starts on or
+  waits for, and a connection to every service whose use cases its steps run.
+
+The definition is translated so it runs on its own:
+
+| In the model | In the engine |
+|---|---|
+| `triggerEvent` (+ `triggerCondition`, a JEXL expression over the event, its payload as `data`) | A **trigger** on the event's topic; the business key is the event's id field (`reservaId`) |
+| A step with `targetUseCaseId` | An **HTTP_CALL** to the use case's REST endpoint (it gets one), as the system identity |
+| A step with a `completionEventName` and nothing to run | A **WAIT_FOR_MESSAGE** on that event, correlated by the same id |
+| `deadline` | A duration (`PT2H`) or a moment from the process data (`${fechaLimite}`) |
+| `timeoutStepId` | Where the flow goes when the step runs out of time, instead of failing |
+
+The engine calls the services as user **`sistema`** with role **`SISTEMA`**: a use case a
+workflow runs lists `SISTEMA` among its roles. Its password comes from
+`MODUX_SYSTEM_PASSWORD` (the services only create that user when it is set). Kafka
+subscriptions and scheduled triggers act as the same identity.
+
+The engine's console answers at http://localhost:8105 (user `admin`, password
+`EC_ADMIN_PASSWORD`): every process, its steps, its variables and its history.
