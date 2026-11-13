@@ -122,6 +122,241 @@ public final class EventConductorWorkflowDefinition {
         return out;
     }
 
+    /** How a step reaches a use case: POST {@code path} on the {@code connection} (its service), with these fields. */
+    public record UseCaseCall(String connection, String path, List<String> fields, List<String> outputs) {
+        public UseCaseCall(String connection, String path, List<String> fields) {
+            this(connection, path, fields, List.of());
+        }
+    }
+
+    /**
+     * What the definition needs to RUN, beyond its shape: how each target use case is reached over
+     * HTTP and which fields each event carries (to correlate it with the process).
+     */
+    public record Runtime(Function<String, UseCaseCall> callOf, Function<String, List<String>> fieldsOf,
+                          Function<String, String> roleNameOf) {
+        public Runtime(Function<String, UseCaseCall> callOf, Function<String, List<String>> fieldsOf) {
+            this(callOf, fieldsOf, roleId -> roleId);
+        }
+    }
+
+    /**
+     * The definition the engine runs: {@link #of} plus what makes it go on its own.
+     *
+     * <ul>
+     *   <li>A <b>trigger</b> on the trigger event's destination (one per event, see
+     *       {@link #destinationOf}), filtered by the workflow's {@code triggerCondition}; the business
+     *       key is the event's id field ({@code reservaId}), so every later event about the same thing
+     *       finds its process.</li>
+     *   <li>A step with a use case is an <b>HTTP_CALL</b> to it: the use cases already have their REST
+     *       endpoint, and the engine calls them as the system identity (the connection's auth).</li>
+     *   <li>A step waiting for an event (a completion event and nothing to run) is a
+     *       <b>WAIT_FOR_MESSAGE</b> on that event, correlated by the same id. Its {@code deadline} is a
+     *       duration ({@code PT2H}) or a moment from the process data ({@code ${fechaLimite}}).</li>
+     *   <li>{@code timeoutStepId}: when the step runs out of time the flow goes there instead of
+     *       failing. That step is reached only that way (precondition {@code false}), and both outcomes
+     *       meet in an XOR join before the END.</li>
+     * </ul>
+     */
+    public static Map<String, Object> runnable(WorkflowEntity workflow,
+                                               List<WorkflowGatewayEntity> gateways,
+                                               Function<String, String> formIdOf,
+                                               String topicPrefix,
+                                               Runtime runtime) {
+        var definition = new LinkedHashMap<String, Object>();
+        definition.put("id", slug(workflow.name()));
+        definition.put("version", 1);
+        definition.putAll(of(workflow, gateways, formIdOf, topicPrefix));
+        definition.put("status", "ACTIVE");
+
+        var trigger = workflow.triggerEvent();
+        var key = trigger == null ? null : keyField(runtime.fieldsOf().apply(trigger), null);
+        if (trigger != null && !trigger.isBlank()) {
+            var t = new LinkedHashMap<String, Object>();
+            t.put("id", "on-" + slug(trigger));
+            t.put("destination", destinationOf(trigger));
+            t.put("type", "*");   // our events travel as plain JSON records: no CloudEvents type
+            if (workflow.triggerCondition() != null && !workflow.triggerCondition().isBlank()) {
+                t.put("filter", workflow.triggerCondition());
+            }
+            // the engine keeps a business key unique across ALL workflows: two of them started by the
+            // same event about the same thing must not collide, so the key names the workflow too
+            // and it is what a person reads in the worklist: the workflow's name and what the event
+            // is about — its localizador or code when it carries one, else its id
+            if (key != null) {
+                var fields = runtime.fieldsOf().apply(trigger);
+                var shown = List.of("localizador", "codigo", "referencia").stream().filter(fields::contains)
+                        .findFirst().orElse(key);
+                t.put("businessKey", humanize(workflow.name()) + " ${data." + shown + "}");
+            }
+            definition.put("triggers", List.of(t));
+            // the same thing can happen again (an order rejected twice): a new run once the last one
+            // ended; while one runs, another start about the same thing joins it
+            definition.put("businessKeyPolicy", "allowAfterFinished");
+        }
+
+        var modelSteps = workflow.steps() == null ? List.<WorkflowStepEntity>of() : workflow.steps();
+        var timeoutTargets = new java.util.HashMap<String, String>();   // target → the step that times out
+        modelSteps.forEach(st -> { if (st.timeoutStepId() != null) timeoutTargets.put(st.timeoutStepId(), st.id()); });
+
+        @SuppressWarnings("unchecked")
+        var generated = (List<Map<String, Object>>) definition.get("steps");
+        var byId = new LinkedHashMap<String, Map<String, Object>>();
+        generated.forEach(g -> byId.put((String) g.get("id"), g));
+        var steps = new ArrayList<Map<String, Object>>();
+        steps.add(new LinkedHashMap<>(Map.of("id", "start", "type", "START", "name", "Start")));
+
+        for (var st : modelSteps) {
+            var out = byId.get(st.id());
+            if (out == null) continue;
+            var call = st.targetUseCaseId() == null ? null : runtime.callOf().apply(st.targetUseCaseId());
+            var waits = call == null && st.roleId() == null && st.completionEventName() != null
+                    && !st.completionEventName().isBlank()
+                    // the store's default type: a step with an event to await and nothing to run waits
+                    && (st.type() == null || List.of("ACTION", "TASK", "WAIT_FOR_MESSAGE").contains(st.type()));
+            if (call != null) {
+                out.put("type", "HTTP_CALL");
+                out.remove("topic");
+                var body = new LinkedHashMap<String, Object>();
+                call.fields().forEach(f -> body.put(f, "${" + f + "}"));
+                var http = new LinkedHashMap<String, Object>();
+                http.put("connection", call.connection());
+                http.put("method", "POST");
+                http.put("path", call.path());
+                http.put("body", body);
+                // what the use case answers becomes process variables, for the steps (and branches) after it
+                if (call.outputs() != null && !call.outputs().isEmpty()) {
+                    var output = new LinkedHashMap<String, Object>();
+                    call.outputs().forEach(f -> output.put(f, "body." + f));
+                    http.put("output", output);
+                }
+                out.put("http", http);
+                out.put("retries", 2);
+            } else if (waits) {
+                var event = st.completionEventName();
+                var eventKey = keyField(runtime.fieldsOf().apply(event), key);
+                out.put("type", "WAIT_FOR_MESSAGE");
+                out.remove("topic");
+                out.put("messageName", event);
+                // the id the event is about, as the process holds it (the trigger's data are its variables)
+                out.put("correlationExpression", key != null ? key : "businessKey");
+                var onEvent = new LinkedHashMap<String, Object>();
+                onEvent.put("destination", destinationOf(event));
+                onEvent.put("type", "*");
+                if (eventKey != null) onEvent.put("correlationKey", "${data." + eventKey + "}");
+                out.put("onEvent", onEvent);
+            }
+            if (st.roleId() != null && "USER_TASK".equals(out.get("type"))) {
+                // a person's task: on the worklist of everyone with the role; past its deadline it
+                // goes to the escalation role as well
+                var role = runtime.roleNameOf().apply(st.roleId());
+                out.put("assignment", Map.of("candidateGroups", List.of(role)));
+                if (st.deadline() != null && st.deadline().startsWith("P") && st.escalationRoleId() != null) {
+                    out.put("escalation", List.of(Map.of("after", st.deadline(), "action", "reassign",
+                            "to", Map.of("candidateGroups", List.of(role, runtime.roleNameOf().apply(st.escalationRoleId()))))));
+                }
+            }
+            if (st.deadline() != null && !st.deadline().isBlank() && st.roleId() == null) {
+                if (st.deadline().startsWith("P")) out.put("timeout", st.deadline());
+                else out.put("deadline", st.deadline());
+            }
+            if (st.timeoutStepId() != null) out.put("onTimeoutStepId", st.timeoutStepId());
+            var into = gatewayInto(st.id(), gateways);
+            if (into != null && isExclusiveSplit(into)) {
+                // a branch of a CHOICE: its condition on the link (no condition: the default, «else»)
+                out.remove("preconditionStepIds");
+                var condition = conditionOf(into, st.id());
+                if (condition == null) out.put("preconditionStepId", into.id());
+                else out.put("preconditions", List.of(Map.of("stepId", into.id(), "expression", condition)));
+            } else if (into != null) {
+                out.remove("preconditionStepIds");
+                out.put("preconditionStepId", into.id());
+            } else if (timeoutTargets.containsKey(st.id())) {
+                // reached only when that step runs out of time, never down the normal path
+                out.remove("preconditionStepIds");
+                out.put("preconditions", List.of(Map.of("stepId", timeoutTargets.get(st.id()), "expression", "false")));
+            } else if (!out.containsKey("preconditionStepIds")) {
+                out.put("preconditionStepId", "start");
+            }
+            steps.add(out);
+        }
+        // the gateways: an exclusive split is the engine's CHOICE (the first branch whose condition holds)
+        generated.stream().filter(g -> modelSteps.stream().noneMatch(st -> st.id().equals(g.get("id"))))
+                .filter(g -> !"END".equals(g.get("type")))
+                .forEach(g -> {
+                    if (gateways.stream().anyMatch(gw -> gw.id().equals(g.get("id")) && isExclusiveSplit(gw))) {
+                        g.put("type", "CHOICE");
+                    }
+                    var gw = gateways.stream().filter(x -> x.id().equals(g.get("id"))).findFirst().orElse(null);
+                    var into = gw == null ? null : gatewayInto(gw.id(), gateways);
+                    if (into != null) {
+                        g.remove("preconditionStepIds");
+                        g.put("preconditionStepId", into.id());
+                    }
+                    steps.add(g);
+                });
+
+        // the END: after the one last step, or after an XOR join of the several ways it can finish
+        var referenced = new java.util.HashSet<String>();
+        steps.forEach(st -> {
+            if (st.get("preconditionStepId") instanceof String one) referenced.add(one);
+            if (st.get("preconditionStepIds") instanceof List<?> many) many.forEach(m -> referenced.add(String.valueOf(m)));
+            // a branch taken on a condition continues its source; a timeout branch («false») does not:
+            // the waiting step that finishes in time is an ending of its own
+            if (st.get("preconditions") instanceof List<?> guarded) guarded.forEach(g -> {
+                if (g instanceof Map<?, ?> m && !"false".equals(m.get("expression"))) referenced.add(String.valueOf(m.get("stepId")));
+            });
+        });
+        var leaves = steps.stream().map(st -> (String) st.get("id"))
+                .filter(id -> !"start".equals(id) && !referenced.contains(id)).toList();
+        if (leaves.size() > 1) {
+            steps.add(new LinkedHashMap<>(Map.of("id", "finished", "type", "JOIN", "name", "Finished",
+                    "joinType", "XOR", "preconditionStepIds", leaves)));
+            steps.add(new LinkedHashMap<>(Map.of("id", "end", "type", "END", "name", "End", "preconditionStepId", "finished")));
+        } else {
+            steps.add(new LinkedHashMap<>(Map.of("id", "end", "type", "END", "name", "End",
+                    "preconditionStepId", leaves.isEmpty() ? "start" : leaves.get(0))));
+        }
+        definition.put("steps", steps);
+        return definition;
+    }
+
+    /** The gateway whose outgoing link leads to {@code nodeId}, if any. */
+    private static WorkflowGatewayEntity gatewayInto(String nodeId, List<WorkflowGatewayEntity> gateways) {
+        return gateways.stream().filter(g -> g.targetIds() != null && g.targetIds().contains(nodeId))
+                .findFirst().orElse(null);
+    }
+
+    private static boolean isExclusiveSplit(WorkflowGatewayEntity gateway) {
+        return "SPLIT".equals(gateway.type()) && "EXCLUSIVE".equals(gateway.semantics())
+                && gateway.sourceIds() != null && !gateway.sourceIds().isEmpty();
+    }
+
+    /** The JEXL guarding one branch of an exclusive split; null for the branch with none (the default). */
+    private static String conditionOf(WorkflowGatewayEntity split, String targetId) {
+        return split.branchConditions() == null ? null : split.branchConditions().stream()
+                .filter(c -> targetId.equals(c.targetId()) && c.expression() != null && !c.expression().isBlank())
+                .map(c -> c.expression()).findFirst().orElse(null);
+    }
+
+    /** «PedidoRechazado» → «Pedido rechazado». */
+    static String humanize(String name) {
+        var spaced = name.replaceAll("([a-z0-9])([A-Z])", "$1 $2").replaceAll("[_-]+", " ").trim().toLowerCase();
+        return spaced.isEmpty() ? spaced : Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
+    }
+
+    /** The topic-independent name the engine knows an event by (mapped to its topic in configuration). */
+    public static String destinationOf(String eventName) {
+        return slug(eventName);
+    }
+
+    /** The field of an event that says which thing it is about: {@code preferred} if it has it, else its first {@code …Id}. */
+    private static String keyField(List<String> fields, String preferred) {
+        if (fields == null || fields.isEmpty()) return null;
+        if (preferred != null && fields.contains(preferred)) return preferred;
+        return fields.stream().filter(f -> f.endsWith("Id")).findFirst().orElse(null);
+    }
+
     /** What the workflow's ACTION topics are namespaced under. */
     public static String topicPrefix(String projectName, String workflowName) {
         return slug(projectName) + ".workflow." + slug(workflowName);

@@ -160,8 +160,9 @@ public class SecurityConfig {
      * Replace with a real identity provider before shipping.
      */
     @Bean
-    public org.springframework.security.core.userdetails.UserDetailsService users() {
-        return new org.springframework.security.provisioning.InMemoryUserDetailsManager(
+    public org.springframework.security.core.userdetails.UserDetailsService users(
+            @org.springframework.beans.factory.annotation.Value("${r"${"}MODUX_SYSTEM_PASSWORD:${r"}"}") String systemPassword) {
+        var users = new org.springframework.security.provisioning.InMemoryUserDetailsManager(
 <#list roles as role>
             org.springframework.security.core.userdetails.User
                 .withUsername("${role.name?lower_case?replace("[^a-z0-9]","",'r')}")
@@ -170,6 +171,14 @@ public class SecurityConfig {
                 .build()<#sep>,</#sep>
 </#list>
         );
+        // The system identity, for the workflow engine's calls: only when its password is
+        // configured (never a known default), and with no role but SISTEMA — a use case lets it in
+        // by listing that role.
+        if (systemPassword != null && !systemPassword.isBlank()) {
+            users.createUser(org.springframework.security.core.userdetails.User
+                    .withUsername("sistema").password("{noop}" + systemPassword).roles("SISTEMA").build());
+        }
+        return users;
     }
 </#if>
 <#if idp??>

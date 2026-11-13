@@ -51,11 +51,19 @@ class HighLevelPatternsTest {
     @Test
     void an_aggregate_feeding_a_read_model_publishes_its_state_on_every_save_and_delete() throws Exception {
         var repo = read("ConciertoDBRepository.java");
+        // it reads through a stored procedure (JDBC): a write is flushed, so reading it back in the
+        // same transaction finds it
+        assertTrue(repo.contains("var saved = repository.saveAndFlush(toEntity(domain));"), repo);
         assertTrue(repo.contains("publishState(saved);"), repo);
         assertTrue(repo.contains("stateStream.send(\"conciertoestado\""), repo);
         assertTrue(repo.contains("publishDeleted(selected.value())"), repo);
+        // rebuild: the whole state again on startup, so a read model added later catches up
+        assertTrue(repo.contains("repository.findAll().forEach(this::publishState);"), repo);
+        assertTrue(repo.contains("\"modux.state.republish-on-startup\", Boolean.class, true"), repo);
         // event-sourced too: after the events are appended
         var es = read("CompraEventSourcedRepository.java");
+        // an enum with no value yet (a reason not given) reads back as no value, not a crash
+        assertTrue(es.contains("entity.getEstado() != null ? Estado.valueOf(entity.getEstado()) : null"), es);
         assertTrue(es.contains("stateStream.send(\"compraestado\""), es);
         // an aggregate nobody projects publishes nothing
         assertFalse(read("PagoDBRepository.java").contains("stateStream"));
@@ -82,6 +90,8 @@ class HighLevelPatternsTest {
         var client = read("ConsultarPrecioRestClient.java");
         assertTrue(client.contains("${CATALOGO_URL:http://localhost:8091}"), client);
         assertTrue(client.contains(".uri(\"/v1/consultarprecio\")"), client);
+        // whoever asked travels along: the callee checks its roles too
+        assertTrue(client.contains("List.of(\"Authorization\", \"Cookie\")"), client);
         // a rule the other side applies reaches the person as that rule, not as an unexpected error
         assertTrue(client.contains("onStatus(status -> status.is4xxClientError(), (req, res) -> { throw rejected(res); })"), client);
         // the callee answers over REST, though nobody flagged it exposedAsRest
@@ -173,6 +183,60 @@ class HighLevelPatternsTest {
         generateCodeUseCase.handle(new GenerateCodeCommand("entradas", all.toString(), null, false));
         var compose = Files.readString(all.resolve("docker-compose.yml"));
         assertTrue(compose.contains("LEGADO_JDBC_URL: ${LEGADO_JDBC_URL:-}"), compose);
+        // a service added after the first boot still finds its database
+        assertTrue(compose.contains("postgres-databases:"), compose);
+        assertTrue(compose.contains("datname = 'catalogo'\" | grep -q 1 || psql -c \"CREATE DATABASE catalogo\""), compose);
+        assertTrue(compose.contains("condition: service_completed_successfully"), compose);
+    }
+
+    @Test
+    void a_service_with_two_apps_gets_a_home_for_each_and_the_shell_links_both() throws Exception {
+        var all = Files.createTempDirectory("modux-patterns-apps");
+        generateCodeUseCase.handle(new GenerateCodeCommand("entradas", all.toString(), null, false));
+        var ui = all.resolve("catalogo/catalogo-app/src/main/java/es/entradas/infra/in/ui");
+        assertTrue(Files.readString(ui.resolve("Home.java")).contains("@UI(\"/catalogo\")"), "the first app keeps Home");
+        var second = Files.readString(ui.resolve("CatalogoInformesHome.java"));
+        assertTrue(second.contains("@UI(\"/catalogo-informes\")"), second);
+        assertTrue(second.contains("public class CatalogoInformesHome"), second);
+        // google-java-format wraps the second entry: compare without whitespace
+        var shell = Files.readString(all.resolve("entradas/src/main/java/es/entradas/entradas/infra/in/ui/EntradasHome.java"))
+                .replaceAll("\\s+", "");
+        assertTrue(shell.contains(".withLabel(\"Catalogo\").withPath(\"/catalogo\")"), shell);
+        assertTrue(shell.contains(".withLabel(\"Informesdelcatálogo\").withPath(\"/catalogo-informes\")"), shell);
+        // each app through its own gateway route
+        assertTrue(shell.contains("newRemoteMenu(\"/_catalogo-informes\")"), shell);
+    }
+
+    @Test
+    void a_list_of_value_objects_is_an_inline_grid_in_the_crud_form() throws Exception {
+        var vm = read("ConciertoViewModel.java");
+        assertTrue(vm.contains("@InlineEditing @Stereotype(FieldStereotype.grid) List<ZonaFila> zonas = new ArrayList<>();"), vm);
+        assertTrue(vm.contains("toJson(zonas)"), "the command carries the rows as JSON: " + vm);
+        assertTrue(vm.contains("zonas = fromJson(dto.zonas(), ZonaFila.class);"), vm);
+        var row = read("ZonaFila.java");
+        assertTrue(row.contains("public class ZonaFila"), row);
+        assertTrue(row.contains("JsonIgnoreProperties(ignoreUnknown = true)"), "tolerant to what a hook adds: " + row);
+        assertTrue(row.contains("BigDecimal precio;"), row);
+        var baseline = Files.readString(file("V1__baseline.sql", "catalogo").orElseThrow());
+        assertTrue(baseline.contains("col_zonas text"), "JSON needs unbounded text: " + baseline);
+    }
+
+    @Test
+    void a_list_in_a_use_case_result_is_a_read_only_grid() throws Exception {
+        var page = read("ComprarPage.java");
+        assertTrue(page.contains("@Stereotype(FieldStereotype.grid) List<ZonaFila> zonasResultado = new ArrayList<>();"), page);
+        assertTrue(page.contains("objectMapper.readValue(result.zonas()"), page);
+        assertTrue(!page.contains("\"Zonas del recinto: \" + result.zonas()"), "no JSON in the notice: " + page);
+        assertTrue(file("ZonaFila.java", "comprar").isPresent(), "its row class next to the page");
+    }
+
+    @Test
+    void a_row_action_reads_the_row_runs_the_operation_and_saves() throws Exception {
+        // no input model: the command is the row's id, and the steps are real calls, not hooks
+        var useCase = read("ConfirmarAManoUseCase.java");
+        assertTrue(useCase.contains("compraRepository.findById(new CompraId(command.id()))"), useCase);
+        assertTrue(useCase.contains("compraRepository.save(compra)"), useCase);
+        assertTrue(read("CompraCrudOrchestrator.java").contains("confirmarAManoUseCase.handle(new ConfirmarAManoCommand(Long.valueOf(row.id())))"));
     }
 
     @Test

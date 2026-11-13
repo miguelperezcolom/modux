@@ -6,6 +6,10 @@
 <#if inputModel?? && inputModel.fields?has_content>
 <#list inputModel.fields as field><#if isGrid(field)><#assign hasGrids = true></#if></#list>
 </#if>
+<#assign outputGrids = []>
+<#if outputModel?? && outputModel.fields?has_content>
+<#list outputModel.fields as field><#if isGrid(field)><#assign hasGrids = true><#assign outputGrids = outputGrids + [field]></#if></#list>
+</#if>
 package ${project.packageName}.${module.slug}.infra.in.ui.pages.${ucSlug};
 
 <#if hasGrids>
@@ -142,6 +146,13 @@ ${req}    ${lbl}String ${field.name}Id;
 </#if>
     @Notice(theme = "success", fullWidth = true)
     String resultado = "";
+<#list outputGrids as field>
+
+    @io.mateu.uidl.annotations.ReadOnly
+    @Label("${((field.label?? && field.label?has_content)?then(field.label, field.name?cap_first))?j_string}")
+    @Stereotype(FieldStereotype.grid)
+    List<${gridClasses[field.modelId]}> ${field.name}Resultado = new ArrayList<>();
+</#list>
 
     private final ${ucClass}UseCase useCase;
 <#if hasGrids>
@@ -186,7 +197,12 @@ ${req}    ${lbl}String ${field.name}Id;
 <#assign args><#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field><#if field.basicType?? && field.basicType>${field.name}<#elseif enumOptions?? && enumOptions[field.name]??>${field.name} != null ? ${field.name}.name() : null<#elseif isGrid(field)>objectMapper.writeValueAsString(${field.name})<#else>${field.name}Id</#if><#sep>, </#sep></#list><#else>id</#if></#assign>
 <#if outputModel??>
         ${ucClass}Result result = useCase.handle(new ${ucClass}Command(${args}));
-        resultado = <#list outputModel.fields![] as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array">Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if>;
+<#list outputGrids as f>
+        ${f.name}Resultado = result.${f.name}() == null || result.${f.name}().isBlank() ? new ArrayList<>()
+                : objectMapper.readValue(result.${f.name}(), objectMapper.getTypeFactory().constructCollectionType(List.class, ${gridClasses[f.modelId]}.class));
+</#list>
+<#assign scalarOut = (outputModel.fields![])?filter(f -> !isGrid(f))>
+        resultado = <#if outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
 <#else>
         useCase.handle(new ${ucClass}Command(${args}));
         resultado = "${usecase.name} ejecutado";

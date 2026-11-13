@@ -18,6 +18,22 @@ public class ${triggerClass} {
 
     @Scheduled(cron = "${r"${"}${trigger.name?upper_case?replace("[^A-Z0-9]","_",'r')}_CRON:${trigger.cronExpression!'0 0 0 * * *'}${"}"}"<#if trigger.timezone?? && trigger.timezone?has_content>, zone = "${trigger.timezone}"</#if>)
     public void execute() {
-        useCase.handle(new ${useCase.className}Command(<#if useCase.commandArity gt 0><#list 1..useCase.commandArity as i>null<#sep>, </#sep></#list></#if>));
+        asSystem(() -> useCase.handle(new ${useCase.className}Command(<#if useCase.commandArity gt 0><#list 1..useCase.commandArity as i>null<#sep>, </#sep></#list></#if>)));
+    }
+    /**
+     * Nobody is signed in here: the work acts as the system — user «sistema», role SISTEMA. A use
+     * case lets it in by listing SISTEMA among its roles (explicit permissions), and its history
+     * records «sistema».
+     */
+    static void asSystem(Runnable work) {
+        var context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+                "sistema", null, java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SISTEMA"))));
+        org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+        try {
+            work.run();
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
     }
 }

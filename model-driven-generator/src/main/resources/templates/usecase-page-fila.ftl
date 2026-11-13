@@ -1,5 +1,9 @@
+<#if rowPackage??>
+package ${rowPackage};
+<#else>
 <#assign ucSlug = usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
 package ${project.packageName}.${module.slug}.infra.in.ui.pages.${ucSlug};
+</#if>
 
 import io.mateu.uidl.annotations.Label;
 import lombok.Data;
@@ -26,8 +30,10 @@ import java.time.LocalDateTime;
 import java.math.BigDecimal;
 </#if>
 
-/** Editable row of the "${gridModel.name}" inline collection (see ${usecase.className}Page). */
+/** Editable row of the "${gridModel.name}" inline collection (see ${rowOwner!(usecase.className + "Page")}). */
 @Data
+// a row read from JSON a hook wrote may carry more than the model: only the model's fields show
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
 public class ${gridClassName} {
 
 <#list gridModel.fields![] as field>

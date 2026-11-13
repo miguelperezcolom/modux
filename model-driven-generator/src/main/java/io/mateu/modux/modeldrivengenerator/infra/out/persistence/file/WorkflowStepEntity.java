@@ -36,8 +36,24 @@ public record WorkflowStepEntity(
          * Cap on how many times this step may SUCCESSFULLY run in one workflow instance (runtime
          * backstop against runaway loops). {@code null} inherits the workflow's default.
          */
-        Integer maxSuccessfulExecutions
+        Integer maxSuccessfulExecutions,
+        /**
+         * The step the workflow goes on with when this one runs out of time (its deadline passes
+         * unfinished) — a wait that is not answered in time, say. Null = running out of time fails.
+         */
+        String timeoutStepId
 ) {
+    /** Backward-compatible constructor (pre-timeoutStepId callers and stores). */
+    public WorkflowStepEntity(String id, String name, String emittedEventName,
+                              String targetUseCaseId, String completionEventName,
+                              List<String> dependsOnStepIds, String description, String type,
+                              String handoffWorkflowId, String roleId, String deadline,
+                              String escalationRoleId, String compensationUseCaseId,
+                              String formPageId, Integer maxSuccessfulExecutions) {
+        this(id, name, emittedEventName, targetUseCaseId, completionEventName, dependsOnStepIds,
+                description, type, handoffWorkflowId, roleId, deadline, escalationRoleId,
+                compensationUseCaseId, formPageId, maxSuccessfulExecutions, null);
+    }
 
     /** Backward-compatible constructor (pre-maxSuccessfulExecutions callers and stores). */
     public WorkflowStepEntity(String id, String name, String emittedEventName,

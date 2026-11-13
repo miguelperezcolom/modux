@@ -66,7 +66,7 @@ public class ${subscription.name?cap_first}Subscription {
 
     @Bean
     public Consumer<Message<String>> ${subscription.name?uncap_first}() {
-        return message -> {
+        return message -> asSystem(() -> {
 <#if subscription.idempotencyEnabled?? && subscription.idempotencyEnabled>
             // Idempotent consumer (inbox pattern): at-least-once delivery redelivers the SAME
             // broker message (retries, rebalances, DLQ replays), so the dedup key is the
@@ -134,6 +134,23 @@ public class ${subscription.name?cap_first}Subscription {
 <#if subscription.idempotencyEnabled?? && subscription.idempotencyEnabled>
             inbox.markProcessed("${subscription.name}", messageHash);
 </#if>
-        };
+        });
+    }
+
+    /**
+     * Nobody is signed in here: the work acts as the system — user «sistema», role SISTEMA. A use
+     * case lets it in by listing SISTEMA among its roles (explicit permissions), and its history
+     * records «sistema».
+     */
+    static void asSystem(Runnable work) {
+        var context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
+                "sistema", null, java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SISTEMA"))));
+        org.springframework.security.core.context.SecurityContextHolder.setContext(context);
+        try {
+            work.run();
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
     }
 }

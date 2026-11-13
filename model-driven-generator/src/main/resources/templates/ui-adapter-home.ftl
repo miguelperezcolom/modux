@@ -69,7 +69,7 @@ import ${project.packageName}.${m.slug}.infra.in.ui.pages.${aggSlug}.${agg.name}
 @UI("${adapter.path!''}")
 @Title("${adapter.title!service.name}")
 </#if>
-public class Home<#if homePage??> extends ${homePage.className}</#if><#if idp??> implements WidgetSupplier</#if> {
+public class ${homeClassName!"Home"}<#if homePage??> extends ${homePage.className}</#if><#if idp??> implements WidgetSupplier</#if> {
 
 <#if menuPages?? && menuPages?has_content>
 <#list menuPages as pg>

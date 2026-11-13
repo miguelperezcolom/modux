@@ -134,7 +134,7 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 <#list safeFields as field>
     <#if field.type == "ValueObject">
         <#if field.isEnum>
-                ${field.name?cap_first}.valueOf(entity.get${field.name?cap_first}())<#sep>,</#sep>
+                entity.get${field.name?cap_first}() != null ? ${field.name?cap_first}.valueOf(entity.get${field.name?cap_first}()) : null<#sep>,</#sep>
         <#else>
                 new ${field.name?cap_first}(entity.get${field.name?cap_first}())<#sep>,</#sep>
         </#if>
@@ -168,7 +168,13 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     @Override
     public ${aggregate.name}Id save(${aggregate.name} domain) {
+<#if dataAccess == "JPA">
         var saved = repository.save(toEntity(domain));
+<#else>
+        // reads go through JDBC, not the persistence context: flush now, so a read later in this
+        // same transaction (save, then findById) sees what was just written
+        var saved = repository.saveAndFlush(toEntity(domain));
+</#if>
         var id = new ${aggregate.name}Id(saved.getId());
 <#if stateTopic??>
         publishState(saved);
@@ -195,6 +201,19 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("Cannot serialize the state of ${aggregate.name}", e);
         }
+    }
+
+    /**
+     * Rebuild of the read models fed by this aggregate: on startup the whole current state is
+     * published again, so a consumer added later (or one that lost its data) catches up. The
+     * consumers upsert by id, so publishing twice is harmless. Turn it off with
+     * modux.state.republish-on-startup=false.
+     */
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void republishStateOnStartup(org.springframework.boot.context.event.ApplicationReadyEvent ready) {
+        if (!ready.getApplicationContext().getEnvironment()
+                .getProperty("modux.state.republish-on-startup", Boolean.class, true)) return;
+        repository.findAll().forEach(this::publishState);
     }
 
     private void publishDeleted(Object id) {

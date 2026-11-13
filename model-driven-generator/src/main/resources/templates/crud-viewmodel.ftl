@@ -2,8 +2,18 @@ package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#assign enumPackage = project.packageName + "." + module.name?lower_case?replace("[^a-z0-9]","",'r') + ".domain.aggregates." + aggregate.name?lower_case + ".vo.">
 <#macro lookup field><#if lookups?? && lookups[field.name]??><#assign sup = lookups[field.name].suppliers>@io.mateu.uidl.annotations.Lookup(search = ${sup}IdOptionsSupplier.class, label = ${sup}IdLabelSupplier.class)</#if></#macro>
-<#macro commandArg field><#if field.isEnum>${field.name} != null ? ${field.name}.name() : null<#else>${field.name}<#if field.type == "Entity">Id</#if></#if></#macro>
+<#function isGrid field><#return (field.primitiveType!"") == "json" && field.gridClass??></#function>
+<#assign hasGrids = false><#list safeFields as field><#if isGrid(field)><#assign hasGrids = true></#if></#list>
+<#macro commandArg field><#if isGrid(field)>toJson(${field.name})<#elseif field.isEnum>${field.name} != null ? ${field.name}.name() : null<#else>${field.name}<#if field.type == "Entity">Id</#if></#if></#macro>
 
+<#if hasGrids>
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.mateu.uidl.annotations.InlineEditing;
+import io.mateu.uidl.annotations.Stereotype;
+import io.mateu.uidl.data.FieldStereotype;
+import java.util.ArrayList;
+import java.util.List;
+</#if>
 import io.mateu.uidl.annotations.HiddenInCreate;
 import io.mateu.uidl.annotations.ReadOnly;
 import io.mateu.uidl.interfaces.HttpRequest;
@@ -43,7 +53,13 @@ public class ${aggregate.name}ViewModel implements Identifiable {
     <#if field.label?has_content>
     @io.mateu.uidl.annotations.Label("${field.label}")
     </#if>
-    <#if (field.primitiveType!"") == "json">
+    <#if isGrid(field)>
+    @InlineEditing
+    @Stereotype(FieldStereotype.grid)
+    List<${field.gridClass}> ${field.name} = new ArrayList<>();
+
+    <#continue>
+    <#elseif (field.primitiveType!"") == "json">
     @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.textarea)
     </#if>
     <#if lookups?? && lookups[field.name]??>
@@ -77,6 +93,27 @@ public class ${aggregate.name}ViewModel implements Identifiable {
 </#list>
     final Create${aggregate.name}UseCase create${aggregate.name}UseCase;
     final Update${aggregate.name}UseCase update${aggregate.name}UseCase;
+<#if hasGrids>
+    final ObjectMapper objectMapper;
+
+    private String toJson(List<?> rows) {
+        try {
+            return objectMapper.writeValueAsString(rows != null ? rows : List.of());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Filas no válidas", e);
+        }
+    }
+
+    private <T> List<T> fromJson(String json, Class<T> rowClass) {
+        if (json == null || json.isBlank()) return new ArrayList<>();
+        try {
+            return new ArrayList<>(objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, rowClass)));
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+    }
+</#if>
 
     public String create(HttpRequest httpRequest) {
         return create${aggregate.name}UseCase.handle(new Create${aggregate.name}Command(
@@ -103,7 +140,9 @@ public class ${aggregate.name}ViewModel implements Identifiable {
     public ${aggregate.name}ViewModel load(${aggregate.name}Dto dto) {
         id = dto.id();
 <#list safeFields as field>
-        <#if field.isEnum>
+        <#if isGrid(field)>
+        ${field.name} = fromJson(dto.${field.name}(), ${field.gridClass}.class);
+        <#elseif field.isEnum>
         ${field.name} = dto.${field.name}() != null ? ${enumPackage}${field.name?cap_first}.valueOf(dto.${field.name}()) : null;
         <#else>
         ${field.name}<#if field.type == "Entity">Id</#if> = dto.${field.name}<#if field.type == "Entity">Id</#if>();

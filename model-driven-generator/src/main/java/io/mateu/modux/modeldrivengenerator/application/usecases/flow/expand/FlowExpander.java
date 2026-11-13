@@ -173,7 +173,12 @@ public class FlowExpander {
     // --- shared building blocks ---
 
     private String topicOf(Flow flow, FlowExpansionContext ctx) {
-        return kebab(ctx.projectName()) + "." + kebab(ctx.sourceServiceName()) + "." + kebab(flow.getTriggerEvent());
+        return topicOf(ctx.projectName(), ctx.sourceServiceName(), flow.getTriggerEvent());
+    }
+
+    /** The topic an event travels on: {@code project.service.event}, in kebab case (the one name everyone uses). */
+    public static String topicOf(String projectName, String serviceName, String eventName) {
+        return kebab(projectName) + "." + kebab(serviceName) + "." + kebab(eventName);
     }
 
     private ModelEntity payloadModel(Flow flow, FlowExpansionContext ctx, String modelId, String eventName) {

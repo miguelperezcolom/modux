@@ -42,6 +42,13 @@ spring:
                       predicates: [ "Path=${px.path}/**" ]
                       filters: [ "StripPrefix=${px.segments?c}" ]
 </#list>
+<#if forms!false>
+                    # las tareas de las personas (la app de formularios de EventConductor), en /_forms:
+                    # IdentityBridge le pasa quién ha entrado (la cookie del sistema, verificada)
+                    - id: forms
+                      uri: ${r"${"}FORMS_URL:http://localhost:8106}
+                      predicates: [ "Path=/_forms/**" ]
+</#if>
                     # la shell (todo lo demás)
                     - id: shell
                       uri: ${r"${"}SHELL_URL:http://localhost:${shellPort?c}}

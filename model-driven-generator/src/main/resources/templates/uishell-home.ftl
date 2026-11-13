@@ -33,10 +33,25 @@ public class ${shellClassName}Home<#if idp??> implements WidgetSupplier</#if> {
 
 <#if resolvedServices?has_content>
 <#list resolvedServices as svc>
+<#if (svc.apps![])?size gt 1>
+<#-- several apps in one service: one menu entry each, all through the service's gateway route -->
+<#list svc.apps as app>
     @Menu
-    RemoteMenu ${svc.name?lower_case?replace("[^a-z0-9]","_",'r')} = new RemoteMenu("/_${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}").withLabel("${svc.name}").withPath("${svc.appPath}");
+    RemoteMenu ${app.field} = new RemoteMenu("${app.route}").withLabel("${app.label?j_string}").withPath("${app.path}");
 
 </#list>
+<#else>
+    @Menu
+    RemoteMenu ${svc.name?lower_case?replace("[^a-z0-9]","_",'r')} = new RemoteMenu("${svc.route}").withLabel("${svc.name}").withPath("${svc.appPath}");
+
+</#if>
+</#list>
+<#if tasks!false>
+    /** The person's tasks of the workflows (EventConductor's worklist), through the gateway. */
+    @Menu
+    RemoteMenu tareas = new RemoteMenu("/_forms").withLabel("Tareas");
+
+</#if>
 <#else>
     // TODO: add RemoteMenu fields for each service
     // @Menu

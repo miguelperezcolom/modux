@@ -1,16 +1,16 @@
 <#assign hasDate = false><#assign hasTime = false><#assign hasDateTime = false><#assign hasBigDecimal = false>
 <#if eventModel?? && eventModel.fields?has_content>
 <#list eventModel.fields as field>
-<#if field.basicType>
-<#if field.type == "date"><#assign hasDate = true></#if>
-<#if field.type == "time"><#assign hasTime = true></#if>
-<#if field.type == "dateTime"><#assign hasDateTime = true></#if>
-<#if field.type == "number" || field.type == "money"><#assign hasBigDecimal = true></#if>
+<#if field.basicType!false>
+<#if (field.type!"") == "date"><#assign hasDate = true></#if>
+<#if (field.type!"") == "time"><#assign hasTime = true></#if>
+<#if (field.type!"") == "dateTime"><#assign hasDateTime = true></#if>
+<#if (field.type!"") == "number" || (field.type!"") == "money"><#assign hasBigDecimal = true></#if>
 </#if>
 </#list>
 </#if>
-<#macro javaType field><#if field.basicType><#if field.type == "integer">Integer<#elseif field.type == "number" || field.type == "money">BigDecimal<#elseif field.type == "bool">Boolean<#elseif field.type == "date">LocalDate<#elseif field.type == "time">LocalTime<#elseif field.type == "dateTime">LocalDateTime<#else>String</#if><#else>String</#if></#macro>
-<#function fieldName field><#if field.basicType><#return field.name><#else><#return field.name + "Id"></#if></#function>
+<#macro javaType field><#local ft = field.type!"string"><#if field.basicType!false><#if ft == "integer">Integer<#elseif ft == "number" || ft == "money">BigDecimal<#elseif ft == "bool">Boolean<#elseif ft == "date">LocalDate<#elseif ft == "time">LocalTime<#elseif ft == "dateTime">LocalDateTime<#else>String</#if><#else>String</#if></#macro>
+<#function fieldName field><#if (field.basicType!false) || (field.enumId?? && field.enumId?has_content) || (field.type!"") == "array"><#return field.name><#else><#return field.name + "Id"></#if></#function>
 package ${project.packageName}.${module.slug}.domain.events;
 
 <#if hasDate>import java.time.LocalDate;

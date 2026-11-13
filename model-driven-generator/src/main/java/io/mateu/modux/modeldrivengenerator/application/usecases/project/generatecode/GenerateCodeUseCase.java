@@ -990,6 +990,22 @@ public class GenerateCodeUseCase {
                         + "/" + aggregate.name() + "CrudOrchestrator.java");
         var viewModel = aggregateModel(project, service, boundedContext, aggregate);
         viewModel.put("lookups", lookupsOf(project, service, boundedContext));
+        // a list of value objects is edited as an inline grid: one row class per listed model
+        for (var f : (List<?>) ((Map<?, ?>) viewModel.get("aggregate")).get("fields")) {
+            if (f instanceof Map<?, ?> fm && fm.get("gridClass") instanceof String gridClass) {
+                repository.findById((String) fm.get("modelId"), ModelEntity.class).ifPresent(gm -> {
+                    Map<String, Object> filaModel = buildBaseModel(project, service, boundedContext);
+                    filaModel.put("rowPackage", project.packageName() + "." + boundedContext.name().toLowerCase()
+                            .replaceAll("[^a-z0-9]", "") + ".infra.in.ui.pages." + aggregatePackageName);
+                    filaModel.put("rowOwner", aggregate.name() + "ViewModel");
+                    filaModel.put("gridModel", fromJson(toJson(gm)));
+                    filaModel.put("gridClassName", gridClass);
+                    createFile(boundedContextDir, filaModel, "usecase-page-fila.ftl",
+                            "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
+                                    + "/" + gridClass + ".java");
+                });
+            }
+        }
         createFile(boundedContextDir, viewModel, "crud-viewmodel.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/pages/" + aggregatePackageName
                         + "/" + aggregate.name() + "ViewModel.java");
@@ -1104,7 +1120,8 @@ public class GenerateCodeUseCase {
                             + "/custom/Default" + ucClass + "Steps.java");
         }
 
-        if (useCase.exposedAsRest() || calledThroughInboundAcl(boundedContext, useCase) || calledRemotely(useCase)) {
+        if (useCase.exposedAsRest() || calledThroughInboundAcl(boundedContext, useCase) || calledRemotely(useCase)
+                || targetOfAWorkflow(useCase)) {
             createDir(boundedContextDir, "src/main/java/" + boundedContextPackageDir + "/infra/in/rest");
             createFile(boundedContextDir, model, "usecase-rest-controller.ftl",
                     "src/main/java/" + boundedContextPackageDir + "/infra/in/rest/"
@@ -1118,9 +1135,11 @@ public class GenerateCodeUseCase {
 
             // Array fields backed by a model become inline-editable grids: resolve each
             // referenced model to a generated row class (one per model, next to the page).
+            // The output's lists get the same row classes, shown as read-only grids.
             var gridClasses = new HashMap<String, String>();
-            if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
-                repository.findById(useCase.inputModelId(), ModelEntity.class).ifPresent(im -> {
+            for (var modelId : java.util.stream.Stream.of(useCase.inputModelId(), useCase.outputModelId())
+                    .filter(id -> id != null && !id.isBlank()).distinct().toList()) {
+                repository.findById(modelId, ModelEntity.class).ifPresent(im -> {
                     for (var f : im.fields() != null ? im.fields() : List.<ModelFieldEntity>of()) {
                         if (!f.basicType() && f.modelId() != null && !f.modelId().isBlank()
                                 && f.type() != null && "array".equals(f.type().name())) {
@@ -1421,7 +1440,8 @@ public class GenerateCodeUseCase {
         // A safe Java type name for the templates: display names may contain spaces.
         map.put("className", toTypeName(useCase.name()));
 
-        Set<String> commandFieldNames = java.util.Collections.emptySet();
+        // without an input model the command is the row's id (see usecase-command.ftl): a row action
+        Set<String> commandFieldNames = Set.of("id");
         if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
             var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
             if (inputModel != null && inputModel.fields() != null) {
@@ -1645,6 +1665,13 @@ public class GenerateCodeUseCase {
             }
         }
         return null;
+    }
+
+    /** Whether a workflow step runs this use case: the engine reaches it over REST (HTTP_CALL). */
+    private boolean targetOfAWorkflow(UseCaseEntity useCase) {
+        return repository.findAllOfType(WorkflowEntity.class).stream()
+                .flatMap(wf -> wf.steps() == null ? java.util.stream.Stream.<WorkflowStepEntity>empty() : wf.steps().stream())
+                .anyMatch(st -> useCase.id().equals(st.targetUseCaseId()));
     }
 
     /** Whether a use case of another service calls this one: then it answers over REST. */
@@ -2333,6 +2360,16 @@ public class GenerateCodeUseCase {
                 .anyMatch(ids -> ids.contains(elementId));
     }
 
+    /** The EventConductor form a page's model becomes (a human task's form). */
+    private Map<String, Object> formDefinitionOf(PageEntity page) {
+        var fields = page.modelId() == null ? List.<ModelFieldEntity>of() : fieldsOf(page.modelId());
+        return io.mateu.modux.modeldrivengenerator.application.usecases.workflow.EventConductorFormDefinition.of(
+                page.name(), fields,
+                enumId -> repository.findById(enumId, EnumEntity.class)
+                        .map(e -> e.values() == null ? List.<String>of() : e.values().stream().map(io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.EnumValueEntity::name).toList())
+                        .orElse(List.of()));
+    }
+
     /** The id of the form generated from a page, or null when that page generates none. */
     private String formIdOfPage(String pageId) {
         return repository.findById(pageId, PageEntity.class)
@@ -2728,8 +2765,9 @@ public class GenerateCodeUseCase {
         var diff = diffSchema(asList(previous.get("tables")), tables);
         var newTables = asList(diff.get("newTables"));
         var addedColumns = asList(diff.get("addedColumns"));
+        var widenedColumns = asList(diff.get("widenedColumns"));
         var review = asList(diff.get("review"));
-        if (newTables.isEmpty() && addedColumns.isEmpty() && review.isEmpty()) {
+        if (newTables.isEmpty() && addedColumns.isEmpty() && widenedColumns.isEmpty() && review.isEmpty()) {
             return;   // no schema change → no new migration
         }
 
@@ -2740,6 +2778,7 @@ public class GenerateCodeUseCase {
         model.put("version", nextVersion);
         model.put("newTables", newTables);
         model.put("addedColumns", addedColumns);
+        model.put("widenedColumns", widenedColumns);
         model.put("review", review);
         // each incremental migration is immutable once applied
         createCustomFile(appDir, model, "flyway-migration.ftl",
@@ -2806,6 +2845,7 @@ public class GenerateCodeUseCase {
 
         var newTables = new ArrayList<Object>();
         var addedColumns = new ArrayList<Object>();
+        var widenedColumns = new ArrayList<Object>();
         var review = new ArrayList<Object>();
 
         for (var curTable : current) {
@@ -2824,6 +2864,14 @@ public class GenerateCodeUseCase {
                     col.put("name", entry.getKey());
                     col.put("type", entry.getValue());
                     addedColumns.add(col);
+                } else if (widens(prevCols.get(entry.getKey()), entry.getValue())) {
+                    // only wider (varchar → text): nothing written so far can be lost
+                    var col = new HashMap<String, Object>();
+                    col.put("table", name);
+                    col.put("name", entry.getKey());
+                    col.put("type", entry.getValue());
+                    col.put("was", prevCols.get(entry.getKey()));
+                    widenedColumns.add(col);
                 } else if (!prevCols.get(entry.getKey()).equals(entry.getValue())) {
                     review.add("ALTER TABLE " + name + " ALTER COLUMN " + entry.getKey()
                             + " TYPE " + entry.getValue() + ";  -- was " + prevCols.get(entry.getKey()));
@@ -2844,8 +2892,19 @@ public class GenerateCodeUseCase {
         var diff = new HashMap<String, Object>();
         diff.put("newTables", newTables);
         diff.put("addedColumns", addedColumns);
+        diff.put("widenedColumns", widenedColumns);
         diff.put("review", review);
         return diff;
+    }
+
+    /** A column type change that keeps every value: varchar(n) to text, or to a longer varchar. */
+    static boolean widens(String was, String now) {
+        if (was == null || now == null || was.equals(now)) return false;
+        var from = java.util.regex.Pattern.compile("varchar\\((\\d+)\\)").matcher(was.trim());
+        if (!from.matches()) return false;
+        if (now.trim().equals("text")) return true;
+        var to = java.util.regex.Pattern.compile("varchar\\((\\d+)\\)").matcher(now.trim());
+        return to.matches() && Integer.parseInt(to.group(1)) > Integer.parseInt(from.group(1));
     }
 
     private Map<String, String> columnTypes(Map<String, Object> table) {
@@ -2871,7 +2930,11 @@ public class GenerateCodeUseCase {
         if (modelEntity != null && modelEntity.fields() != null) {
             for (var f : modelEntity.fields()) {
                 if ("id".equals(f.name())) continue;
-                var type = f.basicType() ? sqlTypeForPrimitive(mapFieldDataType(f.type())) : "varchar(255)";
+                // a list of value objects is kept as JSON: unbounded text, never varchar(255)
+                var jsonList = !f.basicType() && f.modelId() != null && !f.modelId().isBlank()
+                        && f.type() == FieldDataType.array;
+                var type = f.basicType() ? sqlTypeForPrimitive(mapFieldDataType(f.type()))
+                        : jsonList ? "text" : "varchar(255)";
                 columns.add(column(snakeCase("col_" + f.name()), type, false));
             }
         }
@@ -2986,6 +3049,7 @@ public class GenerateCodeUseCase {
             case date -> "date";
             case time -> "time";
             case dateTime -> "timestamp";
+            case array -> "text"; // kept as JSON
             default -> "varchar(255)";
         };
     }
@@ -3148,8 +3212,8 @@ public class GenerateCodeUseCase {
         if ((pageType.equals("FORM") || pageType.equals("PAGE") || pageType.equals("WIZARD")) && page.modelId() != null) {
             var pageModelEntity = repository.findById(page.modelId(), ModelEntity.class).orElse(null);
             if (pageModelEntity != null && pageModelEntity.fields() != null && !pageModelEntity.fields().isEmpty()) {
-                createFile(boundedContextDir, model, "form-definition.ftl",
-                        "src/main/resources/forms/"
+                createFile(boundedContextDir, Map.of("definition", toPrettyJson(formDefinitionOf(page))),
+                        "workflow-definition-json.ftl", "src/main/resources/forms/"
                                 + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + ".form.json");
             }
         }
@@ -3290,6 +3354,26 @@ public class GenerateCodeUseCase {
                 it.pageId() == null || it.pageId().isBlank()
                         ? java.util.stream.Stream.empty() : java.util.stream.Stream.of(it.pageId()),
                 menuPageIds(it.children())));
+    }
+
+    /** The gateway route of an app (same slug as gateway-yaml): {@code /organizacion} → {@code /_organizacion}. */
+    static String appRoute(String appPath) {
+        return "/_" + appPath.replaceFirst("^/", "").replaceAll("[^a-z0-9-]", "");
+    }
+
+    /** The apps of a service, in a stable order (by name). */
+    private List<UiAdapterEntity> adaptersOf(ServiceEntity service) {
+        return repository.findAllOfType(UiAdapterEntity.class).stream()
+                .filter(a -> service.id().equals(a.serviceId()))
+                .sorted(java.util.Comparator.comparing(UiAdapterEntity::name, java.util.Comparator.nullsLast(String::compareTo)))
+                .toList();
+    }
+
+    /** {@code Home} for the service's first app, {@code {App}Home} for the others. */
+    private String homeClassOf(ServiceEntity service, UiAdapterEntity adapter) {
+        var adapters = adaptersOf(service);
+        if (adapters.isEmpty() || adapters.get(0).id().equals(adapter.id())) return "Home";
+        return toTypeName(adapter.name()) + "Home";
     }
 
     private void generateUiAdapter(ProjectEntity project, ServiceEntity service, String serviceDir, UiAdapterEntity adapter) {
@@ -3478,9 +3562,13 @@ public class GenerateCodeUseCase {
             model.put("menuListings", all);
         }
 
-        // Overwrite Home.java with UIAdapter-driven version
+        // Overwrite Home.java with UIAdapter-driven version. A service may hold several apps: the
+        // first keeps Home.java (it replaces the service's default home), each other one gets its
+        // own class, so no app overwrites another.
+        var homeClass = homeClassOf(service, adapter);
+        model.put("homeClassName", homeClass);
         createFile(appDir, model, "ui-adapter-home.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
+                "src/main/java/" + packageDir + "/infra/in/ui/" + homeClass + ".java");
     }
 
     // ─── Docker Compose ───────────────────────────────────────────────────────
@@ -3510,10 +3598,167 @@ public class GenerateCodeUseCase {
         model.put("externalJdbcEnvs", externalJdbcEnvs());
         // a local keycloak runs in the compose too, with the realm up.sh generation writes
         idpFor(project).filter(GenerateCodeUseCase::isLocalIdp).ifPresent(i -> model.put("localIdp", i));
+        var procesos = generateWorkflowRuntime(project);
+        if (procesos != null) model.put("procesos", procesos);
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
         createDir(project.outputPath(), "postgres-init");
         createFile(project.outputPath(), model, "postgres-init.ftl",
                 "postgres-init/create-databases.sql");
+    }
+
+    /** The version of EventConductor's orchestrator the generated system runs (overridable: EC_ORCHESTRATOR_IMAGE). */
+    static final String EVENTCONDUCTOR_IMAGE = "miguelperezcolom/orchestrator-standalone-app:2.38.1";
+    /** Its forms app: the human tasks' forms and the worklist (overridable: EC_FORMS_IMAGE). */
+    static final String EVENTCONDUCTOR_FORMS_IMAGE = "miguelperezcolom/forms-standalone-app:2.38.1";
+
+    /**
+     * The runtime of the model's workflows: EventConductor's orchestrator, as is, with what the
+     * model says mounted into it — the definitions ({@code procesos/workflows}, imported at start)
+     * and its configuration ({@code procesos/config/application.yaml}): the topic of every event a
+     * workflow starts on or waits for, and a connection to every service whose use cases its
+     * steps run, authenticated as the system identity. Null when the model has no workflow.
+     */
+    private Map<String, Object> generateWorkflowRuntime(ProjectEntity project) {
+        var workflows = repository.findAllOfType(WorkflowEntity.class).stream()
+                .filter(workflow -> inScope(workflow.id()))
+                .filter(workflow -> homeContextOf(workflow) != null)
+                .toList();
+        if (workflows.isEmpty()) return null;
+
+        var connections = new java.util.TreeMap<String, Map<String, Object>>();
+        var destinations = new java.util.TreeMap<String, String>();
+        var humanTasks = false;
+        var mounted = new StringBuilder();   // what the engine reads from disk, to tell a change
+        var runtime = new io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                .EventConductorWorkflowDefinition.Runtime(
+                useCaseId -> {
+                    var useCase = repository.findById(useCaseId, UseCaseEntity.class).orElse(null);
+                    var service = useCase == null ? null : serviceOfUseCase(useCaseId);
+                    if (service == null) return null;
+                    var slug = serviceName(service).replaceAll("[^a-z0-9-]", "-");
+                    var port = service.port() != null ? service.port() : 8080;
+                    connections.put(slug, Map.of("name", slug,
+                            "envName", slug.toUpperCase().replace("-", "_") + "_URL",
+                            "url", "http://" + slug + ":" + port));
+                    var apiVersion = useCase.apiVersion() != null && !useCase.apiVersion().isBlank() ? useCase.apiVersion() : "v1";
+                    if (!apiVersion.startsWith("v")) apiVersion = "v" + apiVersion;
+                    var path = useCase.restPath() != null && !useCase.restPath().isBlank() ? useCase.restPath()
+                            : "/" + useCase.name().toLowerCase().replaceAll("[^a-z0-9]", "-");
+                    var fields = useCase.inputModelId() == null || useCase.inputModelId().isBlank() ? List.of("id")
+                            : fieldsOf(useCase.inputModelId()).stream().map(ModelFieldEntity::name).toList();
+                    var outputs = useCase.outputModelId() == null || useCase.outputModelId().isBlank() ? List.<String>of()
+                            : fieldsOf(useCase.outputModelId()).stream().map(ModelFieldEntity::name).toList();
+                    return new io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                            .EventConductorWorkflowDefinition.UseCaseCall(slug, "/" + apiVersion + path, fields, outputs);
+                },
+                eventName -> eventNamed(eventName)
+                        .map(e -> fieldsOf(e.modelId()).stream().map(ModelFieldEntity::name).toList())
+                        .orElse(List.of()),
+                roleId -> repository.findById(roleId, RoleEntity.class).map(RoleEntity::name).orElse(roleId));
+
+        createDir(project.outputPath(), "procesos/workflows");
+        for (var workflow : workflows) {
+            var gateways = repository.findAllOfType(WorkflowGatewayEntity.class).stream()
+                    .filter(g -> workflow.id().equals(workflowGraph.workflowOf(g.id()).orElse(null)))
+                    .toList();
+            var definition = io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                    .EventConductorWorkflowDefinition.runnable(workflow, gateways, this::formIdOfPage,
+                            io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                                    .EventConductorWorkflowDefinition.topicPrefix(project.name(), workflow.name()),
+                            runtime);
+            // every event it starts on or waits for, on the topic its publisher sends it to
+            var events = new java.util.ArrayList<String>();
+            if (workflow.triggerEvent() != null) events.add(workflow.triggerEvent());
+            if (workflow.steps() != null) workflow.steps().stream()
+                    .filter(st -> st.completionEventName() != null && st.targetUseCaseId() == null && st.roleId() == null)
+                    .forEach(st -> events.add(st.completionEventName()));
+            for (var event : events) {
+                var topic = eventNamed(event).map(DomainEventEntity::topicName).filter(t -> t != null && !t.isBlank())
+                        .or(() -> serviceEmitting(event).map(sv -> io.mateu.modux.modeldrivengenerator.application
+                                .usecases.flow.expand.FlowExpander.topicOf(project.name(), sv.name(), event)));
+                if (topic.isPresent()) {
+                    destinations.put(io.mateu.modux.modeldrivengenerator.application.usecases.workflow
+                            .EventConductorWorkflowDefinition.destinationOf(event), topic.get());
+                } else {
+                    log.warn("el workflow '{}' espera el evento '{}', que no sale a ningún topic: publícalo"
+                            + " (un flow que lo dispare, o publishAsIntegrationEvent)", workflow.name(), event);
+                }
+            }
+            Map<String, Object> model = new HashMap<>();
+            model.put("definition", toPrettyJson(definition));
+            mounted.append(model.get("definition"));
+            createFile(project.outputPath(), model, "workflow-definition-json.ftl",
+                    "procesos/workflows/" + capitalize(workflow.name()) + ".workflow.json");
+            // the forms of its human steps, for the forms app the worklist lives in
+            if (workflow.steps() != null) {
+                for (var st : workflow.steps()) {
+                    if (st.roleId() == null || st.formPageId() == null) continue;
+                    var page = repository.findById(st.formPageId(), PageEntity.class).orElse(null);
+                    if (page == null) continue;
+                    createDir(project.outputPath(), "procesos/forms");
+                    mounted.append(toPrettyJson(formDefinitionOf(page)));
+                    createFile(project.outputPath(), Map.of("definition", toPrettyJson(formDefinitionOf(page))),
+                            "workflow-definition-json.ftl", "procesos/forms/"
+                                    + capitalize(page.name().replaceAll("[^a-zA-Z0-9]", "")) + ".form.json");
+                    humanTasks = true;
+                }
+            }
+        }
+
+        Map<String, Object> runtimeModel = new HashMap<>();
+        runtimeModel.put("project", projectToMap(project));
+        runtimeModel.put("connections", List.copyOf(connections.values()));
+        runtimeModel.put("destinations", destinations.entrySet().stream()
+                .map(e -> Map.of("name", e.getKey(), "topic", e.getValue())).toList());
+        createDir(project.outputPath(), "procesos/config");
+        createFile(project.outputPath(), runtimeModel, "procesos-config.ftl", "procesos/config/application.yaml");
+        runtimeModel.put("image", EVENTCONDUCTOR_IMAGE);
+        // the definitions are mounted files: a change to them would not restart the engine, so the
+        // compose carries their hash and a different one recreates the container
+        mounted.append(runtimeModel.get("connections")).append(runtimeModel.get("destinations"));
+        runtimeModel.put("definitionsHash", sha256(mounted.toString()).substring(0, 16));
+        if (humanTasks) runtimeModel.put("formsImage", EVENTCONDUCTOR_FORMS_IMAGE);
+        return runtimeModel;
+    }
+
+    /** The service whose context declares the event (and so publishes it). */
+    private java.util.Optional<ServiceEntity> serviceEmitting(String eventName) {
+        for (var sv : repository.findAllOfType(ServiceEntity.class)) {
+            for (var bc : deployedUnits(sv)) {
+                if (bc.domainEventIds() != null && bc.domainEventIds().stream()
+                        .map(id -> repository.findById(id, DomainEventEntity.class).orElse(null))
+                        .anyMatch(e -> e != null && eventName.equals(e.name()))) {
+                    return java.util.Optional.of(sv);
+                }
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    private static String sha256(String text) {
+        try {
+            var digest = java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Whether a workflow has a person's task: then the system runs the forms app and its worklist. */
+    private boolean hasHumanTasks() {
+        return repository.findAllOfType(WorkflowEntity.class).stream()
+                .filter(workflow -> inScope(workflow.id()))
+                .filter(workflow -> homeContextOf(workflow) != null)
+                .flatMap(wf -> wf.steps() == null ? java.util.stream.Stream.<WorkflowStepEntity>empty() : wf.steps().stream())
+                .anyMatch(st -> st.roleId() != null && st.formPageId() != null);
+    }
+
+    /** The domain event with that name: the materialized one (with its topic) when there are several. */
+    private java.util.Optional<DomainEventEntity> eventNamed(String name) {
+        return repository.findAllOfType(DomainEventEntity.class).stream()
+                .filter(e -> name.equals(e.name()))
+                .sorted(java.util.Comparator.comparing((DomainEventEntity e) -> e.topicName() == null || e.topicName().isBlank()))
+                .findFirst();
     }
 
     private void generateCiWorkflow(ProjectEntity project) {
@@ -3979,6 +4224,12 @@ public class GenerateCodeUseCase {
         model.put("proxies", proxies);
         var gatewayDir = project.outputPath() + "/gateway";
         var packageDir = (project.packageName() + ".gateway").replace(".", "/");
+        // the human tasks' worklist (EventConductor's forms app) under /_forms, with who is signed in
+        model.put("forms", hasHumanTasks());
+        if (hasHumanTasks()) {
+            createFile(gatewayDir, model, "gateway-identity-bridge.ftl",
+                    "src/main/java/" + packageDir + "/IdentityBridge.java");
+        }
         createFile(gatewayDir, model, "gateway-pom.ftl", "pom.xml");
         createFile(gatewayDir, model, "gateway-application.ftl",
                 "src/main/java/" + packageDir + "/ApiGatewayApplication.java");
@@ -4044,13 +4295,26 @@ public class GenerateCodeUseCase {
                 .map(s -> {
                     var map = new HashMap<String, Object>();
                     map.putAll(fromJson(toJson(s)));
-                    var appPath = repository.findAllOfType(UiAdapterEntity.class).stream()
-                            .filter(a -> s.id().equals(a.serviceId()))
+                    var adapters = adaptersOf(s);
+                    var appPath = adapters.stream()
                             .map(UiAdapterEntity::path)
                             .filter(p -> p != null && !p.isBlank())
                             .findFirst()
                             .orElse("/" + s.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"));
                     map.put("appPath", appPath);
+                    // the gateway route of an app is /_{its path} (gateway-yaml): the remote menu goes through it
+                    map.put("route", appRoute(appPath));
+                    // one menu entry per app of the service (a service may hold several)
+                    var apps = new java.util.ArrayList<Map<String, Object>>();
+                    for (var a : adapters) {
+                        if (a.path() == null || a.path().isBlank()) continue;
+                        apps.add(Map.of(
+                                "field", (s.name() + "_" + a.name()).toLowerCase().replaceAll("[^a-z0-9]", "_"),
+                                "label", a.title() != null && !a.title().isBlank() ? a.title() : a.name(),
+                                "path", a.path(),
+                                "route", appRoute(a.path())));
+                    }
+                    map.put("apps", apps);
                     return (Map<String, Object>) map;
                 })
                 .toList();
@@ -4061,6 +4325,7 @@ public class GenerateCodeUseCase {
         model.put("shellPackage", shellPackage);
         model.put("shellClassName", shellClassName);
         model.put("resolvedServices", resolvedServices);
+        model.put("tasks", hasHumanTasks());
         idpFor(project).ifPresent(idp -> model.put("idp", idp));
 
         createFile(shellDir, model, "uishell-pom.ftl", "pom.xml");
@@ -4646,6 +4911,12 @@ public class GenerateCodeUseCase {
                             if (f.basicType() || jsonList) {
                                 fieldMap.put("type", "Wrapper");
                                 fieldMap.put("primitiveType", jsonList ? "json" : mapFieldDataType(f.type()));
+                                if (jsonList) {
+                                    // the CRUD form edits it as an inline grid of this row class
+                                    fieldMap.put("modelId", f.modelId());
+                                    repository.findById(f.modelId(), ModelEntity.class).ifPresent(gm ->
+                                            fieldMap.put("gridClass", toTypeName(gm.name()) + "Fila"));
+                                }
                                 // money and number are both decimals; a listing shows money with 2 decimals
                                 fieldMap.put("money", f.type() == FieldDataType.money);
                             } else {
