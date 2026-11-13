@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.6.0"
+version = "0.6.1"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,10 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.1</h4>
+            <ul>
+              <li>Fixes found by running a generated system end to end: workflow and email notifications listen on the topic their events are published to, the REST API accepts the identity provider's token, sequences and event-store columns are created by the migrations, projections carry list fields, and read models always expose their id.</li>
+            </ul>
             <h4>0.6.0</h4>
             <ul>
               <li>Release aligned with modux-maven-plugin 0.6.0: workflows run on EventConductor (people's tasks with their forms, timeouts, exclusive splits), Mateu's page templates for query use cases (dashboard, to-do list, calendar, smart search, item overview), field stereotypes (rich text, HTML, Markdown), email and notifications.</li>
