@@ -722,7 +722,7 @@ public class UiEditorCommands {
                     }
                     return new ModelFieldEntity(f.id(), f.name(), basic, type, modelRef, isEnum, enumRef,
                             f.validations(), f.piiClassification(), f.anonymizationStrategy(),
-                            f.label(), f.priority(), f.identifier(), voRef, entRef, f.collection());
+                            f.label(), f.priority(), f.identifier(), voRef, entRef, f.collection(), f.stereotype());
                 })
                 .toList();
         repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
@@ -756,7 +756,7 @@ public class UiEditorCommands {
                     return new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
                             f.isEnum(), f.enumId(), vals, f.piiClassification(), f.anonymizationStrategy(),
                             f.label(), f.priority(), f.identifier(), f.valueObjectId(), f.entityId(),
-                            f.collection());
+                            f.collection(), f.stereotype());
                 })
                 .toList();
         repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
@@ -772,7 +772,7 @@ public class UiEditorCommands {
                         ? new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
                                 f.isEnum(), f.enumId(), f.validations(), f.piiClassification(),
                                 f.anonymizationStrategy(), f.label(), f.priority(), f.identifier(),
-                                f.valueObjectId(), f.entityId(), coll)
+                                f.valueObjectId(), f.entityId(), coll, f.stereotype())
                         : f)
                 .toList();
         repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));
@@ -793,7 +793,7 @@ public class UiEditorCommands {
                                 f.modelId(), f.isEnum(), f.enumId(), f.validations(),
                                 f.piiClassification(), f.anonymizationStrategy(),
                                 f.label(), f.priority(), f.identifier(), f.valueObjectId(), f.entityId(),
-                                f.collection())
+                                f.collection(), f.stereotype())
                         : f)
                 .toList();
         repository.save(new ModelEntity(model.id(), model.name(), fields, model.validations(), null));

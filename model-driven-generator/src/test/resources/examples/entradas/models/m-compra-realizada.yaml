@@ -37,4 +37,10 @@ fields:
   type: "array"
   modelId: "m-zona"
   label: "Zonas del recinto"
+- id: "f-m-compra-realizada-justificante"
+  name: "justificante"
+  basicType: true
+  type: "string"
+  stereotype: "html"
+  label: "Justificante"
 projectId: "entradas"

@@ -1,0 +1,18 @@
+---
+id: "uc-agenda"
+name: "Agenda"
+title: "Agenda de conciertos"
+exposedAsUi: true
+outputModelId: "m-agenda"
+steps:
+- id: "step-Agenda"
+  name: "consultar"
+  type: "Custom"
+  intent: "Lee los conciertos."
+pageTemplate: "CALENDAR"
+templateFields:
+  id: "id"
+  title: "artista"
+  date: "fecha"
+itemUseCaseId: "uc-fichaConcierto"
+projectId: "entradas"

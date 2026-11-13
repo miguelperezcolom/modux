@@ -61,7 +61,7 @@ public class UseCaseFileRepository implements UseCaseRepository {
         // decisionIds are not modeled in the domain UseCase yet — carry them over from the stored
         // entity so a UI save never wipes what was authored in the YAML store.
         var existing = repository.findById(entity.getId().id(), UseCaseEntity.class).orElse(null);
-        repository.save(new UseCaseEntity(
+        var saved = new UseCaseEntity(
                 entity.getId().id(),
                 entity.getName().name(),
                 entity.getExposedAsRest().value(),
@@ -93,7 +93,19 @@ public class UseCaseFileRepository implements UseCaseRepository {
                 entity.getRateLimitRequestsPerSecond(),
                 entity.getGrpcServiceName(), entity.getGrpcMethodName(),
                 existing != null ? existing.decisionIds() : List.of(),
-                existing != null && existing.policy(), null));
+                existing != null && existing.policy(), null);
+        // nor are its title, row action, description and page template: carried over too
+        if (existing != null) {
+            saved = saved.toBuilder()
+                    .title(existing.title())
+                    .rowActionForAggregateId(existing.rowActionForAggregateId())
+                    .description(existing.description())
+                    .pageTemplate(existing.pageTemplate())
+                    .templateFields(existing.templateFields())
+                    .itemUseCaseId(existing.itemUseCaseId())
+                    .build();
+        }
+        repository.save(saved);
         return entity;
     }
 

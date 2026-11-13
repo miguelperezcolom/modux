@@ -240,6 +240,67 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void a_formatted_text_is_edited_with_an_editor_shown_rendered_and_stored_whole() throws Exception {
+        // a model field with Mateu's stereotype: the form edits it so, the table has no length limit
+        assertTrue(read("ConciertoViewModel.java").contains("@io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.richText)"));
+        var baseline = Files.readString(file("V1__baseline.sql", "catalogo").orElseThrow());
+        assertTrue(baseline.contains("col_descripcion text"), baseline);
+        // a use case that answers HTML shows it rendered, not inside the notice
+        var page = read("ComprarPage.java");
+        assertTrue(page.contains("@Stereotype(FieldStereotype.html) String justificanteResultado"), page);
+        assertTrue(page.contains("justificanteResultado = result.justificante() != null"), page);
+        assertTrue(!page.contains("\"Justificante: \" + result.justificante()"), page);
+    }
+
+    @Test
+    void a_query_use_case_is_drawn_with_the_mateu_page_template_its_model_names() throws Exception {
+        // dashboard: the numbers as KPIs, the html as a tile, the list as a table and a chart
+        var panel = read("PanelVentasPage.java");
+        assertTrue(panel.contains("extends Dashboard"), panel);
+        assertTrue(panel.contains("MetricCard entradasVendidas;"), panel);
+        assertTrue(panel.contains("Chart conciertosChart;"), panel);
+        assertTrue(panel.contains(".html(true)"), "the html content rendered: " + panel);
+        // calendar: each item an event on its date; clicking opens the item's page
+        var agenda = read("AgendaPage.java");
+        assertTrue(agenda.contains("extends CalendarPage"), agenda);
+        assertTrue(agenda.contains("return itemPage.load(event.id());"), agenda);
+        // to-do list: buckets by the group field
+        var todo = read("PorRevisarPage.java");
+        assertTrue(todo.contains("extends TodoList<"), todo);
+        assertTrue(todo.contains("protected String groupOf("), todo);
+        // smart search: the input as facets, a row opens the item
+        var search = read("BuscarConciertosPage.java");
+        assertTrue(search.contains("extends SmartSearchPage<BuscarConciertosPage.Filtros"), search);
+        assertTrue(search.contains("implements Navigable<"), search);
+        // item overview: loaded by id from the URL or from the page that opens it
+        var ficha = read("FichaConciertoPage.java");
+        assertTrue(ficha.contains("extends ItemOverview"), ficha);
+        assertTrue(ficha.contains("public FichaConciertoPage load(String id)"), ficha);
+        assertTrue(ficha.contains("@Panel(title = \"Zonas\") Markdown zonasPanel;"), ficha);
+    }
+
+    @Test
+    void with_an_email_provider_the_services_can_send_email() throws Exception {
+        assertTrue(read("MailSender.java").contains("void send(String to, String subject, String html);"));
+        assertTrue(read("SmtpMailSender.java").contains("helper.setText(html, true);"));
+        var all = Files.createTempDirectory("modux-patterns-mail");
+        generateCodeUseCase.handle(new GenerateCodeCommand("entradas", all.toString(), null, false));
+        assertTrue(Files.readString(all.resolve("catalogo/catalogo/pom.xml")).contains("spring-boot-starter-mail"));
+        assertTrue(Files.readString(all.resolve("catalogo/catalogo-app/src/main/resources/application.yaml"))
+                .contains("host: ${MAIL_HOST:localhost}"));
+        var compose = Files.readString(all.resolve("docker-compose.yml"));
+        assertTrue(compose.contains("image: axllent/mailpit"), compose);
+        assertTrue(compose.contains("MAIL_HOST: mailpit"), compose);
+        // a notification of the model: its event in, an email out
+        var notification = read("AvisoDeCompraNotification.java");
+        assertTrue(notification.contains("event.get(\"cliente\")"), "to the event's recipient: " + notification);
+        assertTrue(notification.contains("NOTIFY_PROMOTORA"), "and to the role's people: " + notification);
+        assertTrue(notification.contains("mail.send(address, fill(SUBJECT, event, false), fill(BODY, event, true))"), notification);
+        var ventasYaml = Files.readString(all.resolve("ventas/ventas-app/src/main/resources/application.yaml"));
+        assertTrue(ventasYaml.contains("avisoDeCompraNotification"), "bound to its topic: " + ventasYaml);
+    }
+
+    @Test
     void a_grouped_query_is_a_panel_one_row_per_key_with_its_totals() throws Exception {
         var panel = read("CompraViewListing.java");
         assertTrue(panel.contains("\"CONFIRMADA\".equals(String.valueOf(rm.estado()))"), "only the confirmed ones: " + panel);

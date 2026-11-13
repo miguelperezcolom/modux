@@ -51,7 +51,9 @@ public class ModelFileRepository implements ModelRepository {
                             return new ModelFieldEntity(f.id(), f.name(), f.basicType(), f.type(), f.modelId(),
                                     f.isEnum(), f.enumId(), toFieldValidationEntities(f.validations()),
                                     previous != null ? previous.piiClassification() : null,
-                                    previous != null ? previous.anonymizationStrategy() : null);
+                                    previous != null ? previous.anonymizationStrategy() : null)
+                                    // the domain does not model the stereotype yet: carried over
+                                    .withStereotype(previous != null ? previous.stereotype() : null);
                         })
                         .toList();
         var validationEntities = toValidationEntities(entity.getValidations());

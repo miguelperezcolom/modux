@@ -16,6 +16,13 @@
         <e2e.excluded>e2e</e2e.excluded>
     </properties>
     <dependencies>
+<#if mail!false>
+        <!-- the email port's SMTP adapter (the deployment declares an email provider) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+</#if>
         <!-- use cases restricted to a role carry @PreAuthorize -->
         <dependency>
             <groupId>org.springframework.security</groupId>
@@ -36,18 +43,18 @@
         </dependency>
         <dependency>
             <groupId>io.mateu</groupId>
-            <artifactId>annotation-processor-mvc</artifactId>
-            <version>3.0-beta.53</version>
+            <artifactId>mateu-annotation-processor-mvc</artifactId>
+            <version>3.0-beta.64</version>
         </dependency>
         <dependency>
             <groupId>io.mateu</groupId>
-            <artifactId>mvc-core</artifactId>
-            <version>3.0-beta.53</version>
+            <artifactId>mateu-mvc</artifactId>
+            <version>3.0-beta.64</version>
         </dependency>
         <dependency>
             <groupId>io.mateu</groupId>
-            <artifactId>vaadin-lit</artifactId>
-            <version>3.0-beta.53</version>
+            <artifactId>mateu-vaadin</artifactId>
+            <version>3.0-beta.64</version>
         </dependency>
         <dependency>
             <groupId>io.mateu.workflow</groupId>
@@ -110,8 +117,8 @@
                         </path>
                         <path>
                             <groupId>io.mateu</groupId>
-                            <artifactId>annotation-processor-mvc</artifactId>
-                            <version>3.0-beta.53</version>
+                            <artifactId>mateu-annotation-processor-mvc</artifactId>
+                            <version>3.0-beta.64</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

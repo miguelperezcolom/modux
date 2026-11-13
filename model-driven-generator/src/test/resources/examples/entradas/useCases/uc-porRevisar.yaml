@@ -1,0 +1,19 @@
+---
+id: "uc-porRevisar"
+name: "PorRevisar"
+title: "Conciertos por revisar"
+exposedAsUi: true
+outputModelId: "m-agenda"
+steps:
+- id: "step-PorRevisar"
+  name: "consultar"
+  type: "Custom"
+  intent: "Lee los conciertos."
+pageTemplate: "TODO_LIST"
+templateFields:
+  id: "id"
+  title: "artista"
+  group: "estado"
+  caption: "fecha"
+itemUseCaseId: "uc-fichaConcierto"
+projectId: "entradas"

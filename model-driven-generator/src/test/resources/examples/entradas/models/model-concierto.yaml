@@ -51,4 +51,10 @@ fields:
   type: "array"
   modelId: "m-zona"
   label: "Zonas"
+- id: "f-model-concierto-descripcion"
+  name: "descripcion"
+  basicType: true
+  type: "string"
+  stereotype: "richText"
+  label: "Descripción"
 projectId: "entradas"

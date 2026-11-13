@@ -1,0 +1,13 @@
+---
+id: "ntf-compra"
+name: "AvisoDeCompra"
+ownerBoundedContextId: "bc-ventas"
+eventId: "ev-compra-realizada"
+channels:
+- "EMAIL"
+recipientExpression: "compra.cliente"
+recipientRoleIds:
+- "PROMOTORA"
+subject: "Tu compra {compraId}"
+body: "<p>Hola {cliente}: tus {entradas} entradas están reservadas.</p>"
+projectId: "entradas"

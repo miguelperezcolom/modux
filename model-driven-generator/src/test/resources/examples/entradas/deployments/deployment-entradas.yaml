@@ -1,6 +1,7 @@
 ---
 id: "deployment-entradas"
 dockerRegistry: "docker.io/miguelperezcolom"
+emailProvider: "SMTP"
 environments:
 - environment: "PROD"
   kubernetesNamespace: "entradas"

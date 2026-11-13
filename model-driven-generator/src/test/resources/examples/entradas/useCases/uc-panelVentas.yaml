@@ -1,0 +1,17 @@
+---
+id: "uc-panelVentas"
+name: "PanelVentas"
+title: "Panel de ventas"
+exposedAsUi: true
+outputModelId: "m-panel-ventas"
+steps:
+- id: "step-PanelVentas"
+  name: "consultar"
+  type: "Custom"
+  intent: "Lee los conciertos."
+pageTemplate: "DASHBOARD"
+templateFields:
+  items: "conciertos"
+  chartLabel: "artista"
+  chartValue: "vendidas"
+projectId: "entradas"

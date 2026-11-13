@@ -9,6 +9,11 @@ useCaseIds:
 - "uc-eliminarConcierto"
 - "uc-consultarPrecio"
 - "uc-cerrarVenta"
+- "uc-panelVentas"
+- "uc-agenda"
+- "uc-porRevisar"
+- "uc-buscarConciertos"
+- "uc-fichaConcierto"
 domainEventIds:
 - "ev-conciertoCreado"
 - "ev-conciertoModificado"

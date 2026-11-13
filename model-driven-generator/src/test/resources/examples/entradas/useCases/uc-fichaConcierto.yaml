@@ -1,0 +1,16 @@
+---
+id: "uc-fichaConcierto"
+name: "FichaConcierto"
+title: "Ficha del concierto"
+exposedAsUi: true
+inputModelId: "m-concierto-ref"
+outputModelId: "m-ficha-concierto"
+steps:
+- id: "step-FichaConcierto"
+  name: "consultar"
+  type: "Custom"
+  intent: "Lee los conciertos."
+pageTemplate: "ITEM_OVERVIEW"
+templateFields:
+  title: "artista"
+projectId: "entradas"
