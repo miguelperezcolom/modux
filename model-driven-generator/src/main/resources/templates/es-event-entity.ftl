@@ -40,9 +40,14 @@ public class ${aggregate.name}EventEntity {
     @Column(name = "event_type")
     String eventType;
 
-    @Column(name = "payload", length = 4000)
+    /** The event (or the saved state), as JSON: no length limit (a document's blocks are long). */
+    @Column(name = "payload", columnDefinition = "text")
     String payload;
 
     @Column(name = "occurred_at")
     LocalDateTime occurredAt;
+
+    /** Who did it: the signed-in user (or the calling service) when it was recorded. */
+    @Column(name = "recorded_by")
+    String recordedBy;
 }

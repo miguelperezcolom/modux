@@ -31,6 +31,7 @@ public class ${className} extends Crud<
             @Label("Nº") String sequence,
             @Label("Qué pasó") String event,
             @Label("Cuándo") String occurredAt,
+            @Label("Quién") String recordedBy,
             @Label("Estado") String state) {}
 
     final ${aggregateName}EventStore events;
@@ -45,6 +46,7 @@ public class ${className} extends Crud<
                         .thenComparing(e -> e.getSequenceNumber()))
                 .map(e -> new Row(e.getAggregateId(), String.valueOf(e.getSequenceNumber()), e.getEventType(),
                         e.getOccurredAt() == null ? null : e.getOccurredAt().withNano(0).toString().replace('T', ' '),
+                        e.getRecordedBy(),
                         summary(e.getPayload())))
                 .toList());
     }

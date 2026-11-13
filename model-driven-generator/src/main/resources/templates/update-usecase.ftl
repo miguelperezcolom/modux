@@ -40,7 +40,9 @@ public class Update${aggregate.name}UseCase {
         var entity = repository.findById(new ${aggregate.name}Id(Long.valueOf(command.id()))).orElseThrow();
         entity.update(
 <#list safeFields as field>
-    <#if field.type == "ValueObject">
+    <#if field.readonly!false>
+                entity.get${field.name?cap_first}<#if field.type == "Entity">Id</#if>()<#sep>,</#sep>
+    <#elseif field.type == "ValueObject">
         <#if field.isEnum>
                 (command.${field.name}() == null || command.${field.name}().isBlank() ? null : ${field.name?cap_first}.valueOf(command.${field.name}()))<#sep>,</#sep>
         <#else>

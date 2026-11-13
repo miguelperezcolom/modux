@@ -35,8 +35,9 @@ and menu are untouched.
   When the hook returns no events — the default — it records the **state the aggregate was saved in**
   (`AccountGuardado`), so the history is complete from the first day without writing any code.
 - **The history has a screen**: an event-sourced aggregate in an app's menu brings «Historial de …», a
-  read-only listing of its event store in order (aggregate, number, what happened, when, the state),
-  searchable by the aggregate's id.
+  read-only listing of its event store in order (aggregate, number, what happened, when, who, the
+  state), searchable by the aggregate's id. «Who» is the signed-in user (or calling service) that
+  recorded it — an audit trail with no code. The payload is stored as `text`: no length limit.
 - **`findById(id)`** loads the event stream, decodes it to typed domain events via the codec, and **folds
   it** through the hook to rebuild the aggregate — falling back to the snapshot until the fold is
   implemented.

@@ -9,6 +9,7 @@ import io.mateu.modux.modeldrivengenerator.application.usecases.model.topology.M
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProxyApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ApiEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DeploymentEntity;
+import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.LifecycleTransitionEntity;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ModuleEntity;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.operation.vo.OperationType;
 import io.mateu.modux.modeldrivengenerator.domain.aggregates.project.vo.DbMigrationTool;
@@ -369,6 +370,30 @@ public class GenerateCodeUseCase {
             createDir(boundedContextDir, "src/main/java/" + nDir);
             createFile(boundedContextDir, nModel, "notification-email.ftl",
                     "src/main/java/" + nDir + "/" + n.get("className") + ".java");
+        }
+        {
+            // who is running the use case (four-eyes rules, «recorded by»…), over Spring Security
+            var bcPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug(boundedContext.name());
+            createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/application/out");
+            createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/infra/out/security");
+            createFile(boundedContextDir, boundedContextModel, "current-user.ftl",
+                    "src/main/java/" + bcPackageDir + "/application/out/CurrentUser.java");
+            createFile(boundedContextDir, boundedContextModel, "current-user-security.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/security/SpringSecurityCurrentUser.java");
+        }
+        if (usesSequences()) {
+            // correlative numbers kept by the system (fields with systemValue SEQUENCE)
+            var bcPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug(boundedContext.name());
+            createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/infra/out/persistence");
+            createFile(boundedContextDir, boundedContextModel, "sequences.ftl",
+                    "src/main/java/" + bcPackageDir + "/application/out/Sequences.java");
+            var seqPrefix = capitalize(boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", ""));
+            createFile(boundedContextDir, boundedContextModel, "sequences-jpa.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/persistence/" + seqPrefix + "JpaSequences.java");
+            createFile(boundedContextDir, boundedContextModel, "sequence-entity.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/persistence/" + seqPrefix + "SequenceEntity.java");
+            createFile(boundedContextDir, boundedContextModel, "sequence-repository.ftl",
+                    "src/main/java/" + bcPackageDir + "/infra/out/persistence/" + seqPrefix + "SequenceRepository.java");
         }
         if (mailEnabled(project)) {
             // the email port (for the custom zone and the notifications) and its SMTP adapter
@@ -1499,6 +1524,8 @@ public class GenerateCodeUseCase {
 
         var enrichedSteps = new java.util.ArrayList<Map<String, Object>>();
         var needsStreamBridge = false;
+        var usesCurrentUser = false;
+        var usesSequences = false;
         var loadedAggregates = new java.util.HashSet<String>();
         // calls to a use case another service deploys: what each returned, for the hooks after it
         var remoteResponses = new java.util.ArrayList<Map<String, Object>>();
@@ -1537,6 +1564,24 @@ public class GenerateCodeUseCase {
                         for (var f : asList(input.get("fields"))) {
                             @SuppressWarnings("unchecked") var fm = (Map<String, Object>) f;
                             var name = (String) fm.get("name");
+                            // a value the system supplies (who runs it, when): not the caller's to give
+                            var systemValue = fm.get("systemValue") instanceof String sv ? sv : null;
+                            if (systemValue != null) {
+                                switch (systemValue) {
+                                    case "CURRENT_USER" -> { inputArgs.add("currentUser.username()"); usesCurrentUser = true; }
+                                    case "NOW" -> inputArgs.add("java.time.LocalDateTime.now()");
+                                    case "TODAY" -> inputArgs.add("java.time.LocalDate.now()");
+                                    case "SEQUENCE" -> {
+                                        // one series per aggregate and field: «Numero.numero»
+                                        var next = "sequences.next(\"" + callAgg.get("name") + "." + name + "\")";
+                                        inputArgs.add("integer".equals(String.valueOf(fm.get("type"))) ? "Math.toIntExact(" + next + ")" : next);
+                                        usesSequences = true;
+                                    }
+                                    default -> complete = false;
+                                }
+                                if (!complete) break;
+                                continue;
+                            }
                             if (!commandFieldNames.contains(name)) { complete = false; break; }
                             var basic = Boolean.TRUE.equals(fm.get("basicType"));
                             var suffixed = !basic && (fm.get("enumId") == null || fm.get("enumId").toString().isBlank())
@@ -1644,6 +1689,8 @@ public class GenerateCodeUseCase {
 
         map.put("steps", enrichedSteps);
         map.put("needsStreamBridge", needsStreamBridge);
+        map.put("usesCurrentUser", usesCurrentUser);
+        map.put("usesSequences", usesSequences);
         return map;
     }
 
@@ -1738,6 +1785,13 @@ public class GenerateCodeUseCase {
             out.add(m);
         }
         return out;
+    }
+
+    /** Whether some model asks the system for a correlative number (systemValue SEQUENCE). */
+    private boolean usesSequences() {
+        return repository.findAllOfType(ModelEntity.class).stream()
+                .flatMap(m -> m.fields() == null ? java.util.stream.Stream.empty() : m.fields().stream())
+                .anyMatch(f -> "SEQUENCE".equals(f.systemValue()));
     }
 
     /** Whether the deployment declares an email provider: then the services can send email (MailSender). */
@@ -3742,6 +3796,10 @@ public class GenerateCodeUseCase {
         // a local keycloak runs in the compose too, with the realm up.sh generation writes
         idpFor(project).filter(GenerateCodeUseCase::isLocalIdp).ifPresent(i -> model.put("localIdp", i));
         model.put("mail", mailEnabled(project));
+        // the roles some email notification goes to: whose addresses the services read (NOTIFY_<ROLE>)
+        model.put("notifyRoles", services.stream().flatMap(svc -> emailNotifications(project, svc).stream())
+                .flatMap(n -> ((List<?>) n.getOrDefault("roles", List.of())).stream()).map(String::valueOf)
+                .map(r -> r.toUpperCase().replaceAll("[^A-Z0-9]", "_")).distinct().sorted().toList());
         var procesos = generateWorkflowRuntime(project);
         if (procesos != null) model.put("procesos", procesos);
         createFile(project.outputPath(), model, "docker-compose.ftl", "docker-compose.yml");
@@ -5019,13 +5077,40 @@ public class GenerateCodeUseCase {
                         var opMap = fromJson(toJson(op));
                         // the operation's Input record exists only when its model has fields
                         opMap.put("hasInput", operationInputOf(op.inputModelId()) != null);
+                        // the lifecycle's transitions this operation makes: from which states, to which
+                        opMap.put("transitions", aggregate.lifecycle() == null ? List.of()
+                                : aggregate.lifecycle().transitions().stream()
+                                        .filter(t -> op.id() != null && op.id().equals(t.operationId()))
+                                        .filter(t -> t.toState() != null && !t.toState().isBlank())
+                                        .filter(t -> t.fromState() != null && !t.fromState().isBlank())
+                                        // one target per origin: the first declared wins
+                                        .collect(java.util.stream.Collectors.toMap(LifecycleTransitionEntity::fromState,
+                                                LifecycleTransitionEntity::toState, (a, b) -> a, java.util.LinkedHashMap::new))
+                                        .entrySet().stream()
+                                        .map(t -> Map.of("from", t.getKey(), "to", t.getValue()))
+                                        .toList());
                         return opMap;
                     })
                     .toList());
         }
+        // The explicit state machine: where it is born, which operations move it, when it can be edited
+        if (aggregate.lifecycle() != null && aggregate.lifecycle().initialState() != null
+                && !aggregate.lifecycle().initialState().isBlank()) {
+            var lc = new HashMap<String, Object>();
+            var stateField = aggregate.lifecycle().stateField() != null && !aggregate.lifecycle().stateField().isBlank()
+                    ? aggregate.lifecycle().stateField() : "status";
+            lc.put("stateField", stateField);
+            lc.put("initialState", aggregate.lifecycle().initialState());
+            lc.put("editableStates", aggregate.lifecycle().editableStates());
+            map.put("lifecycle", lc);
+        } else {
+            map.remove("lifecycle");
+        }
         // With operations the aggregate has behaviour: it changes through them, never by a
         // generic update that would overwrite its state and skip their rules.
-        map.put("behavioural", map.get("operations") instanceof List<?> ops && !ops.isEmpty());
+        // unless it is declared editable too (a draft written freely, moved on by operations).
+        map.put("behavioural", map.get("operations") instanceof List<?> ops && !ops.isEmpty()
+                && !Boolean.TRUE.equals(aggregate.editable()));
 
         if (!map.containsKey("invariants") || map.get("invariants") == null) {
             map.put("invariants", List.of());
@@ -5044,7 +5129,9 @@ public class GenerateCodeUseCase {
                             fieldMap.put("visible", true);
                             fieldMap.put("mandatory", f.validations() != null && f.validations().stream()
                                     .anyMatch(v -> List.of("NotNull", "NotEmpty", "NotBlank").contains(String.valueOf(v.type()))));
-                            fieldMap.put("readonly", false);
+                            // kept by the system (a state, a number, who asked): read-only in the form,
+                            // and the generic update keeps what is stored
+                            fieldMap.put("readonly", Boolean.TRUE.equals(f.readOnly()));
                             fieldMap.put("label", f.label());
                             fieldMap.put("priority", f.priority());
                             fieldMap.put("identifier", Boolean.TRUE.equals(f.identifier()));

@@ -18,6 +18,10 @@ services:
 <#if mail!false>
       MAIL_HOST: mailpit
       MAIL_PORT: "1025"
+<#list notifyRoles![] as r>
+      # who the notifications to ${r} go to (comma-separated); locally, a mailbox in Mailpit
+      NOTIFY_${r}: ${r"${"}NOTIFY_${r}:-${r?lower_case}@${project.name?lower_case?replace("[^a-z0-9]","",'r')}.local}
+</#list>
 </#if>
 <#if procesos??>
       # the workflow engine calls the use cases as user «sistema» (role SISTEMA) with this password

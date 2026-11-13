@@ -90,6 +90,9 @@
         "description" : {
           "type" : "string"
         },
+        "editable" : {
+          "type" : "boolean"
+        },
         "eventSourcingEnabled" : {
           "type" : "boolean"
         },
@@ -2335,6 +2338,12 @@
     "LifecycleEntity" : {
       "type" : "object",
       "properties" : {
+        "editableStates" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        },
         "initialState" : {
           "type" : "string"
         },
@@ -2569,8 +2578,14 @@
         "priority" : {
           "type" : "integer"
         },
+        "readOnly" : {
+          "type" : "boolean"
+        },
         "stereotype" : {
           "$ref" : "#/$defs/FieldStereotype"
+        },
+        "systemValue" : {
+          "type" : "string"
         },
         "type" : {
           "$ref" : "#/$defs/FieldDataType"

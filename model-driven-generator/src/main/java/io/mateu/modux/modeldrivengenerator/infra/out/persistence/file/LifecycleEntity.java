@@ -15,11 +15,23 @@ public record LifecycleEntity(
         String stateField,
         String initialState,
         List<String> states,
-        List<LifecycleTransitionEntity> transitions
+        List<LifecycleTransitionEntity> transitions,
+        /**
+         * The states in which an editable aggregate can still be changed field by field (a draft);
+         * empty = in any state. Its operations move it between states regardless.
+         */
+        List<String> editableStates
 ) {
 
     public LifecycleEntity {
         if (states == null) states = List.of();
         if (transitions == null) transitions = List.of();
+        if (editableStates == null) editableStates = List.of();
+    }
+
+    /** Backward-compatible constructor (pre-editableStates callers). */
+    public LifecycleEntity(String stateField, String initialState, List<String> states,
+                           List<LifecycleTransitionEntity> transitions) {
+        this(stateField, initialState, states, transitions, List.of());
     }
 }

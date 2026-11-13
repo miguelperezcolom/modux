@@ -53,7 +53,9 @@ public class ModelFileRepository implements ModelRepository {
                                     previous != null ? previous.piiClassification() : null,
                                     previous != null ? previous.anonymizationStrategy() : null)
                                     // the domain does not model the stereotype yet: carried over
-                                    .withStereotype(previous != null ? previous.stereotype() : null);
+                                    .withStereotype(previous != null ? previous.stereotype() : null)
+                                    .withReadOnly(previous != null ? previous.readOnly() : null)
+                                    .withSystemValue(previous != null ? previous.systemValue() : null);
                         })
                         .toList();
         var validationEntities = toValidationEntities(entity.getValidations());

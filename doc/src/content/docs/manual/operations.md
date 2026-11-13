@@ -123,12 +123,38 @@ The aggregate is loaded from the command's `id`, or from its `{aggregate}Id` fie
 generated form shows as a lookup of that aggregate). Each input field is taken from the command
 field with its name; when one is missing the step stays a hook, with the operation as its intent.
 
+### Values the system supplies
+
+An input field with a `systemValue` is not taken from the command: the use case fills it.
+
+| `systemValue` | The use case passes |
+|---|---|
+| `CURRENT_USER` | `currentUser.username()` — who signed in (the identity provider's `preferred_username`), through the generated `CurrentUser` port |
+| `NOW` / `TODAY` | `LocalDateTime.now()` / `LocalDate.now()` |
+| `SEQUENCE` | The next number of the `{Aggregate}.{field}` series, from the generated `Sequences` port: one row per series, locked while the number is taken, inside the use case's transaction — a use case that fails gives its number back, so there are no gaps |
+
+So «approved by» and «issue number» reach the domain without anyone typing them, and an invariant
+can hold «whoever asked for it cannot approve it»:
+
+```java
+numero.aprobar(aprobarNumeroOperation, new AprobarNumeroOperation.Input(
+        currentUser.username(), java.time.LocalDateTime.now(), Math.toIntExact(sequences.next("Numero.numero"))));
+numeroInvariants.check(new NumeroContext(numero));
+numeroRepository.save(numero);
+```
+
+The aggregate's invariants are checked after the operation, before saving.
+
+`CurrentUser` (in `application/out` of every module) is also there for the custom zone: any hook can
+inject it to ask who is running it or whether they have a role.
+
 ### An aggregate with operations has no generic update
 
 Once an aggregate has `CUSTOM` operations it changes only through them: the aggregate has no
 `update(...)`, its CRUD shows no **Edit** (it keeps create, view and delete), and the generic update
 use case — the REST `PUT` included — answers `409 Conflict` naming the operations to use. A generic
-update would overwrite the whole state and skip the rules the operations hold.
+update would overwrite the whole state and skip the rules the operations hold. Unless it is declared
+`editable` — see [Aggregates](/manual/aggregates/#editable-with-operations).
 
 For `QUERY` operations:
 

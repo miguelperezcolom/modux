@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.5.0"
+version = "0.6.0"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,11 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.0</h4>
+            <ul>
+              <li>Release aligned with modux-maven-plugin 0.6.0: workflows run on EventConductor (people's tasks with their forms, timeouts, exclusive splits), Mateu's page templates for query use cases (dashboard, to-do list, calendar, smart search, item overview), field stereotypes (rich text, HTML, Markdown), email and notifications.</li>
+              <li>Aggregates: an enforced lifecycle (initial state, operations guarded by their transitions), editable drafts with operations, read-only fields, and values the system supplies (current user, now, correlative numbers without gaps). The event-sourced history records who did each thing.</li>
+            </ul>
             <h4>0.5.0</h4>
             <ul>
               <li>Release aligned with modux-maven-plugin 0.5.0: calls to external systems, projections polled from an external operation or a legacy table, grouped queries for panels, and the identity provider as the system's login (a local Keycloak with its realm).</li>

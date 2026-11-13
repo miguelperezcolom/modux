@@ -6,7 +6,7 @@
 
     <groupId>io.mateu.modux</groupId>
     <artifactId>modux-maven-plugin</artifactId>
-    <version>0.6.0-SNAPSHOT</version>
+    <version>0.6.0</version>
     <packaging>maven-plugin</packaging>
     <name>Modux Maven Plugin</name>
     <description>Maven plugin for Modux model-driven code generation</description>
@@ -60,7 +60,7 @@
         <dependency>
             <groupId>io.mateu.modux</groupId>
             <artifactId>model-driven-generator</artifactId>
-            <version>0.6.0-SNAPSHOT</version>
+            <version>0.6.0</version>
         </dependency>
 
         <dependency>

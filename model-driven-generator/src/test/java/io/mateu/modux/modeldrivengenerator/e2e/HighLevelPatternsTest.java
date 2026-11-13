@@ -234,7 +234,7 @@ class HighLevelPatternsTest {
     void a_row_action_reads_the_row_runs_the_operation_and_saves() throws Exception {
         // no input model: the command is the row's id, and the steps are real calls, not hooks
         var useCase = read("ConfirmarAManoUseCase.java");
-        assertTrue(useCase.contains("compraRepository.findById(new CompraId(command.id()))"), useCase);
+        assertTrue(useCase.contains("compraRepository.findById(new CompraId(Long.valueOf(String.valueOf(command.id()))))"), useCase);
         assertTrue(useCase.contains("compraRepository.save(compra)"), useCase);
         assertTrue(read("CompraCrudOrchestrator.java").contains("confirmarAManoUseCase.handle(new ConfirmarAManoCommand(Long.valueOf(row.id())))"));
     }
@@ -277,6 +277,49 @@ class HighLevelPatternsTest {
         assertTrue(ficha.contains("extends ItemOverview"), ficha);
         assertTrue(ficha.contains("public FichaConciertoPage load(String id)"), ficha);
         assertTrue(ficha.contains("@Panel(title = \"Zonas\") Markdown zonasPanel;"), ficha);
+    }
+
+    @Test
+    void a_lifecycle_sets_the_initial_state_guards_each_operation_and_moves_the_state() throws Exception {
+        var compra = read("Compra.java");
+        // born in its initial state
+        assertTrue(compra.contains("p.estado = Estado.PENDIENTE;"), compra);
+        // an operation only from the states its transitions leave, and to where they go
+        assertTrue(compra.contains("if (!java.util.Set.of(\"PENDIENTE\").contains(stateBefore))"), compra);
+        assertTrue(compra.contains("\"No se puede confirmar en estado \" + stateBefore"), compra);
+        assertTrue(compra.contains("case \"PENDIENTE\" -> this.estado = Estado.CONFIRMADA;"), compra);
+        // editable with operations, but only in its editable states
+        assertTrue(compra.contains("public void update("), "editable: the generic edit stays: " + compra);
+        assertTrue(compra.contains("Compra no se puede modificar en estado "), compra);
+        assertFalse(read("CompraCrudOrchestrator.java").contains("public boolean canEdit()"));
+    }
+
+    @Test
+    void a_read_only_field_is_shown_read_only_and_the_generic_edit_keeps_it() throws Exception {
+        var viewModel = read("CompraViewModel.java");
+        assertTrue(viewModel.contains("@ReadOnly @io.mateu.uidl.annotations.Label(\"Estado\")"), viewModel);
+        var update = read("UpdateCompraUseCase.java");
+        assertTrue(update.contains("entity.getEstado()"), "the stored state, not the command's: " + update);
+        assertTrue(update.contains("entity.getLocalizador()"), update);
+        assertTrue(update.contains("command.cliente()"), update);
+    }
+
+    @Test
+    void a_system_value_is_filled_by_the_use_case_not_the_caller() throws Exception {
+        var useCase = read("ConfirmarAManoUseCase.java");
+        assertTrue(useCase.contains("Input(currentUser.username(), Math.toIntExact(sequences.next(\"Compra.localizador\")), java.time.LocalDateTime.now())"), useCase);
+        assertTrue(useCase.contains("CurrentUser currentUser;"), useCase);
+        assertTrue(useCase.contains("Sequences sequences;"), useCase);
+        // its invariants hold after the operation, before saving
+        assertTrue(useCase.contains("compraInvariants.check(new "), useCase);
+        // who is running it, over Spring Security; numbers without gaps, in the use case's transaction
+        assertTrue(read("SpringSecurityCurrentUser.java").contains("SecurityContextHolder.getContext().getAuthentication()"));
+        assertTrue(read("VentasJpaSequences.java").contains("@Transactional(propagation = Propagation.MANDATORY)"));
+        assertTrue(read("VentasSequenceRepository.java").contains("@Lock(LockModeType.PESSIMISTIC_WRITE)"));
+        // the event store records who did each thing
+        var appender = read("CompraEventAppender.java");
+        assertTrue(appender.contains("currentUser.username()"), appender);
+        assertTrue(read("CompraEventEntity.java").contains("@Column(name = \"payload\", columnDefinition = \"text\")"));
     }
 
     @Test

@@ -23,6 +23,7 @@ public class ${aggregate.name}EventAppender {
 
     private final ${aggregate.name}EventStore store;
     private final ObjectMapper objectMapper;
+    private final ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.out.CurrentUser currentUser;
 
     /** Append a domain event for the given aggregate id, assigning the next sequence number. */
     @SneakyThrows
@@ -37,7 +38,8 @@ public class ${aggregate.name}EventAppender {
                 nextSequence,
                 event.getClass().getSimpleName(),
                 objectMapper.writeValueAsString(event),
-                LocalDateTime.now());
+                LocalDateTime.now(),
+                currentUser.username());
         store.save(entity);
     }
 
@@ -54,7 +56,8 @@ public class ${aggregate.name}EventAppender {
                 nextSequence,
                 eventType,
                 objectMapper.writeValueAsString(payload),
-                LocalDateTime.now()));
+                LocalDateTime.now(),
+                currentUser.username()));
     }
 
     /** The ordered event stream for an aggregate id. */

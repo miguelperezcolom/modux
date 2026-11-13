@@ -143,6 +143,8 @@ mirror, refreshed every `modux.poll.interval` (one minute by default, `PT30S` st
 all the rows, upserts them by their `id` and drops the ones that are gone. Columns and JSON
 properties match the read model's fields by name, ignoring case and underscores
 (`aforo_maximo` is `aforoMaximo`). When the source is down it keeps what it has and tries again.
+The poller bean answers `lastSuccess()` (when the source last answered — the «data as of» a screen
+shows) and `lastError()`; the custom zone can inject it.
 
 | Source | How it reads | Where, from the environment |
 |---|---|---|

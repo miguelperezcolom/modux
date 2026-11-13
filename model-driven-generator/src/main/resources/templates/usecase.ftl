@@ -72,6 +72,13 @@ public class ${usecase.className}UseCase {
     final ${step.aggregate.name}Repository ${step.aggregate.name?uncap_first}Repository;
     </#if>
 </#if>
+<#if step.type == "SaveAggregate" && step.aggregate?? && (step.aggregate.invariants![])?has_content && (step.aggregateLoaded!false)>
+    <#if !addedFields?seq_contains(step.aggregate.name + "Invariants")>
+        <#assign addedFields = addedFields + [step.aggregate.name + "Invariants"]>
+    /** Its invariants hold after whatever the operations did, before it is saved. */
+    final ${project.packageName}.${module.slug}.domain.aggregates.${step.aggregate.name?lower_case}.${step.aggregate.name}Invariants ${step.aggregate.name?uncap_first}Invariants;
+    </#if>
+</#if>
 <#if step.type == "CallGateway" && step.gateway??>
     <#if !addedFields?seq_contains(step.gateway.className + "Gateway")>
         <#assign addedFields = addedFields + [step.gateway.className + "Gateway"]>
@@ -88,6 +95,14 @@ public class ${usecase.className}UseCase {
 </#if>
 <#if usecase.needsStreamBridge>
     final StreamOperations streamBridge;
+</#if>
+<#if usecase.usesSequences!false>
+    /** Correlative numbers (the operations' SEQUENCE fields). */
+    final ${project.packageName}.${module.slug}.application.out.Sequences sequences;
+</#if>
+<#if usecase.usesCurrentUser!false>
+    /** Who runs it: what the operations' «by whom» fields are filled with. */
+    final ${project.packageName}.${module.slug}.application.out.CurrentUser currentUser;
 </#if>
 <#list (usecase.steps![])?filter(s -> s.type == "CallRemoteUseCase") as step>
     final ${project.packageName}.${module.slug}.application.out.remote.${step.remote.className}Client ${step.remote.var}Client;
@@ -121,7 +136,7 @@ public class ${usecase.className}UseCase {
 <#list usecase.steps as step>
 <#if step.type == "ReadAggregate" && step.aggregate??>
         var ${step.aggregate.name?uncap_first} = ${step.aggregate.name?uncap_first}Repository
-                .findById(new ${step.aggregate.name}Id(<#if step.idField == "id">command.id()<#else>Long.valueOf(String.valueOf(command.${step.idField}()))</#if>))
+                .findById(new ${step.aggregate.name}Id(Long.valueOf(String.valueOf(command.${step.idField}()))))
                 .orElseThrow(() -> ${project.packageName}.application.BusinessRuleException.notFound(
                         "${step.aggregate.name} " + command.${step.idField}() + " no existe"));
 <#elseif step.type == "CallAggregateOperation" && step.aggregate??>
@@ -135,6 +150,9 @@ public class ${usecase.className}UseCase {
 <#elseif step.type == "SaveAggregate" && step.aggregate??>
 <#if !step.aggregateLoaded?? || !step.aggregateLoaded>
         ${step.aggregate.name} ${step.aggregate.name?uncap_first} = null; // TODO: build ${step.aggregate.name} from command + gateway results
+</#if>
+<#if (step.aggregate.invariants![])?has_content && (step.aggregateLoaded!false)>
+        ${step.aggregate.name?uncap_first}Invariants.check(new ${project.packageName}.${module.slug}.domain.aggregates.${step.aggregate.name?lower_case}.${step.aggregate.name}Context(${step.aggregate.name?uncap_first}));
 </#if>
         ${step.aggregate.name?uncap_first}Repository.save(${step.aggregate.name?uncap_first});
 <#elseif step.type == "CallGateway" && step.gateway??>
