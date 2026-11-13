@@ -1,0 +1,9 @@
+---
+id: "qs-crud-purchase"
+name: "PurchaseQueries"
+boundedContextId: "bc-sales"
+operations:
+- id: "qs-crud-purchase-list"
+  name: "list"
+  cardinality: "Page"
+projectId: "tickets"

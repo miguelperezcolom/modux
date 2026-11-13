@@ -1,0 +1,7 @@
+---
+id: "role-customer"
+name: "CUSTOMER"
+allowedUseCaseIds:
+- "uc-buy"
+- "uc-cancelPurchase"
+projectId: "tickets"

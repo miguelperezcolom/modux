@@ -1,0 +1,20 @@
+---
+id: "m-charge"
+name: "Charge"
+fields:
+- id: "f-m-charge-purchaseId"
+  name: "purchaseId"
+  basicType: true
+  type: "string"
+  label: "Purchase"
+- id: "f-m-charge-amount"
+  name: "amount"
+  basicType: true
+  type: "money"
+  label: "Amount"
+- id: "f-m-charge-card"
+  name: "card"
+  basicType: true
+  type: "string"
+  label: "Card"
+projectId: "tickets"

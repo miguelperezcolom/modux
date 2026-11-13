@@ -1,0 +1,26 @@
+---
+id: "m-purchase-in-progress"
+name: "PurchaseInProgress"
+fields:
+- id: "f-m-purchase-in-progress-purchaseId"
+  name: "purchaseId"
+  basicType: true
+  type: "string"
+  label: "Purchase"
+- id: "f-m-purchase-in-progress-amount"
+  name: "amount"
+  basicType: true
+  type: "money"
+  label: "Amount"
+- id: "f-m-purchase-in-progress-receipt"
+  name: "receipt"
+  basicType: true
+  type: "string"
+  label: "Receipt"
+  stereotype: "html"
+- id: "f-m-purchase-in-progress-zones"
+  name: "zones"
+  type: "array"
+  modelId: "m-zone"
+  label: "Venue zones"
+projectId: "tickets"

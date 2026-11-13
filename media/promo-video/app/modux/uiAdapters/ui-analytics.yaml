@@ -1,0 +1,13 @@
+---
+id: "ui-analytics"
+name: "Analytics"
+serviceId: "svc-analytics"
+title: "Analytics"
+path: "/analytics"
+menuItems:
+- label: "Sales dashboard"
+  id: "ui-analytics-0"
+  queryServiceId: "qs-dashboard"
+  queryOperationId: "qs-dashboard-purchases"
+appType: "APP"
+projectId: "tickets"

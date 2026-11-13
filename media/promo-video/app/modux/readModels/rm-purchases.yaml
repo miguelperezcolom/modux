@@ -1,0 +1,7 @@
+---
+id: "rm-purchases"
+name: "PurchaseView"
+boundedContextId: "bc-analytics"
+modelId: "model-purchase"
+aggregateId: "purchase"
+projectId: "tickets"

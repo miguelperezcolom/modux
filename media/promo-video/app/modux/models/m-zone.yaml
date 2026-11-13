@@ -1,0 +1,15 @@
+---
+id: "m-zone"
+name: "Zone"
+fields:
+- id: "f-m-zone-name"
+  name: "name"
+  basicType: true
+  type: "string"
+  label: "Name"
+- id: "f-m-zone-price"
+  name: "price"
+  basicType: true
+  type: "money"
+  label: "Price"
+projectId: "tickets"

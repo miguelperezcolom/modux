@@ -1,0 +1,15 @@
+---
+id: "ui-payments"
+name: "Payments"
+serviceId: "svc-payments"
+title: "Payments"
+path: "/payments"
+menuItems:
+- label: "Payments"
+  id: "ui-payments-0"
+  aggregateId: "payment"
+- label: "Gateway transactions"
+  id: "ui-payments-1"
+  queryServiceId: "qs-transactions"
+appType: "APP"
+projectId: "tickets"

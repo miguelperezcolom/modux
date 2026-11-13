@@ -1,0 +1,13 @@
+---
+id: "m-close"
+name: "CloseSaleInput"
+fields:
+- id: "f-m-close-concertId"
+  name: "concertId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-close-concertId"
+    type: "NotEmpty"
+  label: "Concert"
+projectId: "tickets"

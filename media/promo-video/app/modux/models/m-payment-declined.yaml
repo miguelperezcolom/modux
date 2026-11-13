@@ -1,0 +1,15 @@
+---
+id: "m-payment-declined"
+name: "PaymentDeclined"
+fields:
+- id: "f-m-payment-declined-purchaseId"
+  name: "purchaseId"
+  basicType: true
+  type: "string"
+  label: "Purchase"
+- id: "f-m-payment-declined-reason"
+  name: "reason"
+  basicType: true
+  type: "string"
+  label: "Reason"
+projectId: "tickets"

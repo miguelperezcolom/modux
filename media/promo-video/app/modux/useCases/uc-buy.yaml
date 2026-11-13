@@ -1,0 +1,28 @@
+---
+id: "uc-buy"
+name: "Buy"
+exposedAsUi: true
+inputModelId: "m-buy"
+outputModelId: "m-purchase-in-progress"
+steps:
+- id: "step-call-uc-lookupPrice"
+  name: "callLookupPrice"
+  type: "CallUseCase"
+  useCaseId: "uc-lookupPrice"
+- id: "step-buy"
+  name: "buy"
+  type: "Custom"
+  intent: "With the current price Catalog gives (lookupPrice): rejects if tickets\
+    \ is not between 1 and 6, if the concert is not ON_SALE or if it asks for more\
+    \ than are available («Only N tickets left»); available = capacity of ConcertView\
+    \ minus the tickets of that concert's purchases that are neither REJECTED nor\
+    \ CANCELLED. Otherwise creates the PENDING purchase with amount = price × tickets\
+    \ and returns PurchasePlaced."
+- id: "step-pub-ev-purchase-placed"
+  name: "publishPurchasePlaced"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-purchase-placed"
+allowedRoles:
+- "CUSTOMER"
+title: "Buy tickets"
+projectId: "tickets"

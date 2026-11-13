@@ -1,0 +1,11 @@
+node_modules/
+build/
+*.log
+*.log.mbtree
+**/target/
+# the generated system is not versioned — except its custom zones: the business logic,
+# written by mvn modux:ai-complete and touched up by hand, is the code that is ours
+app/system/*
+!app/system/*/
+app/system/*/*
+!app/system/*/*-custom/

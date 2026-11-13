@@ -1,0 +1,17 @@
+---
+id: "uc-salesDashboard"
+name: "SalesDashboard"
+exposedAsUi: true
+outputModelId: "m-sales-dashboard"
+steps:
+- id: "step-SalesDashboard"
+  name: "lookup"
+  type: "Custom"
+  intent: "Reads the concerts."
+title: "Sales dashboard"
+projectId: "tickets"
+pageTemplate: "DASHBOARD"
+templateFields:
+  items: "concerts"
+  chartLabel: "artist"
+  chartValue: "sold"

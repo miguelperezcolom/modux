@@ -1,0 +1,9 @@
+---
+id: "qs-crud-concert"
+name: "ConcertQueries"
+boundedContextId: "bc-catalog"
+operations:
+- id: "qs-crud-concert-list"
+  name: "list"
+  cardinality: "Page"
+projectId: "tickets"

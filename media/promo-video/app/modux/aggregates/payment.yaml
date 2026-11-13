@@ -1,0 +1,6 @@
+---
+id: "payment"
+name: "Payment"
+modelId: "model-payment"
+title: "Payments"
+projectId: "tickets"

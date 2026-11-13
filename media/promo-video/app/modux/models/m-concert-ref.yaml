@@ -1,0 +1,10 @@
+---
+id: "m-concert-ref"
+name: "ConcertRef"
+fields:
+- id: "f-m-concert-ref-id"
+  name: "id"
+  basicType: true
+  type: "string"
+  label: "Concert"
+projectId: "tickets"

@@ -1,0 +1,15 @@
+---
+id: "uc-searchConcerts"
+name: "SearchConcerts"
+exposedAsUi: true
+inputModelId: "m-concert-filter"
+outputModelId: "m-listings"
+steps:
+- id: "step-SearchConcerts"
+  name: "lookup"
+  type: "Custom"
+  intent: "Reads the concerts."
+title: "Search concerts"
+projectId: "tickets"
+pageTemplate: "SMART_SEARCH"
+itemUseCaseId: "uc-concertDetails"

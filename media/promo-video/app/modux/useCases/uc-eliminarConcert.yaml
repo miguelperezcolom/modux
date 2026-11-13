@@ -1,0 +1,15 @@
+---
+id: "uc-eliminarConcert"
+name: "RemoveConcert"
+steps:
+- id: "step-delete"
+  name: "deleteConcert"
+  type: "Custom"
+  aggregateId: "concert"
+- id: "step-publish-ev-concertDeleted"
+  name: "publishConcertDeleted"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-concertDeleted"
+allowedRoles:
+- "PROMOTER"
+projectId: "tickets"

@@ -1,0 +1,8 @@
+---
+id: "enum-payment"
+values:
+- id: "ACCEPTED"
+  name: "ACCEPTED"
+- id: "DECLINED"
+  name: "DECLINED"
+projectId: "tickets"

@@ -1,0 +1,60 @@
+---
+id: "model-concert"
+name: "Concert"
+fields:
+- id: "f-model-concert-artist"
+  name: "artist"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-concert-artist"
+    type: "NotEmpty"
+  label: "Artist"
+- id: "f-model-concert-venue"
+  name: "venue"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-concert-venue"
+    type: "NotEmpty"
+  label: "Venue"
+- id: "f-model-concert-date"
+  name: "date"
+  basicType: true
+  type: "date"
+  validations:
+  - id: "v-f-model-concert-date"
+    type: "NotNull"
+  label: "Date"
+- id: "f-model-concert-capacity"
+  name: "capacity"
+  basicType: true
+  type: "integer"
+  validations:
+  - id: "v-f-model-concert-capacity"
+    type: "NotNull"
+  label: "Capacity"
+- id: "f-model-concert-price"
+  name: "price"
+  basicType: true
+  type: "money"
+  validations:
+  - id: "v-f-model-concert-price"
+    type: "NotNull"
+  label: "Price"
+- id: "f-model-concert-status"
+  name: "status"
+  enumId: "enum-concert"
+  label: "Status"
+- id: "f-model-concert-zones"
+  name: "zones"
+  type: "array"
+  modelId: "m-zone"
+  label: "Zones"
+- id: "f-model-concert-description"
+  name: "description"
+  basicType: true
+  type: "string"
+  label: "Description"
+  stereotype: "richText"
+projectId: "tickets"

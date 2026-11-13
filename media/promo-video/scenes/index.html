@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>modux promo — scenes</title>
+<!--
+  The whole main timeline as one deterministic page: window.render(t) draws the frame at t seconds.
+  Nothing animates on its own (no CSS transitions or animations), so rendering frame by frame
+  (scripts/render-animated.mjs) gives the same video every time.
+  Screens are REAL captures (scripts/capture-real.mjs, capture-editor.mjs); terminal lines and counts
+  are REAL output (scripts/capture-terminal.sh); the code is the real files in app/. The camera,
+  cursor, highlights and callouts are drawn over them here. Data arrives as window.DATA.
+-->
+<style>
+  @font-face { font-family: 'Inter'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 100 800; src: url('../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); }
+  :root {
+    --bg0: #0b0a14; --ink: #eeecf7; --muted: #8f8ab0; --faint: #5b5680; --line: #2a2650;
+    --violet: #a78bfa; --violet2: #7c5cf0; --azure: #4cb2ff; --amber: #f6b23c; --good: #39d98a; --pink: #ff7597;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg0); }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; font-family: 'Inter', sans-serif; color: var(--ink);
+    background: radial-gradient(1400px 900px at 50% 38%, #1d1844 0%, #12102a 55%, var(--bg0) 100%); }
+  .abs { position: absolute; }
+  .layer { position: absolute; inset: 0; }
+  .headline { position: absolute; left: 0; right: 0; text-align: center; font-weight: 750; letter-spacing: -0.02em; }
+  .kicker { position: absolute; left: 0; right: 0; text-align: center; font-size: 22px; font-weight: 650; letter-spacing: .18em; text-transform: uppercase; color: var(--violet); }
+  .caption { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); white-space: nowrap; font-size: 38px; font-weight: 650;
+    padding: 16px 34px; border-radius: 18px; background: rgba(11, 10, 20, .86); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 16px 50px rgba(0,0,0,.45); }
+  .win { position: absolute; border-radius: 16px; overflow: hidden; background: #110f24; border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.4); }
+  .win .bar { position: absolute; left: 0; right: 0; top: 0; height: 40px; background: #1a1733; display: flex; align-items: center; padding-left: 18px; gap: 9px; }
+  .win .bar i { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
+  .win .bar .title { position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; color: var(--muted); font-weight: 500; }
+  .win .vp { position: absolute; left: 0; right: 0; top: 40px; bottom: 0; overflow: hidden; }
+  .code { position: absolute; font-family: 'JetBrains Mono', monospace; white-space: pre; color: #e2e0f0; }
+  .ln { color: #4d4870; display: inline-block; width: 40px; text-align: right; margin-right: 20px; }
+  .k { color: #c4b5fd; } .s { color: #a7f3d0; } .c { color: #6b6690; font-style: italic; } .p { color: #fbbf24; } .kw { color: #ff9ac1; } .ty { color: #7dd3fc; }
+  .term { position: absolute; font-family: 'JetBrains Mono', monospace; white-space: pre; color: #cfcbe6; }
+  .ok { color: var(--good); } .warn { color: var(--amber); } .dim { color: #6b6690; } .prompt { color: var(--azure); }
+  .cursor { position: absolute; width: 34px; height: 34px; filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+  .callout { position: absolute; white-space: nowrap; font-size: 30px; font-weight: 700; padding: 12px 22px; border-radius: 14px; color: #fff; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
+  .hl { position: absolute; border-radius: 10px; }
+  .chip { position: absolute; white-space: nowrap; border-radius: 999px; font-weight: 600; }
+  .tag { position: absolute; font-size: 19px; font-weight: 650; letter-spacing: .04em; padding: 7px 14px; border-radius: 10px; white-space: nowrap; }
+  .num { font-family: 'JetBrains Mono', monospace; font-weight: 750; letter-spacing: -0.02em; }
+  #shots img, #edcam img { position: absolute; left: 0; top: 0; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="L1" class="layer"></div>   <!-- spec / plumbing -->
+  <div id="L3" class="layer"></div>   <!-- model -->
+  <div id="edwin" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="title" id="edtitle"></span></div>
+    <div class="vp" style="background:#f7f7fb"><div id="edcam" class="abs"><img id="edimg"></div></div></div>
+  <div id="L3b" class="layer"></div>  <!-- the YAML over the editor -->
+  <div id="L4" class="layer"></div>   <!-- generate, zones, deploy, change -->
+  <div id="browser" class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="title" id="brtitle"></span></div>
+    <div class="vp" id="brvp" style="background:#fff"><div id="shots" class="abs"></div></div></div>
+  <div id="over" class="layer"></div> <!-- cursor, highlights, callouts over the browser -->
+  <div id="L9" class="layer"></div>   <!-- outro -->
+  <div id="cap" class="caption"></div>
+</div>
+<script>
+const D = window.DATA, S = D.strings;
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, p) => a + (b - a) * p;
+const eio = (p) => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const eout = (p) => 1 - Math.pow(1 - p, 3);
+const back = (p) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };
+/** Opacity of something shown from a to b, fading in over fi and out over fo. */
+const vis = (t, a, b, fi = .35, fo = .35) => Math.min(seg(t, a, a + fi), 1 - seg(t, b - fo, b));
+const css = (el, o) => { for (const k in o) el.style[k] = o[k]; return el; };
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+const W = 1920, H = 1080;
+
+/* ---------- the timeline (seconds) ---------- */
+const T = { spec: [0, 9], plumb: [9, 17.5], model: [17.5, 31], gen: [31, 42.5], zones: [42.5, 54.5], deploy: [54.5, 61.5],
+  run: [61.5, 90.5], change: [90.5, 101.5], outro: [101.5, 108.5] };
+window.DURATION = T.outro[1];
+
+/* ---------- syntax colouring ---------- */
+function hlYaml(line) {
+  if (/^\s*#/.test(line)) return `<span class="c">${esc(line)}</span>`;
+  const m = line.match(/^(\s*-?\s*)([A-Za-z_][\w-]*)(:)(.*)$/);
+  if (!m) return esc(line).replace(/(&quot;[^&]*&quot;|"[^"]*")/g, '<span class="s">$1</span>');
+  const rest = esc(m[4]).replace(/("[^"]*")/g, '<span class="s">$1</span>');
+  return `${esc(m[1])}<span class="k">${m[2]}</span>${m[3]}${rest}`;
+}
+const JAVA_TOKENS = /("(?:[^"\\]|\\.)*")|(@\w+)|\b(public|private|final|class|interface|implements|void|if|else|return|new|throw|boolean|null|static|this)\b|\b([A-Z][A-Za-z0-9]+)\b/g;
+function hlJava(line) {
+  const t = line.trimStart();
+  if (t.startsWith('/**') || t.startsWith('*') || t.startsWith('//') || t.startsWith('*/')) return `<span class="c">${esc(line)}</span>`;
+  let out = '', last = 0, m;
+  JAVA_TOKENS.lastIndex = 0;
+  while ((m = JAVA_TOKENS.exec(line))) {
+    out += esc(line.slice(last, m.index));
+    const cls = m[1] ? 's' : m[2] ? 'p' : m[3] ? 'kw' : 'ty';
+    out += `<span class="${cls}">${esc(m[0])}</span>`;
+    last = m.index + m[0].length;
+  }
+  return out + esc(line.slice(last));
+}
+function codeBlock(src, hl, { size = 20, lh = 30, shown = Infinity, numbers = true, emph = () => false, top = 0 } = {}) {
+  return src.split('\n').map((l, i) => {
+    const a = clamp(shown - i);
+    const bg = emph(l, i) ? 'background:rgba(167,139,250,.18);' : '';
+    return `<div style="height:${lh}px;opacity:${a};${bg}">${numbers ? `<span class="ln">${i + 1}</span>` : ''}${hl(l)}</div>`;
+  }).join('');
+}
+function bar(title) { return `<div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="title">${esc(title)}</span></div>`; }
+/** A terminal: a typed command, then its real output line by line. */
+function terminal(cmd, outLines, t, t0, { size = 22, lh = 34, perLine = .22, typing = .9 } = {}) {
+  const typed = Math.floor(cmd.length * seg(t, t0, t0 + typing));
+  const caret = t < t0 + typing + .2 && Math.floor(t * 2.5) % 2 === 0 ? '▌' : '';
+  const rows = [`<span class="prompt">$</span> ${esc(cmd.slice(0, typed))}${caret}`];
+  outLines.forEach((l, i) => {
+    if (t < t0 + typing + .25 + i * perLine) return;
+    const cls = /BUILD SUCCESS|compiles|0 error/.test(l) ? 'ok' : /\[WARNING\]/.test(l) ? 'warn' : /Total time/.test(l) ? 'dim' : '';
+    const text = l.replace(/^\[INFO\] /, '').replace(/^Modux: /, '');
+    rows.push(`<span class="${cls}">${esc(text)}</span>`);
+  });
+  return rows.map((r) => `<div style="height:${lh}px;font-size:${size}px">${r}</div>`).join('');
+}
+
+/* ---------- 1–2: the spec and the plumbing ---------- */
+function specAndPlumbing(t) {
+  const [a, b] = T.spec, [c, d] = T.plumb;
+  if (t > d) return '';
+  const rules = S['spec.rules'];
+  // the card: centred in the spec; in the plumbing it shrinks into the middle, ringed by the chips
+  const shrink = eio(seg(t, c, c + .9));
+  const cardW = 1100, cardH = 120 + rules.length * 78;
+  const cx = W / 2, cy = lerp(600, 540, shrink), sc = lerp(1, .52, shrink);
+  const cardOp = Math.min(seg(t, a + 1.1, a + 1.6), 1 - seg(t, d - .5, d));
+  const rulesHtml = rules.map((r, i) => {
+    const p = seg(t, a + 1.8 + i * .75, a + 2.3 + i * .75);
+    return `<div style="display:flex;align-items:center;gap:22px;height:78px;opacity:${p};transform:translateX(${lerp(-24, 0, eout(p))}px)">
+      <svg width="34" height="34" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="rgba(167,139,250,.18)" stroke="#a78bfa" stroke-width="1.5"/>
+      <path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#c4b5fd" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="20" stroke-dashoffset="${20 * (1 - seg(t, a + 2.1 + i * .75, a + 2.5 + i * .75))}"/></svg>
+      <span style="font-size:34px;font-weight:550">${esc(r)}</span></div>`;
+  }).join('');
+  const head = vis(t, a + .2, c + .4, .5, .4);
+  let html = `
+    <div class="kicker" style="top:120px;opacity:${head}">${esc(S['spec.kicker'])}</div>
+    <div class="headline" style="top:165px;font-size:76px;opacity:${head};transform:translateY(${lerp(20, 0, eout(seg(t, a + .2, a + .8)))}px)">${esc(S['spec.headline'])}</div>
+    <div class="abs" style="left:${cx - cardW / 2}px;top:${cy - cardH / 2}px;width:${cardW}px;height:${cardH}px;opacity:${cardOp};transform:scale(${sc});transform-origin:50% 50%;
+      border-radius:24px;background:linear-gradient(180deg,#221d4a,#17142f);border:1px solid rgba(167,139,250,.35);box-shadow:0 30px 90px rgba(0,0,0,.55), 0 0 60px rgba(124,92,240,${.25 * shrink});padding:60px 70px">${rulesHtml}</div>`;
+  // the chips, in a ring of rows above and below the card
+  if (t > c) {
+    const chips = S['chips.plumbing'];
+    const rows = [[0, 5], [5, 9], [9, 13], [13, chips.length]];
+    const ys = [215, 290, 745, 820];
+    rows.forEach(([i0, i1], r) => {
+      const n = i1 - i0, gap = 18;
+      const widths = chips.slice(i0, i1).map((s) => s.length * 15.5 + 52);
+      const total = widths.reduce((x, y) => x + y, 0) + gap * (n - 1);
+      let x = W / 2 - total / 2;
+      for (let i = i0; i < i1; i++) {
+        const p = seg(t, c + .9 + i * .2, c + 1.25 + i * .2), w = widths[i - i0];
+        const out = 1 - seg(t, d - .5, d);
+        html += `<div class="chip" style="left:${x}px;top:${ys[r]}px;width:${w}px;text-align:center;font-size:25px;padding:12px 0;
+          border:2px solid rgba(255,117,151,.85);background:rgba(255,117,151,.16);color:#ffe4ec;opacity:${p * out};transform:scale(${lerp(.6, 1, back(p))})">${esc(chips[i])}</div>`;
+        x += w + gap;
+      }
+    });
+    const hp = vis(t, c + .5, d, .5, .5);
+    html += `<div class="headline" style="top:120px;font-size:64px;opacity:${hp}">${esc(S['plumbing.headline'])}</div>`;
+    html += `<div class="abs" style="left:${W / 2 - 200}px;top:${cy - cardH * sc / 2 - 36}px;width:400px;text-align:center;font-size:20px;font-weight:700;letter-spacing:.16em;color:var(--violet);opacity:${shrink * (1 - seg(t, d - .5, d))}">THE BUSINESS</div>`;
+  }
+  return html;
+}
+
+/* ---------- 3: the model ---------- */
+const ED = D.editor;
+const edNodes = ED ? Object.values(ED.nodes) : [];
+const band = edNodes.length ? { x0: 20, x1: 1900, y0: Math.min(...edNodes.map((n) => n.y)) - 14, y1: Math.max(...edNodes.map((n) => n.y + n.h)) + 75 } : { x0: 0, x1: 1920, y0: 0, y1: 1080 };
+const EW = { x: 80, y: 150, w: 1760, h: 640 };
+$('edimg').src = '../build/real/editor-map.png';
+css($('edimg'), { width: '1920px', height: '1080px' });
+$('edtitle').textContent = S['model.editor'];
+function model(t) {
+  const [a, b] = T.model;
+  const on = vis(t, a, b, .5, .5);
+  const ed = $('edwin');
+  if (on <= 0) { ed.style.opacity = 0; return ''; }
+  const slide = eout(seg(t, a, a + .7));
+  const dim = seg(t, a + 7, a + 7.6);
+  css(ed, { left: EW.x + 'px', top: lerp(EW.y + 40, EW.y, slide) + 'px', width: EW.w + 'px', height: EW.h + 'px',
+    opacity: on, filter: `brightness(${lerp(1, .55, dim)})`, transform: `scale(${lerp(1, .94, dim)})`, transformOrigin: '30% 30%' });
+  // camera: the whole band, then along it from the people on the left to the gateway on the right
+  const vw = EW.w, vh = EW.h - 40;
+  const bh = band.y1 - band.y0;
+  const k = vh / bh;                         // the band fills the window's height; the camera travels along it
+  const p = eio(seg(t, a + .9, a + 7));
+  const visW = vw / k;
+  const cx = lerp(band.x0 + visW / 2, band.x1 - visW / 2, p);
+  const cy = (band.y0 + band.y1) / 2;
+  $('edcam').style.transform = `translate(${vw / 2 - cx * k}px, ${vh / 2 - cy * k}px) scale(${k})`;
+  $('edcam').style.transformOrigin = '0 0';
+  // the YAML slides in over the editor
+  const y = seg(t, a + 6.8, a + 7.6);
+  if (y <= 0) return '';
+  const src = D.yaml.split('\n').slice(0, 26).join('\n');
+  const emph = (l) => /persistenceType|name: "(confirm|reject|cancel)"|intent:/.test(l);
+  return `<div class="win" style="left:${lerp(1920, 560, eout(y))}px;top:110px;width:1300px;height:790px;opacity:${on}">${bar(S['model.file'])}
+    <div class="vp" style="background:#0e0c1f"><div class="code" style="left:26px;top:22px;font-size:21px">${codeBlock(src, hlYaml, { lh: 28, emph })}</div></div></div>`;
+}
+
+/* ---------- 4: generate ---------- */
+function generate(t) {
+  const [a, b] = T.gen;
+  const on = vis(t, a, b, .4, .5);
+  if (on <= 0) return '';
+  const C = D.counts;
+  const term = `<div class="win" style="left:80px;top:90px;width:1000px;height:330px;opacity:${on}">${bar('tickets — zsh')}
+    <div class="vp" style="background:#0e0c1f"><div class="term" style="left:26px;top:20px">${terminal('mvn modux:generate', D.out.generate, t, a + .3, { size: 21, lh: 33 })}</div></div></div>`;
+  const cp = seg(t, a + 2.6, a + 5.4);
+  const count = (v) => fmt(v * eout(cp));
+  const block = (x, n, label, color, delay) => {
+    const p = seg(t, a + 2.3 + delay, a + 2.8 + delay);
+    return `<div class="abs" style="left:${x}px;top:470px;width:520px;text-align:center;opacity:${p * on};transform:translateY(${lerp(20, 0, eout(p))}px)">
+      <div class="num" style="font-size:120px;color:${color}">${n}</div><div style="font-size:30px;color:var(--muted);font-weight:600;margin-top:-6px">${esc(label)}</div></div>`;
+  };
+  const arrowP = seg(t, a + 3, a + 3.6);
+  let html = term + block(130, count(C.modelLines), S['generate.model'], '#c4b5fd', 0)
+    + `<div class="abs" style="left:660px;top:510px;font-size:90px;color:var(--violet);opacity:${arrowP * on}">→</div>`
+    + block(760, count(C.files), S['generate.files'], '#7dd3fc', .4)
+    + block(1300, count(C.lines), S['generate.lines'], '#39d98a', .6);
+  // what those files are
+  const parts = S['generate.parts'];
+  const widths = parts.map((s) => s.length * 14 + 60);
+  const total = widths.reduce((x, y) => x + y, 0) + 16 * (parts.length - 1);
+  let x = W / 2 - total / 2;
+  parts.forEach((s, i) => {
+    const p = seg(t, a + 5.4 + i * .18, a + 5.8 + i * .18);
+    html += `<div class="chip" style="left:${x}px;top:760px;width:${widths[i]}px;text-align:center;font-size:24px;padding:11px 0;border:2px solid rgba(57,217,138,.8);
+      background:rgba(57,217,138,.14);color:#d9fbe9;opacity:${p * on};transform:scale(${lerp(.6, 1, back(p))})">✓ ${esc(s)}</div>`;
+    x += widths[i] + 16;
+  });
+  const np = vis(t, a + 7.2, b, .5, .5);
+  html += `<div class="headline" style="top:850px;font-size:30px;font-weight:550;color:var(--muted);opacity:${np}">${esc(S['generate.note'])}</div>`;
+  // the terminal's own corner: a sidecar card with the hooks count
+  return html;
+}
+
+/* ---------- 5: two zones ---------- */
+function zones(t) {
+  const [a, b] = T.zones;
+  const on = vis(t, a, b, .4, .5);
+  if (on <= 0) return '';
+  const term = `<div class="win" style="left:80px;top:50px;width:1760px;height:240px;opacity:${on}">${bar('tickets — zsh')}
+    <div class="vp" style="background:#0e0c1f"><div class="term" style="left:26px;top:16px">${terminal('mvn modux:ai-complete', D.out.aicomplete.slice(-6), t, a + 1.6, { size: 19, lh: 28, perLine: .35 })}</div></div></div>`;
+  const note = `<div class="abs" style="left:880px;width:960px;top:302px;text-align:right;font-size:20px;font-weight:600;color:#c4b5fd;opacity:${on * seg(t, a + 3.2, a + 3.7)}">✦ ${esc(S['zones.ai'])}</div>`;
+  const left = `<div class="win" style="left:80px;top:340px;width:760px;height:560px;opacity:${on};border-color:rgba(255,255,255,.18)">${bar('ChargeSteps.java')}
+    <div class="vp" style="background:#0e0c1f"><div class="code" style="left:18px;top:18px;font-size:15.5px">${codeBlock(D.steps, hlJava, { lh: 25, numbers: false })}</div></div></div>
+    <div class="tag" style="left:80px;top:${910}px;background:rgba(255,255,255,.08);color:#cfcbe6;opacity:${on}">⟳ ${esc(S['zones.generated'])}</div>`;
+  // the hook is written line by line once ai-complete reports it
+  const body = D.hook.split('\n');
+  const startWrite = a + 3.4, perLine = 4.6 / body.length;
+  const shown = (t - startWrite) / perLine;
+  const scroll = Math.max(0, Math.min(shown, body.length) - 19) * 24;
+  const right = `<div class="win" style="left:880px;top:340px;width:960px;height:560px;opacity:${on};border:2px solid rgba(167,139,250,.75);box-shadow:0 40px 120px rgba(0,0,0,.6),0 0 50px rgba(124,92,240,.25)">${bar('DefaultChargeSteps.java · payments-custom')}
+    <div class="vp" style="background:#100d24"><div class="code" style="left:18px;top:${18 - scroll}px;font-size:15.5px">${codeBlock(D.hook, hlJava, { lh: 24, numbers: false, shown })}</div></div></div>
+    <div class="tag" style="left:880px;top:910px;background:rgba(167,139,250,.2);color:#e3dbff;opacity:${on}">✎ ${esc(S['zones.custom'])}</div>`;
+  return term + note + left + right;
+}
+
+/* ---------- 6: deploy ---------- */
+function deploy(t) {
+  const [a, b] = T.deploy;
+  const on = vis(t, a, b, .4, .5);
+  if (on <= 0) return '';
+  const term = `<div class="win" style="left:80px;top:110px;width:980px;height:560px;opacity:${on}">${bar('tickets — zsh')}
+    <div class="vp" style="background:#0e0c1f"><div class="term" style="left:26px;top:20px">${terminal('mvn modux:deploy', D.out.deploy, t, a + .3, { size: 22, lh: 36, perLine: .3 })}</div></div></div>`;
+  const boxes = [['postgres', 'PostgreSQL'], ['kafka', 'Kafka'], ['mailpit', 'Mail (Mailpit)'], ['gateway', 'API gateway'], ['catalog', 'catalog'],
+    ['sales', 'sales'], ['payments', 'payments'], ['analytics', 'analytics'], ['tickets', 'shell (UI)']];
+  let html = term;
+  boxes.forEach(([, label], i) => {
+    const p = seg(t, a + 1.4 + i * .32, a + 1.8 + i * .32);
+    const svc = i >= 4 && i <= 7;
+    html += `<div class="abs" style="left:1120px;top:${118 + i * 62}px;width:700px;height:50px;border-radius:12px;display:flex;align-items:center;gap:16px;padding:0 20px;
+      background:${svc ? 'rgba(167,139,250,.14)' : 'rgba(255,255,255,.06)'};border:1px solid ${svc ? 'rgba(167,139,250,.5)' : 'rgba(255,255,255,.14)'};opacity:${p * on};transform:translateX(${lerp(30, 0, eout(p))}px)">
+      <span style="width:14px;height:14px;border-radius:50%;background:${p >= 1 ? '#39d98a' : '#f6b23c'};box-shadow:0 0 12px ${p >= 1 ? '#39d98a' : '#f6b23c'}"></span>
+      <span style="font-size:25px;font-weight:600">${esc(label)}</span><span style="margin-left:auto;font-size:19px;color:var(--muted);font-family:'JetBrains Mono',monospace">${p >= 1 ? 'running' : 'starting'}</span></div>`;
+  });
+  return html;
+}
+
+/* ---------- 7: the running system ---------- */
+const B = D.boxes || {};
+const SH = [
+  // name, from, to, window title
+  ['concert-form', 0, 2.6, 'localhost:8088 · Tickets'], ['concert-saved', 2.6, 4.6, 'localhost:8088 · Tickets'],
+  ['buy-form', 4.6, 7.2, 'localhost:8088 · Tickets'], ['buy-done', 7.2, 9.4, 'localhost:8088 · Tickets'],
+  ['purchases-pending', 9.4, 11.8, 'localhost:8088 · Tickets'], ['purchases-final', 11.8, 15.6, 'localhost:8088 · Tickets'],
+  ['history', 15.6, 19.6, 'localhost:8088 · Tickets'], ['email', 19.6, 23.6, 'localhost:8025 · Mailpit'], ['dashboard', 23.6, 29, 'localhost:8088 · Tickets'],
+];
+const BR = { x: 115, y: 40, w: 1690, h: 991 };     // the browser window; its viewport is 1690 x 951
+const BK = BR.w / 1600;                              // screenshot CSS px → screen px
+const shotEls = {};
+for (const [name] of SH) { const img = document.createElement('img'); img.src = `../build/real/${name}.png`; css(img, { width: '1600px', height: '900px', opacity: 0 }); $('shots').appendChild(img); shotEls[name] = img; }
+css($('browser'), { left: BR.x + 'px', top: BR.y + 'px', width: BR.w + 'px', height: BR.h + 'px' });
+const toScr = (b, cam) => ({ x: BR.x + (b.x - cam.cx) * cam.k + BR.w / 2, y: BR.y + 40 + (b.y - cam.cy) * cam.k + (BR.h - 40) / 2, w: b.w * cam.k, h: b.h * cam.k });
+function cursorSvg(x, y, o) { return `<svg class="cursor" style="left:${x}px;top:${y}px;opacity:${o}" viewBox="0 0 24 24"><path d="M4 2l15 11-7 1.4L8.6 21z" fill="#fff" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/></svg>`; }
+function callout(text, x, y, color, o, align = 'left') {
+  return `<div class="callout" style="left:${x}px;top:${y}px;background:${color};opacity:${o};transform:translate(${align === 'right' ? '-100%' : align === 'center' ? '-50%' : '0'}, ${lerp(10, 0, eout(o))}px)">${esc(text)}</div>`;
+}
+function run(t) {
+  const [a, b] = T.run;
+  const br = $('browser');
+  const on = vis(t, a, b, .5, .5);
+  if (on <= 0) { br.style.opacity = 0; return ''; }
+  const r = t - a;
+  css(br, { opacity: on, transform: `translateY(${lerp(30, 0, eout(seg(t, a, a + .6)))}px)` });
+  let cur = SH[0];
+  for (const s of SH) { const fade = seg(r, s[1] - .25, s[1] + .1); shotEls[s[0]].style.opacity = s === SH[0] ? 1 : fade; if (r >= s[1]) cur = s; }
+  // later screens cover earlier ones: hide the ones two steps back so only a crossfade pair shows
+  SH.forEach((s, i) => { const idx = SH.indexOf(cur); if (i < idx - 1 || i > idx) shotEls[s[0]].style.opacity = i > idx ? 0 : shotEls[s[0]].style.opacity; });
+  $('brtitle').textContent = cur[3];
+  // camera: a gentle push on each screen, framed on what it is about
+  const FULL = { cx: 800, cy: 951 / BK / 2, k: BK };
+  const focus = { 'concert-form': [560, 330, 1.12], 'concert-saved': [800, 470, 1.0], 'buy-form': [800, 330, 1.12], 'buy-done': [800, 330, 1.12],
+    'purchases-pending': [800, 300, 1.1], 'purchases-final': [900, 330, 1.12], history: [700, 300, 1.08], email: [800, 380, 1.05], dashboard: [800, 300, 1.1] }[cur[0]];
+  const pp = eio(seg(r, cur[1], cur[1] + 1.4));
+  const cam = { cx: lerp(FULL.cx, focus[0], pp), cy: lerp(FULL.cy, focus[1], pp), k: lerp(BK, BK * focus[2], pp) };
+  $('shots').style.transform = `translate(${BR.w / 2 - cam.cx * cam.k}px, ${(BR.h - 40) / 2 - cam.cy * cam.k}px) scale(${cam.k})`;
+  $('shots').style.transformOrigin = '0 0';
+  // overlays
+  let html = '';
+  const at = (name) => B[name] ? toScr(B[name], cam) : null;
+  const local = (from, to) => vis(r, from, to, .3, .3);
+  if (cur[0] === 'concert-form') {
+    const s = at('concert.save');
+    if (s) { const p = seg(r, .9, 2.1); const x = lerp(1200, s.x + s.w / 2, eio(p)), y = lerp(860, s.y + s.h / 2, eio(p)); html += cursorSvg(x, y, local(.6, 2.6)); }
+    html += callout(S['run.created'], 1030, 170, 'rgba(124,92,240,.95)', local(.4, 2.6));
+  }
+  if (cur[0] === 'concert-saved') { const s = at('concert.toast'); if (s) html += `<div class="hl" style="left:${s.x - 14}px;top:${s.y - 10}px;width:${s.w + 210}px;height:${s.h + 20}px;border:3px solid #39d98a;opacity:${local(2.8, 4.6)}"></div>`; }
+  if (cur[0] === 'buy-form') {
+    const s = at('buy.buy');
+    if (s) { const p = seg(r, 5.4, 6.8); html += cursorSvg(lerp(1300, s.x + s.w / 2, eio(p)), lerp(900, s.y + s.h / 2, eio(p)), local(5, 7.2)); }
+  }
+  if (cur[0] === 'buy-done') { const s = at('buy.result'); if (s) html += `<div class="hl" style="left:${s.x - 50}px;top:${s.y - 12}px;width:${s.w + 70}px;height:${s.h + 24}px;border:3px solid #39d98a;opacity:${local(7.4, 9.4)}"></div>`; }
+  if (cur[0] === 'purchases-pending') {
+    const c = at('purchases.confirmed') || { x: 1000, y: 380, w: 120, h: 30 };
+    html += callout(S['run.pending'], 1000, 205, 'rgba(246,178,60,.95)', local(9.6, 11.8));
+  }
+  if (cur[0] === 'purchases-final') {
+    const c = at('purchases.confirmed'), j = at('purchases.rejected'), rs = at('purchases.reason');
+    if (c) html += `<div class="hl" style="left:${c.x - 12}px;top:${c.y - 8}px;width:${c.w + 24}px;height:${c.h + 16}px;border:3px solid #39d98a;opacity:${local(12, 15.6)}"></div>`
+      + callout(S['run.confirmed'], c.x - 40, c.y - 120, 'rgba(22,163,74,.95)', local(12.1, 15.6), 'right');
+    if (j && rs) html += `<div class="hl" style="left:${j.x - 12}px;top:${j.y - 8}px;width:${rs.x + rs.w - j.x + 24}px;height:${j.h + 16}px;border:3px solid #ff7597;opacity:${local(13.2, 15.6)}"></div>`
+      + callout(S['run.declined'], j.x - 40, j.y + 70, 'rgba(225,29,72,.95)', local(13.3, 15.6), 'right');
+  }
+  if (cur[0] === 'history') html += callout(S['run.history'], 960, 160, 'rgba(124,92,240,.95)', local(16, 19.6), 'center');
+  if (cur[0] === 'email') html += callout(S['run.email'], 1050, 640, 'rgba(124,92,240,.95)', local(20, 23.6));
+  if (cur[0] === 'dashboard') { const d = at('dashboard.row'); if (d) html += `<div class="hl" style="left:${d.x - 16}px;top:${d.y - 12}px;width:${1530 * cam.k * .78}px;height:${d.h + 24}px;border:3px solid #a78bfa;opacity:${local(24.4, 29)}"></div>`;
+    html += callout(S['run.dashboard'], 960, 160, 'rgba(124,92,240,.95)', local(24.2, 29), 'center'); }
+  return html;
+}
+
+/* ---------- 8: a change ---------- */
+function change(t) {
+  const [a, b] = T.change;
+  const on = vis(t, a, b, .4, .5);
+  if (on <= 0) return '';
+  const diff = (D.out.changeModel || '').split('\n').filter((l) => !/^(diff|index|---|\+\+\+|@@)/.test(l) && l.length);
+  const diffHtml = diff.map((l, i) => {
+    const add = l.startsWith('+');
+    const p = add ? seg(t, a + .8 + i * .12, a + 1.1 + i * .12) : 1;
+    return `<div style="height:32px;opacity:${p};${add ? 'background:rgba(57,217,138,.16);' : ''}"><span style="display:inline-block;width:26px;color:${add ? '#39d98a' : '#4d4870'}">${add ? '+' : ' '}</span>${hlYaml(l.slice(1))}</div>`;
+  }).join('');
+  let html = `<div class="win" style="left:80px;top:80px;width:820px;height:440px;opacity:${on}">${bar('modux/models/model-concert.yaml')}
+    <div class="vp" style="background:#0e0c1f"><div class="code" style="left:22px;top:20px;font-size:21px">${diffHtml}</div></div></div>`;
+  html += `<div class="win" style="left:940px;top:80px;width:900px;height:440px;opacity:${on}">${bar('tickets — zsh')}
+    <div class="vp" style="background:#0e0c1f"><div class="term" style="left:24px;top:20px">${terminal('mvn modux:generate', D.out.changeGenerate || [], t, a + 2.2, { size: 20, lh: 32 })}</div></div></div>`;
+  // what it touched, per service
+  const svc = (D.out.changeServices || []).map((l) => { const m = l.trim().match(/^(\d+)\s+(\S+)$/); return m ? [m[2], Number(m[1])] : null; }).filter(Boolean);
+  const max = Math.max(...svc.map((s) => s[1]), 1);
+  const rp = seg(t, a + 4.2, a + 4.8);
+  html += `<div class="abs" style="left:80px;top:560px;width:820px;opacity:${rp * on}"><div style="font-size:30px;font-weight:700;margin-bottom:18px">${esc(D.out.changeStat || '')}</div>`
+    + svc.map(([name, n], i) => { const p = eout(seg(t, a + 4.6 + i * .25, a + 5.4 + i * .25));
+      return `<div style="display:flex;align-items:center;gap:18px;height:54px"><span style="width:150px;font-size:26px;font-weight:600">${esc(name)}</span>
+        <span style="height:26px;width:${520 * n / max * p}px;border-radius:8px;background:linear-gradient(90deg,#7c5cf0,#a78bfa)"></span><span class="num" style="font-size:24px;color:var(--muted)">${Math.round(n * p)}</span></div>`; }).join('') + '</div>';
+  const mig = (D.out.changeMigration || '').split('\n').filter((l) => /^ALTER|^CREATE/.test(l));
+  const mp = seg(t, a + 5.8, a + 6.4);
+  html += `<div class="win" style="left:940px;top:560px;width:900px;height:230px;opacity:${mp * on}">${bar('catalog · db/migration/V2__model_changes.sql')}
+    <div class="vp" style="background:#0e0c1f"><div class="code" style="left:22px;top:24px;font-size:19px;line-height:32px;white-space:pre-wrap;width:850px"><span class="c">-- written by modux from the model change</span>\n${mig.map((l) => `<span class="ok">${esc(l)}</span>`).join('\n')}</div></div></div>`;
+  return html;
+}
+
+/* ---------- 9: outro ---------- */
+function outro(t) {
+  const [a] = T.outro;
+  if (t < a) return '';
+  const p = seg(t, a + .2, a + 1), q = seg(t, a + .9, a + 1.5), u = seg(t, a + 1.5, a + 2.1);
+  const word = 'modux'.split('').map((c, i) => { const s = seg(t, a + .45 + i * .08, a + .7 + i * .08);
+    return `<span style="display:inline-block;opacity:${s};transform:translateY(${lerp(30, 0, eout(s))}px)">${c}</span>`; }).join('');
+  return `<div class="abs" style="left:50%;top:330px;width:900px;height:900px;margin-left:-450px;margin-top:-450px;border-radius:50%;opacity:${p * .9};
+      background:radial-gradient(closest-side, rgba(167,139,250,.30), rgba(76,178,255,.10) 55%, transparent)"></div>
+    <svg class="abs" style="left:${W / 2 - 70}px;top:210px;transform:scale(${lerp(.6, 1, back(p))}) rotate(${lerp(-30, 0, eout(p))}deg);transform-origin:70px 70px;opacity:${p};filter:drop-shadow(0 0 30px rgba(167,139,250,.55))" width="140" height="140" viewBox="0 0 128 128">
+      <defs><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c5cf0"/></linearGradient></defs><g fill="url(#lg2)">${D.logo}</g></svg>
+    <div class="headline" style="top:380px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:128px;letter-spacing:.04em">${word}</div>
+    <div class="headline" style="top:560px;font-size:46px;font-weight:600;color:#d6ccff;opacity:${q};transform:translateY(${lerp(16, 0, eout(q))}px)">${esc(S['outro.tagline'])}</div>
+    <div class="headline" style="top:690px;font-size:44px;font-weight:700;color:#7dd3fc;opacity:${u}">${esc(S['outro.url'])}</div>
+    <div class="headline" style="top:770px;font-size:28px;font-weight:500;color:var(--muted);opacity:${u}">${esc(S['outro.links'])}</div>`;
+}
+
+/* ---------- captions ---------- */
+const CAPS = [
+  [T.spec[0] + 6.4, T.spec[1] - .1, 'spec.caption'],
+  [T.plumb[0] + 4.6, T.plumb[1] - .3, 'plumbing.caption'],
+  [T.model[0] + .8, T.model[0] + 6.9, 'model.caption1'],
+  [T.model[0] + 7.5, T.model[1] - .3, 'model.caption2'],
+  [T.gen[0] + .8, T.gen[1] - .3, 'generate.caption'],
+  [T.zones[0] + .6, T.zones[1] - .3, 'zones.caption'],
+  [T.deploy[0] + .6, T.deploy[1] - .3, 'deploy.caption'],
+  [T.run[0] + .3, T.run[0] + 2.4, 'run.caption1'],
+  [T.change[0] + .6, T.change[0] + 6.6, 'change.caption'],
+  [T.change[0] + 7, T.change[1] - .3, 'change.result'],
+];
+function caption(t) {
+  const c = CAPS.find(([a, b]) => t >= a && t <= b);
+  const el = $('cap');
+  if (!c) { el.style.opacity = 0; return; }
+  el.textContent = S[c[2]];
+  el.style.opacity = vis(t, c[0], c[1], .3, .3);
+  // over the browser the caption sits a little higher, clear of its status line
+  el.style.bottom = (t >= T.run[0] && t <= T.run[1]) ? '64px' : '40px';
+}
+
+window.render = (t) => {
+  $('L1').innerHTML = specAndPlumbing(t);
+  $('L3b').innerHTML = model(t);
+  $('L4').innerHTML = generate(t) + zones(t) + deploy(t) + change(t);
+  $('over').innerHTML = run(t);
+  $('L9').innerHTML = outro(t);
+  caption(t);
+};
+const imgs = [...document.images];
+window.ready = Promise.all([document.fonts.ready, ...imgs.map((i) => i.decode().catch(() => {}))]);
+window.pending = Promise.resolve();
+</script>
+</body>
+</html>

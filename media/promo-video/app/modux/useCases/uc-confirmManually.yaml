@@ -1,0 +1,22 @@
+---
+id: "uc-confirmManually"
+name: "ConfirmManually"
+steps:
+- id: "step-read"
+  name: "readPurchase"
+  type: "ReadAggregate"
+  aggregateId: "purchase"
+- id: "step-op"
+  name: "confirm"
+  type: "CallAggregateOperation"
+  aggregateId: "purchase"
+  operationId: "op-confirm"
+- id: "step-save"
+  name: "savePurchase"
+  type: "SaveAggregate"
+  aggregateId: "purchase"
+allowedRoles:
+- "PROMOTER"
+title: "Confirm manually"
+rowActionForAggregateId: "purchase"
+projectId: "tickets"

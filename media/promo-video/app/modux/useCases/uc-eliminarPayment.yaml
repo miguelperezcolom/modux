@@ -1,0 +1,13 @@
+---
+id: "uc-eliminarPayment"
+name: "RemovePayment"
+steps:
+- id: "step-delete"
+  name: "deletePayment"
+  type: "Custom"
+  aggregateId: "payment"
+- id: "step-publish-ev-paymentDeleted"
+  name: "publishPaymentDeleted"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-paymentDeleted"
+projectId: "tickets"

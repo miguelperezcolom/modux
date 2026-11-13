@@ -1,0 +1,10 @@
+---
+id: "ext-legacy"
+name: "Legacy"
+description: "The old box-office system: its venues table is still the source of truth."
+protocol: "DATABASE"
+direction: "INBOUND"
+tables:
+- id: "ext-legacy-venues"
+  name: "venues"
+  description: "The venues where the concerts take place."

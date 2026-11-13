@@ -1,0 +1,6 @@
+---
+id: "bc-payments-main"
+name: "Payments"
+boundedContextId: "bc-payments"
+main: true
+projectId: "tickets"

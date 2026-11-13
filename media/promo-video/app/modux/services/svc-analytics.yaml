@@ -1,0 +1,7 @@
+---
+id: "svc-analytics"
+name: "Analytics"
+port: 8094
+moduleIds:
+- "bc-analytics-main"
+projectId: "tickets"

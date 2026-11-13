@@ -1,0 +1,18 @@
+---
+id: "uc-listings"
+name: "Listings"
+exposedAsUi: true
+outputModelId: "m-listings"
+steps:
+- id: "step-Listings"
+  name: "lookup"
+  type: "Custom"
+  intent: "Reads the concerts."
+title: "Concert listings"
+projectId: "tickets"
+pageTemplate: "CALENDAR"
+templateFields:
+  id: "id"
+  title: "artist"
+  date: "date"
+itemUseCaseId: "uc-concertDetails"

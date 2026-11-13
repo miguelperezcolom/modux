@@ -1,0 +1,16 @@
+---
+id: "uc-charge"
+name: "Charge"
+inputModelId: "m-purchase-placed"
+steps:
+- id: "step-ext-ext-paygate-charge"
+  name: "callCharge"
+  type: "CallExternalUseCase"
+  externalUseCaseId: "ext-paygate-charge"
+- id: "step-charge"
+  name: "charge"
+  type: "Custom"
+  intent: "With the gateway's answer, records the Payment (purchaseId, amount, ACCEPTED\
+    \ if the gateway accepts it or DECLINED with the reason it gives) and publishes\
+    \ PaymentAccepted or PaymentDeclined."
+projectId: "tickets"

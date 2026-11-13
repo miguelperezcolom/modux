@@ -1,0 +1,17 @@
+{
+  "name": "modux-promo-video",
+  "private": true,
+  "type": "module",
+  "description": "Renders the modux promo video: animated scenes frame by frame over real captures (the editor, the terminal, the running system), assembled with ffmpeg.",
+  "scripts": {
+    "capture": "bash scripts/capture-terminal.sh && node scripts/capture-real.mjs && node scripts/record-editor.mjs",
+    "render": "node scripts/render-animated.mjs",
+    "assemble": "bash scripts/assemble.sh",
+    "build": "npm run capture && npm run render && npm run assemble"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "5.2.8",
+    "@fontsource-variable/jetbrains-mono": "5.2.8",
+    "playwright": "1.65.0"
+  }
+}

@@ -1,0 +1,6 @@
+---
+id: "proxy-listings"
+name: "Listings"
+targetApiId: "api-crud-concert"
+cacheTtlSeconds: 60
+projectId: "tickets"

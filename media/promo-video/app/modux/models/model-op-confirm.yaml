@@ -1,0 +1,20 @@
+---
+id: "model-op-confirm"
+name: "ConfirmInput"
+fields:
+- id: "f-model-op-confirm-confirmedBy"
+  name: "confirmedBy"
+  basicType: true
+  type: "string"
+  systemValue: "CURRENT_USER"
+- id: "f-model-op-confirm-reference"
+  name: "reference"
+  basicType: true
+  type: "integer"
+  systemValue: "SEQUENCE"
+- id: "f-model-op-confirm-confirmedAt"
+  name: "confirmedAt"
+  basicType: true
+  type: "dateTime"
+  systemValue: "NOW"
+projectId: "tickets"

@@ -1,0 +1,6 @@
+---
+id: "rm-transactions"
+name: "TransactionView"
+boundedContextId: "bc-payments"
+modelId: "m-transaction"
+projectId: "tickets"

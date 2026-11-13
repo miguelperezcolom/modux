@@ -1,0 +1,16 @@
+---
+id: "uc-crearPurchase"
+name: "AddPurchase"
+inputModelId: "model-purchase"
+steps:
+- id: "step-save"
+  name: "savePurchase"
+  type: "SaveAggregate"
+  aggregateId: "purchase"
+- id: "step-publish-ev-purchaseCreated"
+  name: "publishPurchaseCreated"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-purchaseCreated"
+allowedRoles:
+- "CUSTOMER"
+projectId: "tickets"

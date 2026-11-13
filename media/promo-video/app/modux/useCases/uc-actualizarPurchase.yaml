@@ -1,0 +1,20 @@
+---
+id: "uc-actualizarPurchase"
+name: "EditPurchase"
+inputModelId: "model-purchase"
+steps:
+- id: "step-read"
+  name: "readPurchase"
+  type: "ReadAggregate"
+  aggregateId: "purchase"
+- id: "step-save"
+  name: "savePurchase"
+  type: "SaveAggregate"
+  aggregateId: "purchase"
+- id: "step-publish-ev-purchaseUpdated"
+  name: "publishPurchaseUpdated"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-purchaseUpdated"
+allowedRoles:
+- "CUSTOMER"
+projectId: "tickets"

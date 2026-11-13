@@ -1,0 +1,23 @@
+---
+id: "uc-cancelPurchase"
+name: "CancelPurchase"
+exposedAsUi: true
+inputModelId: "m-cancel"
+steps:
+- id: "step-read"
+  name: "readPurchase"
+  type: "ReadAggregate"
+  aggregateId: "purchase"
+- id: "step-op"
+  name: "cancel"
+  type: "CallAggregateOperation"
+  aggregateId: "purchase"
+  operationId: "op-cancel"
+- id: "step-save"
+  name: "savePurchase"
+  type: "SaveAggregate"
+  aggregateId: "purchase"
+allowedRoles:
+- "CUSTOMER"
+title: "Cancel a purchase"
+projectId: "tickets"

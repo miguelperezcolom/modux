@@ -1,0 +1,6 @@
+---
+id: "proj-purchases"
+name: "Purchases"
+readModelId: "rm-purchases"
+sourceAggregateId: "purchase"
+projectId: "tickets"

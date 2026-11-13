@@ -1,0 +1,18 @@
+---
+id: "uc-actualizarPayment"
+name: "EditPayment"
+inputModelId: "model-payment"
+steps:
+- id: "step-read"
+  name: "readPayment"
+  type: "ReadAggregate"
+  aggregateId: "payment"
+- id: "step-save"
+  name: "savePayment"
+  type: "SaveAggregate"
+  aggregateId: "payment"
+- id: "step-publish-ev-paymentUpdated"
+  name: "publishPaymentUpdated"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-paymentUpdated"
+projectId: "tickets"

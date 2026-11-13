@@ -1,0 +1,13 @@
+---
+id: "ntf-purchase"
+name: "PurchaseNotice"
+ownerBoundedContextId: "bc-sales"
+eventId: "ev-purchase-placed"
+channels:
+- "EMAIL"
+recipientRoleIds:
+- "role-promoter"
+recipientExpression: "purchase.customer"
+subject: "Your purchase {purchaseId}"
+body: "<p>Hi {customer}: your {tickets} tickets are reserved.</p>"
+projectId: "tickets"

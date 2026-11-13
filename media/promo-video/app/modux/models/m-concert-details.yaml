@@ -1,0 +1,26 @@
+---
+id: "m-concert-details"
+name: "ConcertDetails"
+fields:
+- id: "f-m-concert-details-artist"
+  name: "artist"
+  basicType: true
+  type: "string"
+  label: "Artist"
+- id: "f-m-concert-details-date"
+  name: "date"
+  basicType: true
+  type: "date"
+  label: "Date"
+- id: "f-m-concert-details-description"
+  name: "description"
+  basicType: true
+  type: "string"
+  label: "Description"
+  stereotype: "html"
+- id: "f-m-concert-details-zones"
+  name: "zones"
+  type: "array"
+  modelId: "m-zone"
+  label: "Zones"
+projectId: "tickets"

@@ -1,0 +1,64 @@
+---
+id: "model-purchase"
+name: "Purchase"
+fields:
+- id: "f-model-purchase-concertId"
+  name: "concertId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-purchase-concertId"
+    type: "NotEmpty"
+  label: "Concert"
+- id: "f-model-purchase-customer"
+  name: "customer"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-purchase-customer"
+    type: "NotEmpty"
+  label: "Customer"
+- id: "f-model-purchase-tickets"
+  name: "tickets"
+  basicType: true
+  type: "integer"
+  validations:
+  - id: "v-f-model-purchase-tickets"
+    type: "NotNull"
+  label: "Tickets"
+- id: "f-model-purchase-amount"
+  name: "amount"
+  basicType: true
+  type: "money"
+  label: "Amount"
+- id: "f-model-purchase-card"
+  name: "card"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-purchase-card"
+    type: "NotEmpty"
+  label: "Card"
+- id: "f-model-purchase-status"
+  name: "status"
+  enumId: "enum-purchase"
+  label: "Status"
+  readOnly: true
+- id: "f-model-purchase-reference"
+  name: "reference"
+  basicType: true
+  type: "integer"
+  label: "Reference"
+  readOnly: true
+- id: "f-model-purchase-confirmedBy"
+  name: "confirmedBy"
+  basicType: true
+  type: "string"
+  label: "Confirmed by"
+  readOnly: true
+- id: "f-model-purchase-reason"
+  name: "reason"
+  basicType: true
+  type: "string"
+  label: "Reason"
+projectId: "tickets"

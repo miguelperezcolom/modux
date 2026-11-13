@@ -1,0 +1,182 @@
+---
+id: "base"
+nodes:
+- ref: "bc-analytics"
+  x: 1628.0
+  "y": 405.1
+- ref: "bc-sales"
+  x: 1370.0
+  "y": 496.8
+- ref: "bc-payments"
+  x: 1628.0
+  "y": 506.1
+- ref: "bc-catalog"
+  x: 1092.0
+  "y": 412.6
+- ref: "ext-legacy"
+  x: 318.0
+  "y": 467.0
+- ref: "ext-paygate"
+  x: 1886.0
+  "y": 506.1
+- ref: "api-crud-payment"
+  x: 834.0
+  "y": 560.0
+- ref: "api-crud-purchase"
+  x: 834.0
+  "y": 268.0
+- ref: "api-crud-concert"
+  x: 834.0
+  "y": 361.0
+- ref: "proxy-listings"
+  x: 576.0
+  "y": 370.3
+- ref: "m-concert-row"
+  x: 248.0
+  "y": 40.0
+- ref: "m-close"
+  x: 436.0
+  "y": 40.0
+- ref: "m-payment-accepted"
+  x: 624.0
+  "y": 40.0
+- ref: "m-sales-dashboard"
+  x: 812.0
+  "y": 40.0
+- ref: "m-price"
+  x: 1000.0
+  "y": 40.0
+- ref: "model-op-reject"
+  x: 1188.0
+  "y": 40.0
+- ref: "m-lookup-price"
+  x: 1376.0
+  "y": 40.0
+- ref: "m-listings"
+  x: 1564.0
+  "y": 40.0
+- ref: "m-purchase-placed"
+  x: 1752.0
+  "y": 40.0
+- ref: "m-purchase-in-progress"
+  x: 96.0
+  "y": 116.0
+- ref: "model-op-confirm"
+  x: 284.0
+  "y": 116.0
+- ref: "m-concert-ref"
+  x: 472.0
+  "y": 116.0
+- ref: "m-transaction"
+  x: 660.0
+  "y": 116.0
+- ref: "m-payment-declined"
+  x: 848.0
+  "y": 116.0
+- ref: "m-cancel"
+  x: 1036.0
+  "y": 116.0
+- ref: "m-buy"
+  x: 1224.0
+  "y": 116.0
+- ref: "m-charge"
+  x: 1412.0
+  "y": 116.0
+- ref: "m-concert-filter"
+  x: 1600.0
+  "y": 116.0
+- ref: "m-venue"
+  x: 1788.0
+  "y": 116.0
+- ref: "m-zone"
+  x: 96.0
+  "y": 192.0
+- ref: "m-concert-details"
+  x: 284.0
+  "y": 192.0
+- ref: "m-charge-result"
+  x: 472.0
+  "y": 192.0
+- ref: "role-management"
+  x: 78.0
+  "y": 36.0
+- ref: "role-customer"
+  x: 78.0
+  "y": 513.0
+- ref: "role-promoter"
+  x: 78.0
+  "y": 322.0
+edges:
+- ref: "rel:bc-catalog->bc-sales"
+  points:
+  - x: 1237.0
+    "y": 407.0
+  - x: 1237.0
+    "y": 492.8
+- ref: "proj:proj-purchases"
+  points:
+  - x: 1479.0
+    "y": 478.1
+  - x: 1479.0
+    "y": 414.5
+- ref: "proj:proj-concerts"
+  points:
+  - x: 1225.0
+    "y": 418.2
+  - x: 1225.0
+    "y": 500.8
+- ref: "proj:proj-venues"
+  points:
+  - x: 943.0
+    "y": 467.0
+  - x: 943.0
+    "y": 429.4
+- ref: "apiwire:api-crud-payment-create"
+  points:
+  - x: 1479.0
+    "y": 560.0
+  - x: 1479.0
+    "y": 524.8
+- ref: "apiwire:api-crud-purchase-create"
+  points:
+  - x: 1261.0
+    "y": 268.0
+  - x: 1261.0
+    "y": 476.8
+- ref: "apiwire:api-crud-concert-create"
+  points:
+  - x: 943.0
+    "y": 361.0
+  - x: 943.0
+    "y": 395.8
+- ref: "uccall:uc-buy->uc-lookupPrice"
+  points:
+  - x: 1213.0
+    "y": 508.8
+  - x: 1213.0
+    "y": 429.4
+- ref: "notifto:ntf-purchase:role-promoter"
+  points:
+  - x: 1249.0
+    "y": 484.8
+  - x: 1249.0
+    "y": 314.0
+- ref: "use:role-customer->uc-buy"
+  points:
+  - x: 1201.0
+    "y": 513.0
+  - x: 1201.0
+    "y": 516.8
+- ref: "use:role-promoter->uc-crearConcert"
+  points:
+  - x: 169.0
+    "y": 330.0
+  - x: 169.0
+    "y": 420.0
+- ref: "pxr:proxy-listings->apiimpl:api-crud-concert@bc-catalog"
+  points:
+  - x: 685.0
+    "y": 379.7
+  - x: 685.0
+    "y": 407.0
+projectId: "tickets"

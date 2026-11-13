@@ -1,0 +1,6 @@
+---
+id: "bc-analytics-main"
+name: "Analytics"
+boundedContextId: "bc-analytics"
+main: true
+projectId: "tickets"

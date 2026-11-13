@@ -1,0 +1,8 @@
+---
+id: "enum-concert"
+values:
+- id: "ON_SALE"
+  name: "ON_SALE"
+- id: "CLOSED"
+  name: "CLOSED"
+projectId: "tickets"

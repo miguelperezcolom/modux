@@ -1,0 +1,13 @@
+---
+id: "m-lookup-price"
+name: "LookupPriceInput"
+fields:
+- id: "f-m-lookup-price-concertId"
+  name: "concertId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-m-lookup-price-concertId"
+    type: "NotEmpty"
+  label: "Concert"
+projectId: "tickets"

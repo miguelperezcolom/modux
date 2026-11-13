@@ -1,0 +1,23 @@
+---
+id: "uc-closeSale"
+name: "CloseSale"
+exposedAsUi: true
+inputModelId: "m-close"
+steps:
+- id: "step-read"
+  name: "readConcert"
+  type: "ReadAggregate"
+  aggregateId: "concert"
+- id: "step-op"
+  name: "close"
+  type: "CallAggregateOperation"
+  aggregateId: "concert"
+  operationId: "op-close"
+- id: "step-save"
+  name: "saveConcert"
+  type: "SaveAggregate"
+  aggregateId: "concert"
+allowedRoles:
+- "PROMOTER"
+title: "Close the sale"
+projectId: "tickets"

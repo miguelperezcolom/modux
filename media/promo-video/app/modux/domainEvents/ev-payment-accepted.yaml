@@ -1,0 +1,5 @@
+---
+id: "ev-payment-accepted"
+name: "PaymentAccepted"
+modelId: "m-payment-accepted"
+projectId: "tickets"

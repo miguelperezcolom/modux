@@ -1,0 +1,10 @@
+---
+id: "qs-transactions"
+name: "Transactions"
+boundedContextId: "bc-payments"
+operations:
+- id: "qs-transactions-list"
+  name: "transactions"
+  outputModelId: "m-transaction"
+  cardinality: "Page"
+projectId: "tickets"
