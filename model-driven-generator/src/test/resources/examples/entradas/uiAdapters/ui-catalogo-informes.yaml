@@ -1,0 +1,12 @@
+---
+id: "ui-catalogo-informes"
+name: "CatalogoInformes"
+serviceId: "svc-catalogo"
+title: "Informes del catálogo"
+path: "/catalogo-informes"
+menuItems:
+- label: "Conciertos"
+  id: "ui-catalogo-informes-0"
+  aggregateId: "concierto"
+appType: "APP"
+projectId: "entradas"

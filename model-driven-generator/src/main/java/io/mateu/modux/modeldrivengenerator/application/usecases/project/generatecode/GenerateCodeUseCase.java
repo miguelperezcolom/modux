@@ -3292,6 +3292,26 @@ public class GenerateCodeUseCase {
                 menuPageIds(it.children())));
     }
 
+    /** The gateway route of an app (same slug as gateway-yaml): {@code /organizacion} → {@code /_organizacion}. */
+    static String appRoute(String appPath) {
+        return "/_" + appPath.replaceFirst("^/", "").replaceAll("[^a-z0-9-]", "");
+    }
+
+    /** The apps of a service, in a stable order (by name). */
+    private List<UiAdapterEntity> adaptersOf(ServiceEntity service) {
+        return repository.findAllOfType(UiAdapterEntity.class).stream()
+                .filter(a -> service.id().equals(a.serviceId()))
+                .sorted(java.util.Comparator.comparing(UiAdapterEntity::name, java.util.Comparator.nullsLast(String::compareTo)))
+                .toList();
+    }
+
+    /** {@code Home} for the service's first app, {@code {App}Home} for the others. */
+    private String homeClassOf(ServiceEntity service, UiAdapterEntity adapter) {
+        var adapters = adaptersOf(service);
+        if (adapters.isEmpty() || adapters.get(0).id().equals(adapter.id())) return "Home";
+        return toTypeName(adapter.name()) + "Home";
+    }
+
     private void generateUiAdapter(ProjectEntity project, ServiceEntity service, String serviceDir, UiAdapterEntity adapter) {
         var serviceName = serviceName(service);
         var appDir = serviceDir + "/" + serviceName + "-app";
@@ -3478,9 +3498,13 @@ public class GenerateCodeUseCase {
             model.put("menuListings", all);
         }
 
-        // Overwrite Home.java with UIAdapter-driven version
+        // Overwrite Home.java with UIAdapter-driven version. A service may hold several apps: the
+        // first keeps Home.java (it replaces the service's default home), each other one gets its
+        // own class, so no app overwrites another.
+        var homeClass = homeClassOf(service, adapter);
+        model.put("homeClassName", homeClass);
         createFile(appDir, model, "ui-adapter-home.ftl",
-                "src/main/java/" + packageDir + "/infra/in/ui/Home.java");
+                "src/main/java/" + packageDir + "/infra/in/ui/" + homeClass + ".java");
     }
 
     // ─── Docker Compose ───────────────────────────────────────────────────────
@@ -4044,13 +4068,26 @@ public class GenerateCodeUseCase {
                 .map(s -> {
                     var map = new HashMap<String, Object>();
                     map.putAll(fromJson(toJson(s)));
-                    var appPath = repository.findAllOfType(UiAdapterEntity.class).stream()
-                            .filter(a -> s.id().equals(a.serviceId()))
+                    var adapters = adaptersOf(s);
+                    var appPath = adapters.stream()
                             .map(UiAdapterEntity::path)
                             .filter(p -> p != null && !p.isBlank())
                             .findFirst()
                             .orElse("/" + s.name().toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-"));
                     map.put("appPath", appPath);
+                    // the gateway route of an app is /_{its path} (gateway-yaml): the remote menu goes through it
+                    map.put("route", appRoute(appPath));
+                    // one menu entry per app of the service (a service may hold several)
+                    var apps = new java.util.ArrayList<Map<String, Object>>();
+                    for (var a : adapters) {
+                        if (a.path() == null || a.path().isBlank()) continue;
+                        apps.add(Map.of(
+                                "field", (s.name() + "_" + a.name()).toLowerCase().replaceAll("[^a-z0-9]", "_"),
+                                "label", a.title() != null && !a.title().isBlank() ? a.title() : a.name(),
+                                "path", a.path(),
+                                "route", appRoute(a.path())));
+                    }
+                    map.put("apps", apps);
                     return (Map<String, Object>) map;
                 })
                 .toList();

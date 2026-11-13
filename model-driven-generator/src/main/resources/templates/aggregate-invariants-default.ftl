@@ -8,14 +8,24 @@ import org.springframework.stereotype.Component;
 /**
  * Developer-owned implementation of the {@link ${aggregate.name}Invariants} hook. Scaffolded once by
  * Modux and never overwritten — put the business rules here.
+<#list (aggregate.invariants![]) as inv>
+ *
+ * <p>Invariant «${inv.name}»:
+<#list (inv.conditions![]) as c>
+ * <ul><li>${(c.description!c.expression!"")?html}<#if c.errorMessage?has_content> — rejected with «${c.errorMessage?html}»</#if></li></ul>
+</#list>
+</#list>
  */
 @Component
 public class Default${aggregate.name}Invariants implements ${aggregate.name}Invariants {
 
+    /**
+     * Pendiente de implementar: the invariants of ${aggregate.name} listed above. Reject an invalid
+     * state with BusinessRuleException.invalid("why") or .conflict("why") (they answer 400/409 with
+     * that message); read the state via context.${aggregate.name?uncap_first}(), and inject the
+     * repositories or query services you need (a uniqueness rule reads the others).
+     */
     @Override
     public void check(${aggregate.name}Context context) {
-        // The invariants of ${aggregate.name}<#if aggregate.invariants?has_content> (<#list aggregate.invariants as inv>${inv.name}<#sep>, </#list>)</#if> go here.
-        // Reject an invalid state with BusinessRuleException.invalid("why") (answers 400 with that
-        // message); read the state via context.${aggregate.name?uncap_first}().
     }
 }

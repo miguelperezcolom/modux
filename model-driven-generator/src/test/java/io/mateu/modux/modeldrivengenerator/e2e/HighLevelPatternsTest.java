@@ -176,6 +176,24 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void a_service_with_two_apps_gets_a_home_for_each_and_the_shell_links_both() throws Exception {
+        var all = Files.createTempDirectory("modux-patterns-apps");
+        generateCodeUseCase.handle(new GenerateCodeCommand("entradas", all.toString(), null, false));
+        var ui = all.resolve("catalogo/catalogo-app/src/main/java/es/entradas/infra/in/ui");
+        assertTrue(Files.readString(ui.resolve("Home.java")).contains("@UI(\"/catalogo\")"), "the first app keeps Home");
+        var second = Files.readString(ui.resolve("CatalogoInformesHome.java"));
+        assertTrue(second.contains("@UI(\"/catalogo-informes\")"), second);
+        assertTrue(second.contains("public class CatalogoInformesHome"), second);
+        // google-java-format wraps the second entry: compare without whitespace
+        var shell = Files.readString(all.resolve("entradas/src/main/java/es/entradas/entradas/infra/in/ui/EntradasHome.java"))
+                .replaceAll("\\s+", "");
+        assertTrue(shell.contains(".withLabel(\"Catalogo\").withPath(\"/catalogo\")"), shell);
+        assertTrue(shell.contains(".withLabel(\"Informesdelcatálogo\").withPath(\"/catalogo-informes\")"), shell);
+        // each app through its own gateway route
+        assertTrue(shell.contains("newRemoteMenu(\"/_catalogo-informes\")"), shell);
+    }
+
+    @Test
     void a_grouped_query_is_a_panel_one_row_per_key_with_its_totals() throws Exception {
         var panel = read("CompraViewListing.java");
         assertTrue(panel.contains("\"CONFIRMADA\".equals(String.valueOf(rm.estado()))"), "only the confirmed ones: " + panel);
