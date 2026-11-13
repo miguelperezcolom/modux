@@ -5393,6 +5393,11 @@ public class GenerateCodeUseCase {
         if (generationRoot == null || !file.exists()) {
             return;
         }
+        // a file written twice in one generation (a UI's home replacing the service's default one)
+        // already holds this run's first version: only its first write compares with the last run
+        if (currentManifest.containsKey(relPath(file))) {
+            return;
+        }
         var prev = previousManifest.get(relPath(file));
         if (prev != null && !prev.equals(hashFile(file))) {
             log.warn("Generated file was edited by hand and is being overwritten: {} — put custom logic in the *-custom boundedContext instead.",

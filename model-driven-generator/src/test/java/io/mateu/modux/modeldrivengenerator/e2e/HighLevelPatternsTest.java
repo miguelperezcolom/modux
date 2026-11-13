@@ -49,6 +49,23 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void generating_again_over_an_untouched_tree_reports_no_hand_edits() throws Exception {
+        // a UI's home replaces the service's default Home.java in the same run: two writes, one file
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(GenerateCodeUseCase.class);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            generateCodeUseCase.handle(new GenerateCodeCommand("entradas", out.toString(), null, true));
+        } finally {
+            logger.detachAppender(appender);
+        }
+        var handEdits = appender.list.stream().map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                .filter(m -> m.contains("edited by hand")).toList();
+        assertTrue(handEdits.isEmpty(), handEdits.toString());
+    }
+
+    @Test
     void an_aggregate_feeding_a_read_model_publishes_its_state_on_every_save_and_delete() throws Exception {
         var repo = read("ConciertoDBRepository.java");
         // it reads through a stored procedure (JDBC): a write is flushed, so reading it back in the
