@@ -51,7 +51,7 @@ public class DeployMojo extends AbstractMojo {
                     : LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
             var urls = new Deployer(DeployMojo::run, getLog()::info, System::getenv)
                     .deploy(Path.of(output).toAbsolutePath(), new Deployer.Settings(environment, theTag, !skipBuild, platform));
-            getLog().info("Modux: desplegado «" + environment + "» (" + theTag + ")");
+            getLog().info("Modux: deployed '" + environment + "' (" + theTag + ")");
             urls.forEach(u -> getLog().info("Modux:   " + u));
         } catch (Exception e) {
             throw new MojoExecutionException("Deploy failed: " + e.getMessage(), e);
@@ -69,7 +69,7 @@ public class DeployMojo extends AbstractMojo {
         }
         var out = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         if (process.waitFor() != 0) {
-            throw new IOException(String.join(" ", command) + " falló:\n" + out.substring(Math.max(0, out.length() - 2000)));
+            throw new IOException(String.join(" ", command) + " failed:\n" + out.substring(Math.max(0, out.length() - 2000)));
         }
         return out;
     }

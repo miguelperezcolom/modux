@@ -42,7 +42,7 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         // A project selection from another repository does not survive the switch.
         selectProject(home.loadCurrentProjectId().orElse(null));
         adoptOrphans();
-        log.info("proyecto abierto desde el repositorio {} en {}", repo.getName().name(), storePath);
+        log.info("project opened from repository {} at {}", repo.getName().name(), storePath);
         return storePath;
     }
 
@@ -76,7 +76,7 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         currentProjectId().ifPresent(projectId -> {
             var claimed = repository.claimOrphans(projectId);
             if (claimed > 0) {
-                log.info("{} elementos sin proyecto adoptados por el proyecto '{}'", claimed, projectId);
+                log.info("{} project-less elements adopted by project '{}'", claimed, projectId);
             }
         });
     }
@@ -91,7 +91,7 @@ public class RepositoryStoreOpener implements ProjectStorePort {
         home.saveCurrentRepositoryId(repo.getId().id());
         selectProject(home.loadCurrentProjectId().orElse(null));
         adoptOrphans();
-        log.info("proyecto abierto desde el repositorio DATABASE {} ({})",
+        log.info("project opened from DATABASE repository {} ({})",
                 repo.getName().name(), repo.getJdbcUrl());
         return home.homeDir();
     }
@@ -113,11 +113,11 @@ public class RepositoryStoreOpener implements ProjectStorePort {
             command.addAll(java.util.List.of("--branch", repo.getBranch()));
         }
         command.addAll(java.util.List.of(repo.getGitUrl(), dir.toString()));
-        log.info("clonando {} en {}", repo.getGitUrl(), dir);
+        log.info("cloning {} into {}", repo.getGitUrl(), dir);
         var process = new ProcessBuilder(command).redirectErrorStream(true).start();
         var output = new String(process.getInputStream().readAllBytes());
         if (!process.waitFor(120, TimeUnit.SECONDS) || process.exitValue() != 0) {
-            throw new IllegalStateException("No se pudo clonar " + repo.getGitUrl() + ": " + output);
+            throw new IllegalStateException("Could not clone " + repo.getGitUrl() + ": " + output);
         }
         return dir;
     }

@@ -55,24 +55,24 @@ public class ValidateMojo extends AbstractMojo {
             System.setProperty("modux.model-file", ModuxModel.locate(modelPath).toAbsolutePath().toString());
             try (var ctx = ModuxContext.create()) {
                 var errors = ModelGate.check(ctx, getLog(), java.util.Set.of("referential-integrity"));
-                if (!errors.isEmpty() && !reportOnly) throw new MojoFailureException(errors.size() + " error(es) en el modelo");
+                if (!errors.isEmpty() && !reportOnly) throw new MojoFailureException(errors.size() + " error(s) in the model");
             }
         } catch (MojoFailureException e) {
             throw e;
         } catch (Exception e) {
-            throw new MojoFailureException("No se pudo leer el modelo: " + e.getMessage(), e);
+            throw new MojoFailureException("Could not read the model: " + e.getMessage(), e);
         }
     }
 
     private void report(List<String> problems) throws MojoFailureException {
         if (problems.isEmpty()) {
-            getLog().info("Modux: modelo íntegro, sin referencias colgantes.");
+            getLog().info("Modux: model is consistent, no dangling references.");
             return;
         }
         problems.forEach(p -> getLog().error("Modux: " + p));
-        var summary = problems.size() + " referencia(s) colgante(s) en el modelo";
+        var summary = problems.size() + " dangling reference(s) in the model";
         if (reportOnly) {
-            getLog().warn("Modux: " + summary + " (modux.validateOnly=true, no se falla el build)");
+            getLog().warn("Modux: " + summary + " (modux.validateOnly=true, not failing the build)");
             return;
         }
         throw new MojoFailureException(summary);
@@ -109,7 +109,7 @@ public class ValidateMojo extends AbstractMojo {
                 for (var referenced : strings(child)) {
                     if (!referenced.isBlank() && !known.contains(referenced)) {
                         problems.add(type + "/" + ownerId + "." + name
-                                + " apunta a '" + referenced + "', que no existe en el modelo");
+                                + " points to '" + referenced + "', which does not exist in the model");
                     }
                 }
             }

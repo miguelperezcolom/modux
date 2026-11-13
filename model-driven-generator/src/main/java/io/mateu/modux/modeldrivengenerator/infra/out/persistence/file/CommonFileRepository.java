@@ -282,9 +282,9 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
         for (var system : pending) {
             var coordinate = known.get(system.referencedRepositoryId());
             if (coordinate == null || coordinate.isEmpty()) {
-                log.warn("la referencia al proyecto '{}' de {} no dice dónde está: el registro"
-                                + " ~/.modux que la explicaba ya no está. El snapshot se conserva;"
-                                + " dale una URL git o un path para poder refrescarla.",
+                log.warn("the reference to project '{}' from {} does not say where it lives: the ~/.modux"
+                                + " registry that resolved it is gone. The snapshot is kept;"
+                                + " give it a git URL or a path to be able to refresh it.",
                         system.referencedRepositoryId(), system.id());
                 continue;
             }

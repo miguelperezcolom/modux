@@ -43,7 +43,7 @@ public class ImportApiMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         var contract = Path.of(filePath);
         if (!Files.isRegularFile(contract)) {
-            throw new MojoExecutionException("No existe el contrato: " + contract.toAbsolutePath());
+            throw new MojoExecutionException("Contract not found: " + contract.toAbsolutePath());
         }
         getLog().info("Modux import-api: " + contract);
         System.setProperty("modux.model-file", ModuxModel.locate(modelPath).toString());
@@ -52,9 +52,9 @@ public class ImportApiMojo extends AbstractMojo {
             var content = Files.readString(contract);
             var imported = ctx.getBean(ImportApiEntityUseCase.class)
                     .handle(content, isWsdl(contract, content), apiId);
-            getLog().info("Modux import-api: API '" + imported + "' importada en " + modelPath);
+            getLog().info("Modux import-api: API '" + imported + "' imported into " + modelPath);
         } catch (Exception e) {
-            throw new MojoExecutionException("La importación del contrato falló: " + e.getMessage(), e);
+            throw new MojoExecutionException("Contract import failed: " + e.getMessage(), e);
         }
     }
 

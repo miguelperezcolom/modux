@@ -80,7 +80,7 @@ public class ImageRegistryResolver {
             // 200 or 401 both mean "a registry lives here"
             return response.statusCode() == 200 || response.statusCode() == 401;
         } catch (Exception e) {
-            log.debug("sin registry local en {}: {}", LOCAL_REGISTRY, e.getMessage());
+            log.debug("no local registry at {}: {}", LOCAL_REGISTRY, e.getMessage());
             return false;
         }
     }

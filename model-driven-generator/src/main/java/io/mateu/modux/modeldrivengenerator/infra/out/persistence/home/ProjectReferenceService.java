@@ -66,21 +66,21 @@ public class ProjectReferenceService {
             var resolved = expand(coordinate.path().trim(), here);
             if (!Files.isDirectory(resolved)) {
                 throw new IllegalArgumentException(
-                        "El proyecto referenciado no está en " + resolved + " (path de la coordenada)");
+                        "The referenced project is not at " + resolved + " (the coordinate's path)");
             }
             return resolved;
         }
         var name = coordinate.repositoryName();
         if (name == null) {
             throw new IllegalArgumentException(
-                    "La referencia no dice dónde está el proyecto: hace falta su URL git o un path");
+                    "The reference does not say where the project lives: it needs a git URL or a path");
         }
         for (var candidate : siblingCandidates(here, name)) {
             if (Files.isDirectory(candidate)) return candidate;
         }
         throw new IllegalArgumentException(
-                "No encuentro un checkout de " + name + " junto a este repositorio. Clónalo al lado,"
-                        + " o dale un path a la referencia.");
+                "No checkout of " + name + " found next to this repository. Clone it alongside,"
+                        + " or give the reference a path.");
     }
 
     /**

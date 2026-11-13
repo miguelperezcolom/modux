@@ -53,7 +53,7 @@ public final class LegacyRepositoryRegistry {
                 coordinates.put(repo.id(), coordinateOf(repo, modelRoot));
             }
         } catch (Exception e) {
-            log.warn("no se pudo leer {} para migrar las referencias a proyectos: {}",
+            log.warn("could not read {} to migrate the project references: {}",
                     file, e.getMessage());
             return Map.of();
         }

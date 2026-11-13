@@ -92,6 +92,6 @@ public class ModuxHomeStore {
         var file = repositoriesFile();
         Files.createDirectories(file.getParent());
         Files.writeString(file, yaml.writeValueAsString(new HomeRepositories(repositories)));
-        log.info("repositorios guardados en {}", file.toAbsolutePath());
+        log.info("repositories saved to {}", file.toAbsolutePath());
     }
 }

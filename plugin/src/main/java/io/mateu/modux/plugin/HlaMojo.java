@@ -24,7 +24,7 @@ public class HlaMojo extends AbstractMojo {
             System.setProperty("modux.model-file", ModuxModel.locate(modelPath).toAbsolutePath().toString());
             try (var ctx = ModuxContext.create()) {
                 var written = ctx.getBean(GenerateHlaUseCase.class).writeTo(Path.of(output));
-                getLog().info("Modux: HLA en " + written);
+                getLog().info("Modux: HLA written to " + written);
             }
         } catch (Exception e) {
             throw new MojoExecutionException("HLA generation failed: " + e.getMessage(), e);

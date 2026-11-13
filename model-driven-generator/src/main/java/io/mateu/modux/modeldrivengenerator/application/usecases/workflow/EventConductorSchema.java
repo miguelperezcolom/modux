@@ -98,18 +98,18 @@ public final class EventConductorSchema {
         try {
             return new ObjectMapper().readTree(read(resource));
         } catch (IOException e) {
-            throw new UncheckedIOException("no se pudo leer " + resource, e);
+            throw new UncheckedIOException("could not read " + resource, e);
         }
     }
 
     private static String read(String resource) {
         try (var stream = EventConductorSchema.class.getResourceAsStream(resource)) {
             if (stream == null) {
-                throw new IllegalStateException("falta el esquema de EventConductor: " + resource);
+                throw new IllegalStateException("missing EventConductor schema: " + resource);
             }
             return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new UncheckedIOException("no se pudo leer " + resource, e);
+            throw new UncheckedIOException("could not read " + resource, e);
         }
     }
 }

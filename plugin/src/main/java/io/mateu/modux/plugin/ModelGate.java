@@ -35,12 +35,12 @@ final class ModelGate {
         }
         var errors = findings.stream().filter(f -> f.severity() == LintSeverity.ERROR).toList();
         var warnings = findings.stream().filter(f -> f.severity() == LintSeverity.WARNING).count();
-        log.info("Modux: modelo revisado — " + errors.size() + " error(es), " + warnings + " aviso(s)");
+        log.info("Modux: model checked — " + errors.size() + " error(s), " + warnings + " warning(s)");
         return errors;
     }
 
     static String summary(List<LintFinding> errors) {
-        return errors.size() + " error(es) en el modelo: corrígelos antes de generar"
-                + " (o -Dmodux.skipChecks=true para generar igualmente)";
+        return errors.size() + " error(s) in the model: fix them before generating"
+                + " (or -Dmodux.skipChecks=true to generate anyway)";
     }
 }

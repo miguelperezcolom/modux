@@ -88,7 +88,7 @@ class ImportApiMojoTest {
 
         var failure = assertThrows(MojoExecutionException.class, mojo::execute);
 
-        assertTrue(failure.getMessage().contains("No existe el contrato"), failure.getMessage());
+        assertTrue(failure.getMessage().contains("Contract not found"), failure.getMessage());
     }
 
     /** The extension decides when it says so; otherwise the content does. */

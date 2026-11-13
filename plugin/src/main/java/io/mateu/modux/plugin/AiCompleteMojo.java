@@ -43,7 +43,7 @@ public class AiCompleteMojo extends AbstractMojo {
                     new HookImplementer.Settings(words(aiCommand), words(buildCommand), timeoutMinutes),
                     getLog()::info);
             var written = implementer.implementAll(Path.of(output).toAbsolutePath());
-            getLog().info("Modux: " + written.size() + " fichero(s) escritos en la zona custom. Revísalos antes de confirmarlos.");
+            getLog().info("Modux: " + written.size() + " file(s) written to the custom zone. Review them before committing.");
         } catch (Exception e) {
             throw new MojoExecutionException("AI completion failed: " + e.getMessage(), e);
         }

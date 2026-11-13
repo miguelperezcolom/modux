@@ -1780,7 +1780,7 @@ public class GenerateCodeUseCase {
             if (n.channels() == null || !n.channels().contains("EMAIL")) continue;
             var event = n.eventId() == null ? null : repository.findById(n.eventId(), DomainEventEntity.class).orElse(null);
             if (event == null) {
-                log.warn("la notificación '{}' no dice con qué evento sale (eventId)", n.name());
+                log.warn("notification '{}' does not say which event sends it (eventId)", n.name());
                 continue;
             }
             // the topic its publisher writes to: the integration topic when the event travels to other
@@ -2579,8 +2579,8 @@ public class GenerateCodeUseCase {
         repository.findAllOfType(WorkflowEntity.class).stream()
                 .filter(workflow -> inScope(workflow.id()))
                 .filter(workflow -> homeContextOf(workflow) == null)
-                .forEach(workflow -> log.warn("el workflow '{}' no genera definición: no se sabe"
-                        + " desde qué contexto arranca. Dale un trigger, o un paso con caso de uso.",
+                .forEach(workflow -> log.warn("workflow '{}' generates no definition: it is unknown"
+                        + " which context it starts from. Give it a trigger, or a step with a use case.",
                         workflow.name()));
     }
 
@@ -2645,7 +2645,7 @@ public class GenerateCodeUseCase {
                     .configure(com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
                     .writerWithDefaultPrettyPrinter().writeValueAsString(value);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException("no se pudo serializar la definición del workflow", e);
+            throw new IllegalStateException("could not serialize the workflow definition", e);
         }
     }
 
@@ -3959,8 +3959,8 @@ public class GenerateCodeUseCase {
                     destinations.put(io.mateu.modux.modeldrivengenerator.application.usecases.workflow
                             .EventConductorWorkflowDefinition.destinationOf(event), topic.get());
                 } else {
-                    log.warn("el workflow '{}' espera el evento '{}', que no sale a ningún topic: publícalo"
-                            + " (un flow que lo dispare, o publishAsIntegrationEvent)", workflow.name(), event);
+                    log.warn("workflow '{}' waits for event '{}', which is not published to any topic: publish it"
+                            + " (a flow that emits it, or publishAsIntegrationEvent)", workflow.name(), event);
                 }
             }
             Map<String, Object> model = new HashMap<>();
@@ -5474,8 +5474,8 @@ public class GenerateCodeUseCase {
         } catch (NoClassDefFoundError | IllegalAccessError e) {
             formatterAvailable = Boolean.FALSE;
             log.warn("""
-                    El formateador de código generado no puede arrancar en esta JVM — los .java \
-                    se generan SIN formatear. Añade a las opciones de arranque (VM options):
+                    The generated-code formatter cannot start on this JVM — the .java files \
+                    are generated UNFORMATTED. Add to the JVM startup options (VM options):
                     --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
                     --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
                     --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \

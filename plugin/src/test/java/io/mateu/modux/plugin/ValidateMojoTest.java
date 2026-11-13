@@ -59,7 +59,7 @@ class ValidateMojoTest {
 
         var failure = assertThrows(MojoFailureException.class, mojoFor(model)::execute);
 
-        assertTrue(failure.getMessage().contains("1 referencia"), failure.getMessage());
+        assertTrue(failure.getMessage().contains("1 dangling reference"), failure.getMessage());
     }
 
     @Test
@@ -138,6 +138,6 @@ class ValidateMojoTest {
 
         var failure = assertThrows(MojoFailureException.class, mojoFor(model)::execute);
 
-        assertTrue(failure.getMessage().contains("error(es) en el modelo"), failure.getMessage());
+        assertTrue(failure.getMessage().contains("error(s) in the model"), failure.getMessage());
     }
 }

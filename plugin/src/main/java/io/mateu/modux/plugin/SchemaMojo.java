@@ -36,13 +36,13 @@ public class SchemaMojo extends AbstractMojo {
 
             Files.createDirectories(target.getParent());
             if (Files.exists(target) && Files.readString(target).equals(json)) {
-                getLog().info("Modux: el esquema ya estaba al día en " + target);
+                getLog().info("Modux: schema already up to date at " + target);
                 return;
             }
             Files.writeString(target, json);
-            getLog().info("Modux: esquema escrito en " + target);
+            getLog().info("Modux: schema written to " + target);
         } catch (Exception e) {
-            throw new MojoExecutionException("No se pudo escribir el esquema: " + e.getMessage(), e);
+            throw new MojoExecutionException("Could not write the schema: " + e.getMessage(), e);
         }
     }
 }

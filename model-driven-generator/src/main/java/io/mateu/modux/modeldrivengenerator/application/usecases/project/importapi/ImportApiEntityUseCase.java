@@ -53,7 +53,7 @@ public class ImportApiEntityUseCase {
         var openApi = parsed == null ? null : parsed.getOpenAPI();
         if (openApi == null || openApi.getPaths() == null) {
             throw new IllegalArgumentException(
-                    "No se pudo interpretar el contrato como OpenAPI/Swagger");
+                    "Could not parse the contract as OpenAPI/Swagger");
         }
         var title = openApi.getInfo() != null && openApi.getInfo().getTitle() != null
                 ? openApi.getInfo().getTitle() : "API";
@@ -76,7 +76,7 @@ public class ImportApiEntityUseCase {
             Files.writeString(tmp, content);
             var operations = WsdlParser.parse(tmp);
             if (operations.isEmpty()) {
-                throw new IllegalArgumentException("El WSDL no declara operaciones");
+                throw new IllegalArgumentException("The WSDL declares no operations");
             }
             var title = operations.get(0).portType();
             return upsert(targetApiId, title, operations.stream()

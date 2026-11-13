@@ -49,8 +49,8 @@ final class ModuxModel {
     static ModuxModel read(Path path) throws Exception {
         if (!Files.exists(path)) {
             throw new IllegalStateException(
-                    "No hay modelo en " + path.toAbsolutePath()
-                            + ". Un repositorio es un proyecto: el modelo va en " + CATALOG_DIR + "/ (o " + DEFAULT_PATH + "/).");
+                    "No model at " + path.toAbsolutePath()
+                            + ". A repository is one project: the model goes in " + CATALOG_DIR + "/ (or " + DEFAULT_PATH + "/).");
         }
         var granular = new GranularYamlStorageFormat();
         var data = granular.handles(path)
@@ -75,12 +75,12 @@ final class ModuxModel {
     Object project() {
         var projects = listOf("projects");
         if (projects.isEmpty()) {
-            throw new IllegalStateException("El modelo en " + root + " no tiene proyecto");
+            throw new IllegalStateException("The model at " + root + " has no project");
         }
         if (projects.size() > 1) {
             throw new IllegalStateException(
-                    "El modelo en " + root + " tiene " + projects.size() + " proyectos. "
-                            + "Un repositorio es un proyecto: sepáralos en repositorios distintos.");
+                    "The model at " + root + " has " + projects.size() + " projects. "
+                            + "A repository is one project: split them into separate repositories.");
         }
         return projects.get(0);
     }
