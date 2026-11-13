@@ -4,7 +4,7 @@ name: "Comprar"
 title: "Comprar entradas"
 exposedAsUi: true
 inputModelId: "m-comprar"
-outputModelId: "m-compra-realizada"
+outputModelId: "m-compra-en-curso"
 steps:
 - id: "step-call-uc-consultarPrecio"
   name: "callConsultarPrecio"

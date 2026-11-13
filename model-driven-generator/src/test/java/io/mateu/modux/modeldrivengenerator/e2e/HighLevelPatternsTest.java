@@ -83,6 +83,26 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void what_an_event_needs_is_not_sent_back_to_the_caller() throws Exception {
+        // Comprar answers CompraEnCurso but publishes CompraRealizada, with the card and the pickup
+        // code (it goes by email): the hook hands both over, the caller gets the result only
+        var outcome = read("ComprarOutcome.java");
+        assertTrue(outcome.contains("ComprarResult result"), outcome);
+        assertTrue(outcome.contains("String codigoRecogida"), outcome);
+        assertFalse(outcome.contains("tarjeta"), "the command already has it: " + outcome);
+        assertFalse(read("ComprarResult.java").contains("tarjeta"));
+        var useCase = read("ComprarUseCase.java");
+        assertTrue(useCase.contains("var outcome = steps.comprar(command, consultarPrecio);"), useCase);
+        assertTrue(useCase.contains("result = outcome.result();"), useCase);
+        assertTrue(useCase.contains("command.tarjeta()"), useCase);
+        assertTrue(useCase.contains("outcome.codigoRecogida()"), useCase);
+        assertFalse(read("ComprarResult.java").contains("codigoRecogida"));
+        assertTrue(read("ComprarSteps.java").contains("ComprarOutcome comprar("));
+        // and its generated test stubs the hook with one
+        assertTrue(read("ComprarUseCaseTest.java").contains(".thenReturn(new ComprarOutcome(new ComprarResult("), read("ComprarUseCaseTest.java"));
+    }
+
+    @Test
     void a_use_case_of_another_service_is_called_over_rest_through_a_client() throws Exception {
         var useCase = read("ComprarUseCase.java");
         assertTrue(useCase.contains("var consultarPrecio = consultarPrecioClient.call("), useCase);

@@ -1144,6 +1144,11 @@ public class GenerateCodeUseCase {
                     "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                             + "/" + ucClass + "Result.java");
         }
+        if (model.get("usecase") instanceof Map<?, ?> ucMap && ucMap.get("outcome") != null) {
+            createFile(boundedContextDir, model, "usecase-outcome.ftl",
+                    "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
+                            + "/" + ucClass + "Outcome.java");
+        }
         createFile(boundedContextDir, model, "usecase.ftl",
                 "src/main/java/" + boundedContextPackageDir + "/application/usecases/" + ucSlug
                         + "/" + ucClass + "UseCase.java");
@@ -1523,6 +1528,11 @@ public class GenerateCodeUseCase {
             }
         }
 
+        // What an event published after the last Custom step needs and neither the result nor the
+        // command has (a confirmation link, a token): the step hands it over in an Outcome next to
+        // the result, so the event gets it and the caller does not.
+        var outcomeExtras = new java.util.LinkedHashMap<String, String>();
+
         var enrichedSteps = new java.util.ArrayList<Map<String, Object>>();
         var needsStreamBridge = false;
         var usesCurrentUser = false;
@@ -1650,7 +1660,8 @@ public class GenerateCodeUseCase {
                     }
                     // After the step that produced the result, the event is built from it first:
                     // that is where a Custom step leaves what it decided (ids, dates, flags).
-                    var fromResult = stepIndex > lastCustom && lastCustom >= 0 && !resultFieldNames.isEmpty();
+                    var afterLastCustom = stepIndex > lastCustom && lastCustom >= 0;
+                    var fromResult = afterLastCustom && !resultFieldNames.isEmpty();
                     var available = new java.util.ArrayList<String>();
                     if (fromResult) available.addAll(resultFieldNames);
                     commandFieldNames.stream().sorted().forEach(available::add);
@@ -1663,6 +1674,10 @@ public class GenerateCodeUseCase {
                                 am.put("expr", "result." + n + "()");
                             } else if (commandFieldNames.contains(n)) {
                                 am.put("expr", "command." + n + "()");
+                            } else if (afterLastCustom) {
+                                am.put("matched", true);
+                                am.put("expr", "outcome." + n + "()");
+                                outcomeExtras.putIfAbsent(n, javaTypeOf(am));
                             }
                         }
                     }
@@ -1688,6 +1703,11 @@ public class GenerateCodeUseCase {
             }
         }
 
+        if (!outcomeExtras.isEmpty()) {
+            var fields = new java.util.ArrayList<Map<String, Object>>();
+            outcomeExtras.forEach((n, t) -> fields.add(Map.of("name", n, "javaType", t)));
+            map.put("outcome", Map.of("className", toTypeName(useCase.name()) + "Outcome", "fields", fields));
+        }
         map.put("steps", enrichedSteps);
         map.put("needsStreamBridge", needsStreamBridge);
         map.put("usesCurrentUser", usesCurrentUser);
@@ -2063,6 +2083,21 @@ public class GenerateCodeUseCase {
     private static String javaTypeOf(ModelFieldEntity f) {
         if (!f.basicType() || f.type() == null) return "String";
         return switch (f.type().name()) {
+            case "integer" -> "Integer";
+            case "number", "money" -> "java.math.BigDecimal";
+            case "bool" -> "Boolean";
+            case "date" -> "java.time.LocalDate";
+            case "time" -> "java.time.LocalTime";
+            case "dateTime" -> "java.time.LocalDateTime";
+            default -> "String";
+        };
+    }
+
+    /** The Java type an event's record gives a payload field (see integration-event.ftl). */
+    private static String javaTypeOf(Map<String, Object> arg) {
+        if (!Boolean.TRUE.equals(arg.get("basicType"))) return "String";
+        var t = String.valueOf(arg.get("type"));
+        return switch (t) {
             case "integer" -> "Integer";
             case "number", "money" -> "java.math.BigDecimal";
             case "bool" -> "Boolean";

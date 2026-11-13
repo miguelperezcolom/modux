@@ -1,0 +1,26 @@
+---
+id: "m-compra-en-curso"
+name: "CompraEnCurso"
+fields:
+- id: "f-m-compra-en-curso-compraId"
+  name: "compraId"
+  basicType: true
+  type: "string"
+  label: "Compra"
+- id: "f-m-compra-en-curso-importe"
+  name: "importe"
+  basicType: true
+  type: "money"
+  label: "Importe"
+- id: "f-m-compra-en-curso-justificante"
+  name: "justificante"
+  basicType: true
+  type: "string"
+  stereotype: "html"
+  label: "Justificante"
+- id: "f-m-compra-en-curso-zonas"
+  name: "zonas"
+  type: "array"
+  modelId: "m-zona"
+  label: "Zonas del recinto"
+projectId: "entradas"

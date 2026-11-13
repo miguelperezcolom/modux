@@ -178,7 +178,12 @@ public class ${usecase.className}UseCase {
         // TODO: apply model mapping (not resolved)
 </#if>
 <#elseif step.type == "Custom">
-<#if outputModel?? && customSteps?has_content && step.id == customSteps?last.id>
+<#if usecase.outcome?? && customSteps?has_content && step.id == customSteps?last.id>
+        var outcome = steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${r.var}</#list>);
+<#if outputModel??>
+        result = outcome.result();
+</#if>
+<#elseif outputModel?? && customSteps?has_content && step.id == customSteps?last.id>
         result = steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${r.var}</#list>);
 <#else>
         steps.${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${r.var}</#list>);
