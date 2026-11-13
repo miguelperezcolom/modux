@@ -10,7 +10,7 @@ The `modux-maven-plugin` lets you trigger Modux code generation from any Maven b
 ```xml
 <groupId>io.mateu.modux</groupId>
 <artifactId>modux-maven-plugin</artifactId>
-<version>0.6.0</version>
+<version>0.6.1</version>
 ```
 
 ## Goal: `validate`
