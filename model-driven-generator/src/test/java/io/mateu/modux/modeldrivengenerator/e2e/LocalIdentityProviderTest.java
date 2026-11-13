@@ -105,6 +105,8 @@ class LocalIdentityProviderTest {
         assertTrue(service.contains("addFilterBefore(authCookie, org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class)"), service);
         assertTrue(service.contains("jwtAuthenticationConverter(SecurityConfig::realmRoles)"), service);
         assertTrue(service.contains("\"ROLE_\" + r"), service);
+        // and its REST API too: both borders (sync and browser/REST) take the IdP's JWT
+        assertTrue(service.split("oauth2ResourceServer\\(").length - 1 >= 2, "the REST API takes the JWT: " + service);
     }
 
     @Test

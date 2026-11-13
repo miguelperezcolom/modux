@@ -16,7 +16,11 @@ package ${project.packageName}.${module.slug}.application.query.readmodel;
 </#if><#if hasDateTime>import java.time.LocalDateTime;
 </#if><#if hasBigDecimal>import java.math.BigDecimal;
 </#if>
-public record ${className}(<#if model?? && model.fields?has_content>
+<#assign declaresId = model?? && (model.fields![])?filter(f -> f.name == "id")?has_content>
+public record ${className}(<#if !declaresId>
+        /** The row's id: what a link to it, or a reference, carries. */
+        String id<#if model?? && model.fields?has_content>,</#if>
+</#if><#if model?? && model.fields?has_content>
 <#list model.fields as field>
 <#if field.basicType>
     <#if field.type == "string" || field.type == "json">

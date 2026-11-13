@@ -324,6 +324,28 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void what_running_a_generated_system_showed() throws Exception {
+        // a notification's configuration is named apart from its function bean (same name, else)
+        assertTrue(read("AvisoDeCompraNotification.java").contains("@Configuration(\"avisoDeCompraNotificationConfiguration\")"));
+        // JPA columns are the migration's snake_case, not left to Spring's naming (corrigeA)
+        assertTrue(read("CompraEntity.java").contains("@Column(name = \"col_concierto_id\")"));
+        assertTrue(read("CompraEntity.java").contains("@Column(name = \"col_confirmada_por\")"));
+        // a read model's rows carry their id: a link to one, a reference, needs it
+        assertTrue(read("MovimientoViewReadModel.java").contains("String id, String compraId"));
+        // an aggregate's lists travel with its state into another context's read model, as JSON text
+        assertTrue(read("ConciertosProjection.java", "ventas").contains("entity.setZonas("));
+        // the event store's columns and the correlative series are in the migrations
+        var ventas = Files.readString(file("V1__baseline.sql", "ventas").orElseThrow());
+        assertTrue(ventas.contains("recorded_by varchar(255)"), ventas);
+        assertTrue(ventas.contains("CREATE TABLE IF NOT EXISTS ventas_sequence"), ventas);
+        // only where numbers are taken
+        assertFalse(Files.readString(file("V1__baseline.sql", "catalogo").orElseThrow()).contains("catalogo_sequence"));
+        assertFalse(file("CatalogoJpaSequences.java", null).isPresent());
+        // a list that crosses services says what its rows carry
+        assertTrue(Files.readString(file("ConsultarPrecioClient.java", null).orElseThrow()).contains("What it answers."));
+    }
+
+    @Test
     void with_an_email_provider_the_services_can_send_email() throws Exception {
         assertTrue(read("MailSender.java").contains("void send(String to, String subject, String html);"));
         assertTrue(read("SmtpMailSender.java").contains("helper.setText(html, true);"));

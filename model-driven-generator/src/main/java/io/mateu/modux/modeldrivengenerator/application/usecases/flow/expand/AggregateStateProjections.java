@@ -99,7 +99,8 @@ public class AggregateStateProjections {
             if (readModel != null && (readModel.modelId() == null || readModel.modelId().equals(aggregate.modelId()))) {
                 var shapeId = "model-view-" + readModel.id();
                 repository.putTransient(new ModelEntity(shapeId, readModel.name() + "Fields",
-                        stateFields.stream().map(f -> field(shapeId, f.name(), f.type(), f.label())).toList(), List.of(), null));
+                        stateFields.stream().map(f -> field(shapeId, f.name(), f.type(), f.label()).withStereotype(f.stereotype()))
+                                .toList(), List.of(), null));
                 repository.putTransient(new ReadModelEntity(readModel.id(), readModel.name(), readModel.boundedContextId(),
                         readModel.description(), shapeId, readModel.storageType(), readModel.consistency(),
                         readModel.aggregateId(), readModel.projectId()));
@@ -116,14 +117,27 @@ public class AggregateStateProjections {
         }
     }
 
-    /** The aggregate's fields as they travel: basic ones as they are, enums and references as text. */
+    /**
+     * The aggregate's fields as they travel: basic ones as they are (with their stereotype, so a long
+     * text stays unbounded), enums and references as text, and a list of a model as the JSON text the
+     * aggregate keeps it in.
+     */
     static List<ModelFieldEntity> stateFields(ModelEntity model) {
         return (model.fields() == null ? List.<ModelFieldEntity>of() : model.fields()).stream()
                 .filter(Objects::nonNull)
                 .filter(f -> !"id".equals(f.name()))
-                .filter(f -> f.basicType() || f.isEnum() || f.enumId() != null)
-                .map(f -> field(model.id(), f.name(), f.basicType() && f.type() != null ? f.type() : FieldDataType.string, f.label()))
+                .filter(f -> f.basicType() || f.isEnum() || f.enumId() != null || jsonList(f))
+                .map(f -> jsonList(f)
+                        ? field(model.id(), f.name(), FieldDataType.string, f.label())
+                                .withStereotype(io.mateu.modux.modeldrivengenerator.domain.shared.FieldStereotype.textarea)
+                        : field(model.id(), f.name(), f.basicType() && f.type() != null ? f.type() : FieldDataType.string, f.label())
+                                .withStereotype(f.basicType() ? f.stereotype() : null))
                 .toList();
+    }
+
+    /** A list of a model: the aggregate keeps it as JSON. */
+    private static boolean jsonList(ModelFieldEntity f) {
+        return !f.basicType() && f.modelId() != null && !f.modelId().isBlank() && f.type() == FieldDataType.array;
     }
 
     private static ModelFieldEntity field(String modelId, String name, FieldDataType type) {

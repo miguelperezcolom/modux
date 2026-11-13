@@ -1,4 +1,5 @@
 package ${project.packageName}.${module.slug}.infra.out.persistence;
+<#assign declaresId = model?? && (model.fields![])?filter(f -> f.name == "id")?has_content>
 <#function selectColumns fields>
   <#assign cols = "">
   <#list fields as f>
@@ -36,7 +37,7 @@ public class ${className}DBQueryService implements ${className}QueryService {
     }
 
     private ${className} toDto(${className}Entity entity) {
-        return new ${className}(<#if model?? && model.fields?has_content>
+        return new ${className}(<#if !declaresId>entity.getId()<#if model?? && model.fields?has_content>,</#if></#if><#if model?? && model.fields?has_content>
 <#list model.fields as field>
     <#if field.basicType>
                 entity.get${field.name?cap_first}()<#sep>,</#sep>
@@ -65,18 +66,18 @@ public class ${className}DBQueryService implements ${className}QueryService {
 
     @Override
     public Optional<${className}> getById(String id) {
-        var rows = jdbc.query("SELECT ${selectColumns(jdbcFields![])} FROM ${tableName} WHERE id = ?",
+        var rows = jdbc.query("SELECT <#if !declaresId>id, </#if>${selectColumns(jdbcFields![])} FROM ${tableName} WHERE id = ?",
                 (rs, n) -> toDto(rs), id);
         return rows.stream().findFirst();
     }
 
     @Override
     public List<${className}> findAll() {
-        return jdbc.query("SELECT ${selectColumns(jdbcFields![])} FROM ${tableName}", (rs, n) -> toDto(rs));
+        return jdbc.query("SELECT <#if !declaresId>id, </#if>${selectColumns(jdbcFields![])} FROM ${tableName}", (rs, n) -> toDto(rs));
     }
 
     private ${className} toDto(ResultSet rs) throws SQLException {
-        return new ${className}(<#if jdbcFields?? && jdbcFields?has_content>
+        return new ${className}(<#if !declaresId>rs.getString("id")<#if jdbcFields?? && jdbcFields?has_content>,</#if></#if><#if jdbcFields?? && jdbcFields?has_content>
 <#list jdbcFields as field>
     <#if field.basicType>
         <#if field.primitiveType == "integer">

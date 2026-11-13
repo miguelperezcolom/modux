@@ -66,6 +66,9 @@ public class SecurityConfig {
                 .requestMatchers("/v1/**", "/error", "/login/**", "/oauth2/**").permitAll()
                 .anyRequest().authenticated())
             .addFilterBefore(authCookie, org.springframework.security.oauth2.client.web.OAuth2LoginAuthenticationFilter.class)
+            // the REST API is a machine border too: a caller with the IdP's JWT (another service, an
+            // agent, curl) is authenticated by it; without one, a person is sent to sign in
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(SecurityConfig::realmRoles)))
             .oauth2Login(login -> login
                 .userInfoEndpoint(userInfo -> userInfo.oidcUserService(ModuxAuthCookie.withRealmRoles()))
                 .successHandler(authCookie.loginSuccess("/")))
