@@ -281,7 +281,8 @@ class HighLevelPatternsTest {
 
     @Test
     void a_lifecycle_sets_the_initial_state_guards_each_operation_and_moves_the_state() throws Exception {
-        var compra = read("Compra.java");
+        // the aggregate, not another context's record of the same name
+        var compra = read("Compra.java", "aggregates/compra");
         // born in its initial state
         assertTrue(compra.contains("p.estado = Estado.PENDIENTE;"), compra);
         // an operation only from the states its transitions leave, and to where they go
@@ -364,8 +365,12 @@ class HighLevelPatternsTest {
     }
 
     private String read(String name) throws Exception {
+        return read(name, null);
+    }
+
+    private String read(String name, String under) throws Exception {
         // google-java-format wraps where it likes: compare on single spaces
-        return Files.readString(file(name, null).orElseThrow(() -> new AssertionError(name + " not generated")))
+        return Files.readString(file(name, under).orElseThrow(() -> new AssertionError(name + " not generated")))
                 .replaceAll("\\s+", " ").replace("( ", "(").replace(" )", ")").replace(". ", ".").replace(" .", ".");
     }
 }
