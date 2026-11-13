@@ -585,6 +585,9 @@ public final class LintRules {
                     .filter(p -> p.rebuildStrategy() == null || p.rebuildStrategy().isBlank())
                     // a state projection rebuilds itself: its source republishes the whole state on startup
                     .filter(p -> p.sourceAggregateId() == null || p.sourceAggregateId().isBlank())
+                    // a polled projection too: every poll re-reads the whole table or operation it mirrors
+                    .filter(p -> (p.sourceExternalTableId() == null || p.sourceExternalTableId().isBlank())
+                            && (p.sourceExternalUseCaseId() == null || p.sourceExternalUseCaseId().isBlank()))
                     .map(p -> new LintFinding(id(), LintSeverity.WARNING, "Projection", p.id(), p.name(),
                             "No rebuild strategy — the read model cannot recover from projection bugs."))
                     .toList();
