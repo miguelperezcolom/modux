@@ -57,6 +57,17 @@ class EventConductorWorkflowDefinitionTest {
                 assertThat(known).contains((String) s.get("type")));
     }
 
+    /** Same model, same file: a key order that changes per run changes the hash that recreates EC. */
+    @Test
+    void itsStepsKeepTheOrderTheyAreWrittenIn() {
+        var definition = definitionOf(workflow(step("s1", "Cobrar")),
+                new WorkflowGatewayEntity("gw-1", "Join", "JOIN", List.of("s1"), List.of()));
+
+        assertThat(steps(definition).get(0).keySet()).startsWith("id", "type", "name");
+        assertThat(steps(definition)).allSatisfy(s ->
+                assertThat(s).isInstanceOf(java.util.LinkedHashMap.class));
+    }
+
     @Test
     void everyStepCarriesWhatTheSchemaRequires() {
         var definition = definitionOf(workflow(step("s1", "Cobrar")));

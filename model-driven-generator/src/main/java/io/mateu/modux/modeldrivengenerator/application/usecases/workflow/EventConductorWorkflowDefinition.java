@@ -61,7 +61,7 @@ public final class EventConductorWorkflowDefinition {
         }
         // a definition with no steps is rejected by the schema; an END is the honest empty workflow
         if (steps.isEmpty()) {
-            steps.add(new LinkedHashMap<>(Map.of("id", "done", "type", "END", "name", "Done")));
+            steps.add(new LinkedHashMap<>(ordered("id", "done", "type", "END", "name", "Done")));
         }
         definition.put("steps", steps);
         return definition;
@@ -204,7 +204,7 @@ public final class EventConductorWorkflowDefinition {
         var byId = new LinkedHashMap<String, Map<String, Object>>();
         generated.forEach(g -> byId.put((String) g.get("id"), g));
         var steps = new ArrayList<Map<String, Object>>();
-        steps.add(new LinkedHashMap<>(Map.of("id", "start", "type", "START", "name", "Start")));
+        steps.add(new LinkedHashMap<>(ordered("id", "start", "type", "START", "name", "Start")));
 
         for (var st : modelSteps) {
             var out = byId.get(st.id());
@@ -250,10 +250,10 @@ public final class EventConductorWorkflowDefinition {
                 // a person's task: on the worklist of everyone with the role; past its deadline it
                 // goes to the escalation role as well
                 var role = runtime.roleNameOf().apply(st.roleId());
-                out.put("assignment", Map.of("candidateGroups", List.of(role)));
+                out.put("assignment", ordered("candidateGroups", List.of(role)));
                 if (st.deadline() != null && st.deadline().startsWith("P") && st.escalationRoleId() != null) {
-                    out.put("escalation", List.of(Map.of("after", st.deadline(), "action", "reassign",
-                            "to", Map.of("candidateGroups", List.of(role, runtime.roleNameOf().apply(st.escalationRoleId()))))));
+                    out.put("escalation", List.of(ordered("after", st.deadline(), "action", "reassign",
+                            "to", ordered("candidateGroups", List.of(role, runtime.roleNameOf().apply(st.escalationRoleId()))))));
                 }
             }
             if (st.deadline() != null && !st.deadline().isBlank() && st.roleId() == null) {
@@ -267,14 +267,14 @@ public final class EventConductorWorkflowDefinition {
                 out.remove("preconditionStepIds");
                 var condition = conditionOf(into, st.id());
                 if (condition == null) out.put("preconditionStepId", into.id());
-                else out.put("preconditions", List.of(Map.of("stepId", into.id(), "expression", condition)));
+                else out.put("preconditions", List.of(ordered("stepId", into.id(), "expression", condition)));
             } else if (into != null) {
                 out.remove("preconditionStepIds");
                 out.put("preconditionStepId", into.id());
             } else if (timeoutTargets.containsKey(st.id())) {
                 // reached only when that step runs out of time, never down the normal path
                 out.remove("preconditionStepIds");
-                out.put("preconditions", List.of(Map.of("stepId", timeoutTargets.get(st.id()), "expression", "false")));
+                out.put("preconditions", List.of(ordered("stepId", timeoutTargets.get(st.id()), "expression", "false")));
             } else if (!out.containsKey("preconditionStepIds")) {
                 out.put("preconditionStepId", "start");
             }
@@ -310,11 +310,11 @@ public final class EventConductorWorkflowDefinition {
         var leaves = steps.stream().map(st -> (String) st.get("id"))
                 .filter(id -> !"start".equals(id) && !referenced.contains(id)).toList();
         if (leaves.size() > 1) {
-            steps.add(new LinkedHashMap<>(Map.of("id", "finished", "type", "JOIN", "name", "Finished",
+            steps.add(new LinkedHashMap<>(ordered("id", "finished", "type", "JOIN", "name", "Finished",
                     "joinType", "XOR", "preconditionStepIds", leaves)));
-            steps.add(new LinkedHashMap<>(Map.of("id", "end", "type", "END", "name", "End", "preconditionStepId", "finished")));
+            steps.add(new LinkedHashMap<>(ordered("id", "end", "type", "END", "name", "End", "preconditionStepId", "finished")));
         } else {
-            steps.add(new LinkedHashMap<>(Map.of("id", "end", "type", "END", "name", "End",
+            steps.add(new LinkedHashMap<>(ordered("id", "end", "type", "END", "name", "End",
                     "preconditionStepId", leaves.isEmpty() ? "start" : leaves.get(0))));
         }
         definition.put("steps", steps);
@@ -370,5 +370,17 @@ public final class EventConductorWorkflowDefinition {
     private static String slug(String value) {
         return value == null ? "" : value.toLowerCase().replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("(^-+|-+$)", "");
+    }
+
+    /**
+     * A map in the order its entries are written. Map.of has none (it changes from one JVM run to
+     * the next), so the JSON — and the definitions hash that recreates EventConductor — would too.
+     */
+    private static Map<String, Object> ordered(Object... keysAndValues) {
+        var map = new LinkedHashMap<String, Object>();
+        for (int i = 0; i < keysAndValues.length; i += 2) {
+            map.put((String) keysAndValues[i], keysAndValues[i + 1]);
+        }
+        return map;
     }
 }
