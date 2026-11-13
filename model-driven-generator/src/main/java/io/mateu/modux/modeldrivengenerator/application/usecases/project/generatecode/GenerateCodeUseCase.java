@@ -108,6 +108,7 @@ public class GenerateCodeUseCase {
         // single source of truth on disk).
         flowStoreMaterializer.materialize();
         try {
+            materializeWorkflowEvents();
             generate(command);
         } finally {
             flowStoreMaterializer.restore();
@@ -381,7 +382,7 @@ public class GenerateCodeUseCase {
             createFile(boundedContextDir, boundedContextModel, "current-user-security.ftl",
                     "src/main/java/" + bcPackageDir + "/infra/out/security/SpringSecurityCurrentUser.java");
         }
-        if (usesSequences()) {
+        if (usesSequences(boundedContext)) {
             // correlative numbers kept by the system (fields with systemValue SEQUENCE)
             var bcPackageDir = project.packageName().replace(".", "/") + "/" + boundedContextSlug(boundedContext.name());
             createDir(boundedContextDir, "src/main/java/" + bcPackageDir + "/infra/out/persistence");
@@ -1762,7 +1763,12 @@ public class GenerateCodeUseCase {
                 log.warn("la notificación '{}' no dice con qué evento sale (eventId)", n.name());
                 continue;
             }
-            var topic = event.topicName() != null && !event.topicName().isBlank() ? event.topicName()
+            // the topic its publisher writes to: the integration topic when the event travels to other
+            // services (an integration event of its name), else the plain one a use case sends it on
+            var integrated = repository.findAllOfType(IntegrationEventEntity.class).stream()
+                    .anyMatch(integration -> event.name().equals(integration.name()));
+            var topic = !integrated ? event.name().toLowerCase().replaceAll("[^a-z0-9]", "-")
+                    : event.topicName() != null && !event.topicName().isBlank() ? event.topicName()
                     : serviceEmitting(event.name()).map(sv -> io.mateu.modux.modeldrivengenerator.application
                             .usecases.flow.expand.FlowExpander.topicOf(project.name(), sv.name(), event.name())).orElse(null);
             if (topic == null) continue;
@@ -1787,9 +1793,16 @@ public class GenerateCodeUseCase {
         return out;
     }
 
-    /** Whether some model asks the system for a correlative number (systemValue SEQUENCE). */
-    private boolean usesSequences() {
-        return repository.findAllOfType(ModelEntity.class).stream()
+    /**
+     * Whether the context takes correlative numbers: an operation of one of its aggregates has an
+     * input field with systemValue SEQUENCE.
+     */
+    private boolean usesSequences(BoundedContextEntity boundedContext) {
+        return (boundedContext.aggregateIds() == null ? List.<String>of() : boundedContext.aggregateIds()).stream()
+                .flatMap(id -> repository.findById(id, AggregateEntity.class).stream())
+                .flatMap(a -> a.operations() == null ? java.util.stream.Stream.empty() : a.operations().stream())
+                .map(OperationEntity::inputModelId).filter(java.util.Objects::nonNull)
+                .flatMap(id -> repository.findById(id, ModelEntity.class).stream())
                 .flatMap(m -> m.fields() == null ? java.util.stream.Stream.empty() : m.fields().stream())
                 .anyMatch(f -> "SEQUENCE".equals(f.systemValue()));
     }
@@ -1886,6 +1899,18 @@ public class GenerateCodeUseCase {
      * built from the command, its response typed after the callee's output) and where the callee
      * answers. Null when both run in the same service — then it is a plain bean call.
      */
+    /**
+     * What a list travels as, for whoever reads it on the other side: «a JSON array; each row:
+     * {id, name, area…}». Empty for a field that is not a list of a model.
+     */
+    private String jsonListShape(ModelFieldEntity f) {
+        if (f.basicType() || f.modelId() == null || f.modelId().isBlank() || f.type() != FieldDataType.array) return "";
+        var fields = fieldsOf(f.modelId()).stream()
+                .map(x -> x.name() + " (" + (x.enumId() != null ? "enum" : x.type() != null ? x.type().name() : "string") + ")")
+                .toList();
+        return "a JSON array; each row: {" + String.join(", ", fields) + "}";
+    }
+
     private Map<String, Object> remoteCallOf(String callerId, String calleeId, Set<String> commandFieldNames) {
         var callee = repository.findById(calleeId, UseCaseEntity.class).orElse(null);
         var callerService = serviceOfUseCase(callerId);
@@ -1899,7 +1924,8 @@ public class GenerateCodeUseCase {
                 "name", f.name(), "javaType", javaTypeOf(f),
                 "expr", commandFieldNames.contains(f.name()) ? "command." + f.name() + "()" : "null")));
         var response = new java.util.ArrayList<Map<String, Object>>();
-        fieldsOf(callee.outputModelId()).forEach(f -> response.add(Map.of("name", f.name(), "javaType", javaTypeOf(f))));
+        fieldsOf(callee.outputModelId()).forEach(f -> response.add(Map.of("name", f.name(), "javaType", javaTypeOf(f),
+                "shape", jsonListShape(f))));
         var apiVersion = callee.apiVersion() != null && !callee.apiVersion().isBlank() ? callee.apiVersion() : "v1";
         if (!apiVersion.startsWith("v")) apiVersion = "v" + apiVersion;
         var svcSlug = serviceName(calleeService).toLowerCase().replaceAll("[^a-z0-9]", "-").replaceAll("-+", "-");
@@ -2885,6 +2911,16 @@ public class GenerateCodeUseCase {
                     .filter(rm -> boundedContext.id().equals(rm.boundedContextId()))
                     .filter(rm -> inScope(rm.id()))
                     .forEach(rm -> tables.add(readModelTable(rm)));
+            // the correlative series of the context (systemValue SEQUENCE), when it takes numbers
+            if (usesSequences(boundedContext)) {
+                var seqColumns = new ArrayList<Map<String, Object>>();
+                seqColumns.add(column("name", "varchar(255)", true));
+                seqColumns.add(column("last_value", "bigint", false));
+                var seqTable = new HashMap<String, Object>();
+                seqTable.put("name", boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "") + "_sequence");
+                seqTable.put("columns", seqColumns);
+                tables.add(seqTable);
+            }
         }
 
         // Inbox table for idempotent subscriptions (see inbox.ftl)
@@ -3149,8 +3185,9 @@ public class GenerateCodeUseCase {
         columns.add(column("aggregate_id", "varchar(255)", false));
         columns.add(column("sequence_number", "bigint", false));
         columns.add(column("event_type", "varchar(255)", false));
-        columns.add(column("payload", "varchar(4000)", false));
+        columns.add(column("payload", "text", false));
         columns.add(column("occurred_at", "timestamp", false));
+        columns.add(column("recorded_by", "varchar(255)", false));
         var table = new HashMap<String, Object>();
         table.put("name", aggregate.name().toLowerCase() + "_event");
         table.put("columns", columns);
@@ -3956,6 +3993,42 @@ public class GenerateCodeUseCase {
     }
 
     /** The domain event with that name: the materialized one (with its topic) when there are several. */
+    /**
+     * An event a workflow starts on or waits for leaves its service: the workflow engine is another
+     * process. So it travels as an integration event — by the publisher that writes to the topic the
+     * engine (and any notification of it) listens on — unless the model already says so. Transient:
+     * the store is reloaded after generation.
+     */
+    private void materializeWorkflowEvents() {
+        var project = repository.findAllOfType(ProjectEntity.class).stream().findFirst().orElse(null);
+        if (project == null) return;
+        var names = new java.util.LinkedHashSet<String>();
+        for (var workflow : repository.findAllOfType(WorkflowEntity.class)) {
+            if (workflow.triggerEvent() != null && !workflow.triggerEvent().isBlank()) names.add(workflow.triggerEvent());
+            if (workflow.steps() != null) workflow.steps().stream()
+                    .filter(st -> st.completionEventName() != null && st.targetUseCaseId() == null && st.roleId() == null)
+                    .forEach(st -> names.add(st.completionEventName()));
+        }
+        for (var name : names) {
+            if (repository.findAllOfType(IntegrationEventEntity.class).stream().anyMatch(ie -> name.equals(ie.name()))) continue;
+            var event = eventNamed(name).orElse(null);
+            var service = serviceEmitting(name).orElse(null);
+            if (event == null || service == null) continue;
+            var boundedContext = repository.findAllOfType(BoundedContextEntity.class).stream()
+                    .filter(bc -> bc.domainEventIds() != null && bc.domainEventIds().contains(event.id()))
+                    .findFirst().orElse(null);
+            if (boundedContext == null) continue;
+            var topic = event.topicName() != null && !event.topicName().isBlank() ? event.topicName()
+                    : io.mateu.modux.modeldrivengenerator.application.usecases.flow.expand.FlowExpander
+                            .topicOf(project.name(), service.name(), name);
+            repository.putTransient(new IntegrationEventEntity("ie-wf-" + event.id(), name, boundedContext.id(), null,
+                    event.id(), event.modelId(), topic, null, null,
+                    io.mateu.modux.modeldrivengenerator.domain.aggregates.integrationevent.vo.IntegrationEventSerializationFormat.JSON,
+                    io.mateu.modux.modeldrivengenerator.domain.aggregates.integrationevent.vo.IntegrationEventCompressionType.NONE,
+                    true, topic + ".dlq", 5, "v1", null, true, null));
+        }
+    }
+
     private java.util.Optional<DomainEventEntity> eventNamed(String name) {
         return repository.findAllOfType(DomainEventEntity.class).stream()
                 .filter(e -> name.equals(e.name()))

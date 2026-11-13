@@ -1,3 +1,5 @@
+<#-- the column of a field: the same snake_case the migrations write (corrigeA → col_corrige_a) -->
+<#function col name><#return ("col_" + name)?replace("([a-z0-9])([A-Z])", "$1_$2", "r")?lower_case></#function>
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.out.persistence;
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
@@ -36,35 +38,35 @@ public class ${aggregate.name}Entity {
 
 <#list safeFields as field>
     <#if field.type == "Entity">
-    @Column(name = "col_${field.name}_id")
+    @Column(name = "${col(field.name)}_id")
     String ${field.name}Id;
     <#elseif field.type == "ValueObject">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     String ${field.name};
     <#else>
         <#if field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     String ${field.name};
         <#elseif field.primitiveType == "integer">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     Integer ${field.name};
         <#elseif field.primitiveType == "decimal">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     BigDecimal ${field.name};
         <#elseif field.primitiveType == "bool">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     Boolean ${field.name};
         <#elseif field.primitiveType == "date">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     LocalDate ${field.name};
         <#elseif field.primitiveType == "time">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     LocalTime ${field.name};
         <#elseif field.primitiveType == "datetime">
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     LocalDateTime ${field.name};
         <#else>
-    @Column(name = "col_${field.name}")
+    @Column(name = "${col(field.name)}")
     String ${field.name};
         </#if>
     </#if>
