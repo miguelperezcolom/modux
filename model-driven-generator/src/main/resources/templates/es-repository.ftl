@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.out.persistence;
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
@@ -62,7 +63,7 @@ public class ${aggregate.name}EventSourcedRepository implements ${aggregate.name
         var events = eventSourcing.eventsOf(domain);
         if (events.isEmpty()) {
             // no domain events of its own: the history is the sequence of states it was saved in
-            eventAppender.append(String.valueOf(snapshot.getId()), "${aggregate.name}Guardado", snapshot);
+            eventAppender.append(String.valueOf(snapshot.getId()), "${aggregate.name}<#if uiEs>Guardado<#else>Saved</#if>", snapshot);
         }
         for (var event : events) {
             eventAppender.append(String.valueOf(snapshot.getId()), event);

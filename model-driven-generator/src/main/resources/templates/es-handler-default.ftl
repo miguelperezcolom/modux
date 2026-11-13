@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 <#assign mpkg = module.name?lower_case?replace("[^a-z0-9]","",'r')>
 package ${project.packageName}.custom;
 
@@ -19,7 +20,7 @@ public class Default${aggregate.name}EventSourcing implements ${aggregate.name}E
     /**
      * The domain events of the aggregate's latest change (instances of the {Event}Event records in
      * domain.events). Returning none is a valid choice: the repository then records the state the
-     * aggregate was saved in (${aggregate.name}Guardado), so the history is complete either way.
+     * aggregate was saved in (${aggregate.name}<#if uiEs>Guardado<#else>Saved</#if>), so the history is complete either way.
      */
     @Override
     public List<Object> eventsOf(${aggregate.name} aggregate) {

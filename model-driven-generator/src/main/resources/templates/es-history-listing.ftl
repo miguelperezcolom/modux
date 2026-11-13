@@ -29,11 +29,11 @@ public class ${className} extends Crud<
 
     public record Row(
             @Label("${aggregateName}") String aggregateId,
-            @Label("Nº") String sequence,
+            @Label("<#if uiEs>Nº<#else>#</#if>") String sequence,
             @Label("<#if uiEs>Qué pasó<#else>What happened</#if>") String event,
             @Label("<#if uiEs>Cuándo<#else>When</#if>") String occurredAt,
             @Label("<#if uiEs>Quién<#else>Who</#if>") String recordedBy,
-            @Label("Estado") String state) {}
+            @Label("<#if uiEs>Estado<#else>State</#if>") String state) {}
 
     final ${aggregateName}EventStore events;
 
