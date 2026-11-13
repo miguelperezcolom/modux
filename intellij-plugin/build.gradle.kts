@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.6.1"
+version = "0.6.2"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,10 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.2</h4>
+            <ul>
+              <li>What an event needs is no longer sent back to the caller: fields only the event carries (a confirmation link, a token) are handed over by the last custom step in a generated Outcome, and the caller gets the result only. An item overview opened from a search list shows as the overview, not as a form of its fields.</li>
+            </ul>
             <h4>0.6.1</h4>
             <ul>
               <li>Fixes found by running a generated system end to end: workflow and email notifications listen on the topic their events are published to, the REST API accepts the identity provider's token, sequences and event-store columns are created by the migrations, projections carry list fields, and read models always expose their id.</li>
