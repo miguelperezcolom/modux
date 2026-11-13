@@ -2635,9 +2635,14 @@ public class GenerateCodeUseCase {
                 .orElse(null);
     }
 
+    /**
+     * JSON that comes out the same on every generation: a map's keys in a fixed order (a Map.of has
+     * none, it changes from one JVM run to the next), so files and the hashes taken of them are stable.
+     */
     private String toPrettyJson(Object value) {
         try {
             return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .configure(com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
                     .writerWithDefaultPrettyPrinter().writeValueAsString(value);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("no se pudo serializar la definición del workflow", e);
@@ -3989,7 +3994,7 @@ public class GenerateCodeUseCase {
         runtimeModel.put("image", EVENTCONDUCTOR_IMAGE);
         // the definitions are mounted files: a change to them would not restart the engine, so the
         // compose carries their hash and a different one recreates the container
-        mounted.append(runtimeModel.get("connections")).append(runtimeModel.get("destinations"));
+        mounted.append(toPrettyJson(runtimeModel.get("connections"))).append(toPrettyJson(runtimeModel.get("destinations")));
         runtimeModel.put("definitionsHash", sha256(mounted.toString()).substring(0, 16));
         if (humanTasks) runtimeModel.put("formsImage", EVENTCONDUCTOR_FORMS_IMAGE);
         return runtimeModel;
@@ -4381,8 +4386,7 @@ public class GenerateCodeUseCase {
             targets.add(t);
         }
         Map<String, Object> model = new HashMap<>();
-        model.put("json", new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter()
-                .writeValueAsString(Map.of("project", projectSlug,
+        model.put("json", toPrettyJson(Map.of("project", projectSlug,
                         "builds", runnables.stream().map(r -> r.get("dir")).toList(),
                         "targets", targets)));
         createFile(project.outputPath(), model, "deploy-targets.ftl", "deploy/targets.json");
