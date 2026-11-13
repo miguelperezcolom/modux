@@ -15,6 +15,7 @@ import io.mateu.uidl.annotations.Title;
 import io.mateu.uidl.data.Element;
 import io.mateu.uidl.data.Markdown;
 import io.mateu.uidl.fluent.Component;
+import io.mateu.uidl.interfaces.DetailContentSupplier;
 import io.mateu.uidl.interfaces.HttpRequest;
 import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${ucClass}Command;
 import ${project.packageName}.${module.slug}.application.usecases.${ucSlug}.${ucClass}Result;
@@ -35,7 +36,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Scope("prototype")
 @Title("${(usecase.title!ucClass)?j_string}")
-public class ${ucClass}Page extends ItemOverview {
+public class ${ucClass}Page extends ItemOverview implements DetailContentSupplier {
 
 <#list (inputModel.fields)![] as f>
     /** Bound from the URL (?${commandName(f)}=…). */
@@ -110,6 +111,15 @@ public class ${ucClass}Page extends ItemOverview {
     public Component component(HttpRequest httpRequest) {
         if (!loaded) load();
         return super.component(httpRequest);
+    }
+
+    /**
+     * What a list's row shows when it opens this item (a smart search's Navigable view): the same
+     * overview, not Mateu's default read-only form of this class's fields.
+     */
+    @Override
+    public Component detailContent(HttpRequest httpRequest) {
+        return component(httpRequest);
     }
 
 <@markdownTableHelper/>
