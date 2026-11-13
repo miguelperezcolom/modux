@@ -121,8 +121,9 @@ export const mainModuleId = (boundedContextId: string) => `${boundedContextId}-m
  * drifted apart in the first place.
  */
 export const EVENT_CONDUCTOR_STEP_TYPES = [
-  'START', 'ACTION', 'JOIN', 'FORK', 'END', 'USER_TASK', 'PROCESS', 'TIMER',
-  'WAIT_FOR_MESSAGE', 'SEND_MESSAGE', 'RULE',
+  'START', 'ACTION', 'JOIN', 'FORK', 'CHOICE', 'END', 'USER_TASK', 'PROCESS', 'TIMER',
+  'WAIT_FOR_MESSAGE', 'SEND_MESSAGE', 'RULE', 'DYNAMIC', 'LOCK', 'UNLOCK', 'REPLY',
+  'PUBLISH_EVENT', 'HTTP_CALL', 'LLM_CALL', 'CONTINUE_AS_NEW', 'AGENT',
 ];
 
 /**
