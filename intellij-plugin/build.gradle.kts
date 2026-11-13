@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.6.2"
+version = "0.6.3"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,10 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.3</h4>
+            <ul>
+              <li>Workflow definitions come out the same on every generation: a redeploy no longer recreates EventConductor when the model has not changed.</li>
+            </ul>
             <h4>0.6.2</h4>
             <ul>
               <li>What an event needs is no longer sent back to the caller: fields only the event carries (a confirmation link, a token) are handed over by the last custom step in a generated Outcome, and the caller gets the result only. An item overview opened from a search list shows as the overview, not as a form of its fields.</li>
