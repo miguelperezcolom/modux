@@ -51,6 +51,9 @@ class HighLevelPatternsTest {
     @Test
     void an_aggregate_feeding_a_read_model_publishes_its_state_on_every_save_and_delete() throws Exception {
         var repo = read("ConciertoDBRepository.java");
+        // it reads through a stored procedure (JDBC): a write is flushed, so reading it back in the
+        // same transaction finds it
+        assertTrue(repo.contains("var saved = repository.saveAndFlush(toEntity(domain));"), repo);
         assertTrue(repo.contains("publishState(saved);"), repo);
         assertTrue(repo.contains("stateStream.send(\"conciertoestado\""), repo);
         assertTrue(repo.contains("publishDeleted(selected.value())"), repo);
@@ -59,6 +62,8 @@ class HighLevelPatternsTest {
         assertTrue(repo.contains("\"modux.state.republish-on-startup\", Boolean.class, true"), repo);
         // event-sourced too: after the events are appended
         var es = read("CompraEventSourcedRepository.java");
+        // an enum with no value yet (a reason not given) reads back as no value, not a crash
+        assertTrue(es.contains("entity.getEstado() != null ? Estado.valueOf(entity.getEstado()) : null"), es);
         assertTrue(es.contains("stateStream.send(\"compraestado\""), es);
         // an aggregate nobody projects publishes nothing
         assertFalse(read("PagoDBRepository.java").contains("stateStream"));
@@ -85,6 +90,8 @@ class HighLevelPatternsTest {
         var client = read("ConsultarPrecioRestClient.java");
         assertTrue(client.contains("${CATALOGO_URL:http://localhost:8091}"), client);
         assertTrue(client.contains(".uri(\"/v1/consultarprecio\")"), client);
+        // whoever asked travels along: the callee checks its roles too
+        assertTrue(client.contains("List.of(\"Authorization\", \"Cookie\")"), client);
         // a rule the other side applies reaches the person as that rule, not as an unexpected error
         assertTrue(client.contains("onStatus(status -> status.is4xxClientError(), (req, res) -> { throw rejected(res); })"), client);
         // the callee answers over REST, though nobody flagged it exposedAsRest
@@ -221,6 +228,15 @@ class HighLevelPatternsTest {
         assertTrue(page.contains("objectMapper.readValue(result.zonas()"), page);
         assertTrue(!page.contains("\"Zonas del recinto: \" + result.zonas()"), "no JSON in the notice: " + page);
         assertTrue(file("ZonaFila.java", "comprar").isPresent(), "its row class next to the page");
+    }
+
+    @Test
+    void a_row_action_reads_the_row_runs_the_operation_and_saves() throws Exception {
+        // no input model: the command is the row's id, and the steps are real calls, not hooks
+        var useCase = read("ConfirmarAManoUseCase.java");
+        assertTrue(useCase.contains("compraRepository.findById(new CompraId(command.id()))"), useCase);
+        assertTrue(useCase.contains("compraRepository.save(compra)"), useCase);
+        assertTrue(read("CompraCrudOrchestrator.java").contains("confirmarAManoUseCase.handle(new ConfirmarAManoCommand(Long.valueOf(row.id())))"));
     }
 
     @Test

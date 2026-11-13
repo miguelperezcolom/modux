@@ -16,6 +16,20 @@ public class ${remote.className}RestClient implements ${remote.className}Client 
         this.http = RestClient.builder().baseUrl(baseUrl)
                 .requestFactory(new org.springframework.http.client.BufferingClientHttpRequestFactory(
                         new org.springframework.http.client.SimpleClientHttpRequestFactory()))
+                // the person who asked, on the other side too: its roles decide there as well
+                .requestInterceptor((request, body, execution) -> {
+                    if (org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()
+                            instanceof org.springframework.web.context.request.ServletRequestAttributes attributes) {
+                        var incoming = attributes.getRequest();
+                        for (var header : java.util.List.of("Authorization", "Cookie")) {
+                            var value = incoming.getHeader(header);
+                            if (value != null && request.getHeaders().getFirst(header) == null) {
+                                request.getHeaders().set(header, value);
+                            }
+                        }
+                    }
+                    return execution.execute(request, body);
+                })
                 .build();
     }
 

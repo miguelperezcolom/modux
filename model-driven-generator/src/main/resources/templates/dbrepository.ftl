@@ -134,7 +134,7 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 <#list safeFields as field>
     <#if field.type == "ValueObject">
         <#if field.isEnum>
-                ${field.name?cap_first}.valueOf(entity.get${field.name?cap_first}())<#sep>,</#sep>
+                entity.get${field.name?cap_first}() != null ? ${field.name?cap_first}.valueOf(entity.get${field.name?cap_first}()) : null<#sep>,</#sep>
         <#else>
                 new ${field.name?cap_first}(entity.get${field.name?cap_first}())<#sep>,</#sep>
         </#if>
@@ -168,7 +168,13 @@ public class ${aggregate.name}DBRepository implements ${aggregate.name}Repositor
 
     @Override
     public ${aggregate.name}Id save(${aggregate.name} domain) {
+<#if dataAccess == "JPA">
         var saved = repository.save(toEntity(domain));
+<#else>
+        // reads go through JDBC, not the persistence context: flush now, so a read later in this
+        // same transaction (save, then findById) sees what was just written
+        var saved = repository.saveAndFlush(toEntity(domain));
+</#if>
         var id = new ${aggregate.name}Id(saved.getId());
 <#if stateTopic??>
         publishState(saved);

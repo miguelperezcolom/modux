@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS ${table.name} (
 ALTER TABLE ${col.table} ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};
 </#list>
 </#if>
+<#if (widenedColumns![])?has_content>
+
+-- Wider columns (nothing already stored is lost)
+<#list widenedColumns as col>
+ALTER TABLE ${col.table} ALTER COLUMN ${col.name} TYPE ${col.type};  -- was ${col.was}
+</#list>
+</#if>
 <#if review?has_content>
 
 -- ⚠ Destructive / ambiguous changes — NOT applied automatically. Review against live data first:

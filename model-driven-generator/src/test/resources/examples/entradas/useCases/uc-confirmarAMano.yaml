@@ -1,0 +1,22 @@
+---
+id: "uc-confirmarAMano"
+name: "ConfirmarAMano"
+title: "Confirmar a mano"
+rowActionForAggregateId: "compra"
+steps:
+- id: "step-read"
+  name: "readCompra"
+  type: "ReadAggregate"
+  aggregateId: "compra"
+- id: "step-op"
+  name: "confirmar"
+  type: "CallAggregateOperation"
+  aggregateId: "compra"
+  operationId: "op-confirmar"
+- id: "step-save"
+  name: "saveCompra"
+  type: "SaveAggregate"
+  aggregateId: "compra"
+allowedRoles:
+- "PROMOTORA"
+projectId: "entradas"

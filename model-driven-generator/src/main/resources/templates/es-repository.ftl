@@ -115,7 +115,7 @@ public class ${aggregate.name}EventSourcedRepository implements ${aggregate.name
 <#list safeFields as field>
     <#if field.type == "ValueObject">
         <#if field.isEnum>
-                ${field.name?cap_first}.valueOf(entity.get${field.name?cap_first}())<#sep>,</#sep>
+                entity.get${field.name?cap_first}() != null ? ${field.name?cap_first}.valueOf(entity.get${field.name?cap_first}()) : null<#sep>,</#sep>
         <#else>
                 new ${field.name?cap_first}(entity.get${field.name?cap_first}())<#sep>,</#sep>
         </#if>

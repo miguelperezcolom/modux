@@ -107,7 +107,8 @@ class ApiOnlyGenerationTest {
     void a_scheduled_trigger_really_runs_its_use_case_and_the_listing_searches_every_text_column() throws Exception {
         var out = generate();
         var scheduler = read(out, "DiarioRetrasosScheduler.java");
-        assertTrue(scheduler.contains("useCase.handle(new ReservarLibroCommand(null, null))"), scheduler);
+        assertTrue(scheduler.replaceAll("\\s+", "").contains("asSystem(()->useCase.handle(newReservarLibroCommand(null,null)))"),
+                "a scheduled run acts as the system: " + scheduler);
         assertTrue(scheduler.contains("${DIARIO_RETRASOS_CRON:0 0 6 * * *}"), scheduler);
         assertTrue(read(out, "BibliotecaApplication.java").contains("@org.springframework.scheduling.annotation.EnableScheduling"));
         var query = read(out, "LibroDBQueryService.java");
@@ -122,6 +123,10 @@ class ApiOnlyGenerationTest {
         var subscription = read(out, "AvisosPrestamoRetrasadoSubscription.java");
         assertTrue(subscription.contains("import java.time.LocalDate;"), subscription);
         assertFalse(subscription.contains("TODO"), subscription);
+        // nobody is signed in on a consumer: it acts as the system, and roles decide as everywhere
+        var compact = subscription.replaceAll("\\s+", "");
+        assertTrue(compact.contains("returnmessage->asSystem(()->{"), subscription);
+        assertTrue(compact.contains("SimpleGrantedAuthority(\"ROLE_SISTEMA\")"), subscription);
         assertTrue(read(out, "BibliotecaApplication.java").contains("WRITE_DATES_AS_TIMESTAMPS"), "dates must travel as ISO");
     }
 

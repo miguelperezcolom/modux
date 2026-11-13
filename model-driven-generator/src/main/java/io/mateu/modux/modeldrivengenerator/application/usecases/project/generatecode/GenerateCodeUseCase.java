@@ -1439,7 +1439,8 @@ public class GenerateCodeUseCase {
         // A safe Java type name for the templates: display names may contain spaces.
         map.put("className", toTypeName(useCase.name()));
 
-        Set<String> commandFieldNames = java.util.Collections.emptySet();
+        // without an input model the command is the row's id (see usecase-command.ftl): a row action
+        Set<String> commandFieldNames = Set.of("id");
         if (useCase.inputModelId() != null && !useCase.inputModelId().isBlank()) {
             var inputModel = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
             if (inputModel != null && inputModel.fields() != null) {
@@ -2746,8 +2747,9 @@ public class GenerateCodeUseCase {
         var diff = diffSchema(asList(previous.get("tables")), tables);
         var newTables = asList(diff.get("newTables"));
         var addedColumns = asList(diff.get("addedColumns"));
+        var widenedColumns = asList(diff.get("widenedColumns"));
         var review = asList(diff.get("review"));
-        if (newTables.isEmpty() && addedColumns.isEmpty() && review.isEmpty()) {
+        if (newTables.isEmpty() && addedColumns.isEmpty() && widenedColumns.isEmpty() && review.isEmpty()) {
             return;   // no schema change → no new migration
         }
 
@@ -2758,6 +2760,7 @@ public class GenerateCodeUseCase {
         model.put("version", nextVersion);
         model.put("newTables", newTables);
         model.put("addedColumns", addedColumns);
+        model.put("widenedColumns", widenedColumns);
         model.put("review", review);
         // each incremental migration is immutable once applied
         createCustomFile(appDir, model, "flyway-migration.ftl",
@@ -2824,6 +2827,7 @@ public class GenerateCodeUseCase {
 
         var newTables = new ArrayList<Object>();
         var addedColumns = new ArrayList<Object>();
+        var widenedColumns = new ArrayList<Object>();
         var review = new ArrayList<Object>();
 
         for (var curTable : current) {
@@ -2842,6 +2846,14 @@ public class GenerateCodeUseCase {
                     col.put("name", entry.getKey());
                     col.put("type", entry.getValue());
                     addedColumns.add(col);
+                } else if (widens(prevCols.get(entry.getKey()), entry.getValue())) {
+                    // only wider (varchar → text): nothing written so far can be lost
+                    var col = new HashMap<String, Object>();
+                    col.put("table", name);
+                    col.put("name", entry.getKey());
+                    col.put("type", entry.getValue());
+                    col.put("was", prevCols.get(entry.getKey()));
+                    widenedColumns.add(col);
                 } else if (!prevCols.get(entry.getKey()).equals(entry.getValue())) {
                     review.add("ALTER TABLE " + name + " ALTER COLUMN " + entry.getKey()
                             + " TYPE " + entry.getValue() + ";  -- was " + prevCols.get(entry.getKey()));
@@ -2862,8 +2874,19 @@ public class GenerateCodeUseCase {
         var diff = new HashMap<String, Object>();
         diff.put("newTables", newTables);
         diff.put("addedColumns", addedColumns);
+        diff.put("widenedColumns", widenedColumns);
         diff.put("review", review);
         return diff;
+    }
+
+    /** A column type change that keeps every value: varchar(n) to text, or to a longer varchar. */
+    static boolean widens(String was, String now) {
+        if (was == null || now == null || was.equals(now)) return false;
+        var from = java.util.regex.Pattern.compile("varchar\\((\\d+)\\)").matcher(was.trim());
+        if (!from.matches()) return false;
+        if (now.trim().equals("text")) return true;
+        var to = java.util.regex.Pattern.compile("varchar\\((\\d+)\\)").matcher(now.trim());
+        return to.matches() && Integer.parseInt(to.group(1)) > Integer.parseInt(from.group(1));
     }
 
     private Map<String, String> columnTypes(Map<String, Object> table) {

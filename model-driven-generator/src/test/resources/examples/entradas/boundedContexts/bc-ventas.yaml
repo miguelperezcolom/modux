@@ -11,6 +11,7 @@ useCaseIds:
 - "uc-confirmarCompra"
 - "uc-rechazarCompra"
 - "uc-cancelarCompra"
+- "uc-confirmarAMano"
 domainEventIds:
 - "ev-compraCreado"
 - "ev-compraModificado"
