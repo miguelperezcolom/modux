@@ -181,7 +181,14 @@ public final class EventConductorWorkflowDefinition {
             }
             // the engine keeps a business key unique across ALL workflows: two of them started by the
             // same event about the same thing must not collide, so the key names the workflow too
-            if (key != null) t.put("businessKey", slug(workflow.name()) + "-${data." + key + "}");
+            // and it is what a person reads in the worklist: the workflow's name and what the event
+            // is about — its localizador or code when it carries one, else its id
+            if (key != null) {
+                var fields = runtime.fieldsOf().apply(trigger);
+                var shown = List.of("localizador", "codigo", "referencia").stream().filter(fields::contains)
+                        .findFirst().orElse(key);
+                t.put("businessKey", humanize(workflow.name()) + " ${data." + shown + "}");
+            }
             definition.put("triggers", List.of(t));
             // the same thing can happen again (an order rejected twice): a new run once the last one
             // ended; while one runs, another start about the same thing joins it
@@ -256,10 +263,11 @@ public final class EventConductorWorkflowDefinition {
             if (st.timeoutStepId() != null) out.put("onTimeoutStepId", st.timeoutStepId());
             var into = gatewayInto(st.id(), gateways);
             if (into != null && isExclusiveSplit(into)) {
-                // an exclusive branch: taken right after the split's source when its condition holds
+                // a branch of a CHOICE: its condition on the link (no condition: the default, «else»)
                 out.remove("preconditionStepIds");
-                out.put("preconditions", List.of(Map.of("stepId", into.sourceIds().get(0),
-                        "expression", conditionOf(into, st.id()))));
+                var condition = conditionOf(into, st.id());
+                if (condition == null) out.put("preconditionStepId", into.id());
+                else out.put("preconditions", List.of(Map.of("stepId", into.id(), "expression", condition)));
             } else if (into != null) {
                 out.remove("preconditionStepIds");
                 out.put("preconditionStepId", into.id());
@@ -272,11 +280,13 @@ public final class EventConductorWorkflowDefinition {
             }
             steps.add(out);
         }
-        // the gateways: an exclusive split is no step of its own (its branches carry the conditions)
+        // the gateways: an exclusive split is the engine's CHOICE (the first branch whose condition holds)
         generated.stream().filter(g -> modelSteps.stream().noneMatch(st -> st.id().equals(g.get("id"))))
                 .filter(g -> !"END".equals(g.get("type")))
-                .filter(g -> gateways.stream().noneMatch(gw -> gw.id().equals(g.get("id")) && isExclusiveSplit(gw)))
                 .forEach(g -> {
+                    if (gateways.stream().anyMatch(gw -> gw.id().equals(g.get("id")) && isExclusiveSplit(gw))) {
+                        g.put("type", "CHOICE");
+                    }
                     var gw = gateways.stream().filter(x -> x.id().equals(g.get("id"))).findFirst().orElse(null);
                     var into = gw == null ? null : gatewayInto(gw.id(), gateways);
                     if (into != null) {
@@ -322,11 +332,17 @@ public final class EventConductorWorkflowDefinition {
                 && gateway.sourceIds() != null && !gateway.sourceIds().isEmpty();
     }
 
-    /** The JEXL guarding one branch of an exclusive split (a branch with none is never taken). */
+    /** The JEXL guarding one branch of an exclusive split; null for the branch with none (the default). */
     private static String conditionOf(WorkflowGatewayEntity split, String targetId) {
-        return split.branchConditions() == null ? "false" : split.branchConditions().stream()
+        return split.branchConditions() == null ? null : split.branchConditions().stream()
                 .filter(c -> targetId.equals(c.targetId()) && c.expression() != null && !c.expression().isBlank())
-                .map(c -> c.expression()).findFirst().orElse("false");
+                .map(c -> c.expression()).findFirst().orElse(null);
+    }
+
+    /** «PedidoRechazado» → «Pedido rechazado». */
+    static String humanize(String name) {
+        var spaced = name.replaceAll("([a-z0-9])([A-Z])", "$1 $2").replaceAll("[_-]+", " ").trim().toLowerCase();
+        return spaced.isEmpty() ? spaced : Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
     }
 
     /** The topic-independent name the engine knows an event by (mapped to its topic in configuration). */

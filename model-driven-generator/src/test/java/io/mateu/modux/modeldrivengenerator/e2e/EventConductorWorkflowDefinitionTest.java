@@ -192,7 +192,7 @@ class EventConductorWorkflowDefinitionTest {
         assertThat(trigger).containsEntry("destination", "reservacreada")
                 .containsEntry("type", "*")
                 .containsEntry("filter", "data.confirmada == false")
-                .containsEntry("businessKey", "prepago-${data.reservaId}");
+                .containsEntry("businessKey", "Prepago ${data.reservaId}");
     }
 
     @Test
@@ -243,11 +243,13 @@ class EventConductorWorkflowDefinitionTest {
                 event -> List.of("pedidoId"), role -> "OPERACIONES");
         var definition = EventConductorWorkflowDefinition.runnable(workflow, List.of(split), pageId -> null, TOPIC, runtime);
 
-        assertThat(steps(definition)).noneMatch(st -> "FORK".equals(st.get("type")));
+        // the engine's exclusive split: a CHOICE after the source, the conditions on its links
+        assertThat(stepNamed(definition, "gw-decision")).containsEntry("type", "CHOICE")
+                .containsEntry("preconditionStepIds", List.of("decidir"));
         assertThat(stepNamed(definition, "reenviar")).containsEntry("preconditions",
-                List.of(Map.of("stepId", "decidir", "expression", "decision != 'CANCELAR'")));
+                List.of(Map.of("stepId", "gw-decision", "expression", "decision != 'CANCELAR'")));
         assertThat(stepNamed(definition, "cancelar")).containsEntry("preconditions",
-                List.of(Map.of("stepId", "decidir", "expression", "decision == 'CANCELAR'")));
+                List.of(Map.of("stepId", "gw-decision", "expression", "decision == 'CANCELAR'")));
         assertThat(stepNamed(definition, "finished")).containsEntry("joinType", "XOR")
                 .containsEntry("preconditionStepIds", List.of("reenviar", "cancelar"));
         assertThat(stepNamed(definition, "decidir")).containsEntry("assignment", Map.of("candidateGroups", List.of("OPERACIONES")));
@@ -263,6 +265,22 @@ class EventConductorWorkflowDefinitionTest {
                 event -> List.of("reservaId"));
         var http = (Map<String, Object>) stepNamed(EventConductorWorkflowDefinition.runnable(workflow, List.of(), id -> null, TOPIC, runtime), "comprobar").get("http");
         assertThat(http).containsEntry("output", Map.of("estado", "body.estado"));
+    }
+
+    @Test
+    void aBranchWithNoConditionIsTheChoicesDefault() {
+        var workflow = WorkflowEntity.builder().id("wf-y").name("Y").triggerEvent("Algo")
+                .steps(List.of(step("mirar", "Mirar").toBuilder().targetUseCaseId("uc-mirar").build(),
+                        step("avisar", "Avisar").toBuilder().targetUseCaseId("uc-avisar").build(),
+                        step("archivar", "Archivar").toBuilder().targetUseCaseId("uc-archivar").build()))
+                .build();
+        var split = new WorkflowGatewayEntity("gw", "¿Avisar?", "SPLIT", "EXCLUSIVE", List.of("mirar"),
+                List.of("avisar", "archivar"), List.of(
+                        new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.GatewayBranchConditionEntity("avisar", "estado == 'ENVIADO'")), null);
+        var runtime = new EventConductorWorkflowDefinition.Runtime(
+                id -> new EventConductorWorkflowDefinition.UseCaseCall("x", "/v1/" + id, List.of("id")), event -> List.of("id"));
+        var definition = EventConductorWorkflowDefinition.runnable(workflow, List.of(split), id -> null, TOPIC, runtime);
+        assertThat(stepNamed(definition, "archivar")).containsEntry("preconditionStepId", "gw").doesNotContainKey("preconditions");
     }
 
     @Test

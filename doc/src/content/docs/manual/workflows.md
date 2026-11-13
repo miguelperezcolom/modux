@@ -137,14 +137,15 @@ workflow runs lists `SISTEMA` among its roles. Its password comes from
 `MODUX_SYSTEM_PASSWORD` (the services only create that user when it is set). Kafka
 subscriptions and scheduled triggers act as the same identity.
 
-A **business key** names the workflow and the thing the event is about
-(`prepago-${data.reservaId}`): the engine keeps keys unique across workflows, and the same
-thing can run again once its last run ended (`businessKeyPolicy: allowAfterFinished`).
+A **business key** names the workflow and the thing the event is about — its `localizador`
+or code when the event carries one, else its id (`Prepago R5`): it is what a person reads in
+the worklist, the engine keeps it unique across workflows, and the same thing can run again
+once its last run ended (`businessKeyPolicy: allowAfterFinished`).
 
-**Exclusive splits** become the condition of each branch, checked right after the split's
-source (a JEXL expression over the process variables — what a person submitted in a form
-among them). A branch whose condition does not hold never starts; when nothing is left to
-run, the process completes.
+An **exclusive split** is the engine's `CHOICE`: each branch carries its condition (a JEXL
+expression over the process variables — what a person submitted in a form among them) and
+a branch with none is the default. When no branch is taken and nothing is left to run, the
+process completes.
 
 ### People's tasks
 
