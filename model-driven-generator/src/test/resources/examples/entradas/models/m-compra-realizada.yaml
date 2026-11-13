@@ -43,4 +43,9 @@ fields:
   type: "string"
   stereotype: "html"
   label: "Justificante"
+- id: "f-m-compra-realizada-codigoRecogida"
+  name: "codigoRecogida"
+  basicType: true
+  type: "string"
+  label: "Código de recogida"
 projectId: "entradas"

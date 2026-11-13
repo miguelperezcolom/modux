@@ -100,6 +100,11 @@ The schema guards shape. These are the ones that break a model while still valid
     from the command: «approved by», «requested at», an issue number without gaps. A «whoever asked
     cannot approve» rule is then an invariant over two such fields — invariants are checked after
     every operation.
+12. **What the caller must not see goes in the event, not the output.** A use case's `outputModelId`
+    is what the caller gets back; the event it publishes has its own model. Fields the event needs
+    and neither the result nor the command has (a confirmation link, a token) are handed over by the
+    last custom step in a generated `{UseCase}Outcome`. Never reuse the event's model as the output
+    when it carries a secret.
 
 ## Query use cases are Mateu page templates
 

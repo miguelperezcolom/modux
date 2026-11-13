@@ -8,6 +8,6 @@ public interface ${usecase.className}Steps {
 <#if step.intent?? && step.intent?has_content>
     /** ${step.intent} */
 </#if>
-    <#if returnsResult>${usecase.className}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.className}Command command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${project.packageName}.${module.slug}.application.out.remote.${r.className}Client.Response ${r.var}</#list>);
+    <#if usecase.outcome?? && step.id == customSteps?last.id>${usecase.outcome.className}<#elseif returnsResult>${usecase.className}Result<#else>void</#if> ${step.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(${usecase.className}Command command<#list (step.remoteParams![])?filter(r -> r.hasResponse) as r>, ${project.packageName}.${module.slug}.application.out.remote.${r.className}Client.Response ${r.var}</#list>);
 </#list>
 }

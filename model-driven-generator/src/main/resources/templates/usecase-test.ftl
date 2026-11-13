@@ -103,10 +103,15 @@ class ${usecase.className}UseCaseTest {
     void should_execute_successfully() {
         var command = new ${usecase.className}Command(<#if inputModel?? && inputModel.fields?has_content><#list inputModel.fields as field>null<#sep>, </#sep></#list><#else>null</#if>);
 <#assign customs = (usecase.steps![])?filter(s -> s.type == "Custom")>
-<#if outputModel?? && customs?has_content>
+<#assign resultStub><#if outputModel??>new ${usecase.className}Result(<#list (outputModel.fields![]) as f>null<#sep>, </#sep></#list>)</#if></#assign>
+<#if (outputModel?? || usecase.outcome??) && customs?has_content>
         // the last custom step decides the result the later steps read
         org.mockito.Mockito.when(steps.${customs?last.name?uncap_first?replace("[^a-zA-Z0-9]","",'r')}(org.mockito.ArgumentMatchers.any()<#list (customs?last.remoteParams![])?filter(r -> r.hasResponse) as r>, org.mockito.ArgumentMatchers.any()</#list>))
-                .thenReturn(new ${usecase.className}Result(<#list (outputModel.fields![]) as f>null<#sep>, </#sep></#list>));
+<#if usecase.outcome??>
+                .thenReturn(new ${usecase.outcome.className}(<#if outputModel??>${resultStub}<#if usecase.outcome.fields?has_content>, </#if></#if><#list usecase.outcome.fields as f>null<#sep>, </#sep></#list>));
+<#else>
+                .thenReturn(${resultStub});
+</#if>
 </#if>
         assertDoesNotThrow(() -> useCase.handle(command));
     }

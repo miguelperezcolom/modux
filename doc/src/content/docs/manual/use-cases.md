@@ -196,6 +196,20 @@ Each step has:
 | **Use case** | Nested use case to invoke (for `CallUseCase`) |
 | **Model mapping** | Mapping definition to apply (for `ApplyModelMapping`) |
 
+### What an event carries is not what the caller gets
+
+An event published after the last custom step takes each field from the **result** first, then from the
+**command**. A field it needs that is in neither — a confirmation link, a token, a pickup code — is handed
+over by that custom step next to the result, in a generated `{UseCase}Outcome` record:
+
+```java
+public record SuscribirmeOutcome(SuscribirmeResult result, String suscriptorId, String enlace) {}
+```
+
+The event is built from the outcome; the caller only gets `outcome.result()`. So give the use case the
+output model the caller should see and the event the model its consumers need: a double opt-in returns
+«check your email», not the link that the email carries.
+
 ## What gets generated
 
 For each use case Modux generates:
