@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.6.5"
+version = "0.6.6"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,13 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.6</h4>
+            <ul>
+              <li>A model in modux/ opens in the editor, as the Maven plugin finds it (modux/ wins over .modux/).</li>
+              <li>The system map shows the strategic elements only: data models are no longer scattered over it.</li>
+              <li>Generated systems: one Compose project per system (no more sharing containers and volumes), deploy prints the URLs the system exposes, Mateu 3.0-beta.68 (deep links into federated screens, one active menu section).</li>
+              <li>The HLA document follows the project's language; import-openapi/asyncapi write into the project's model.</li>
+            </ul>
             <h4>0.6.5</h4>
             <ul>
               <li>The editor speaks English by default, Spanish when the IDE does.</li>

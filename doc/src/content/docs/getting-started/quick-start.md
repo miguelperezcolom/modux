@@ -30,7 +30,7 @@ plugin:
       <plugin>
         <groupId>io.mateu.modux</groupId>
         <artifactId>modux-maven-plugin</artifactId>
-        <version>0.6.5</version>
+        <version>0.6.6</version>
       </plugin>
     </plugins>
   </build>

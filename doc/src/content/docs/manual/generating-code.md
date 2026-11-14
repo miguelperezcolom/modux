@@ -23,7 +23,7 @@ To regenerate on every build, bind it to `generate-sources`:
 <plugin>
     <groupId>io.mateu.modux</groupId>
     <artifactId>modux-maven-plugin</artifactId>
-    <version>0.6.5</version>
+    <version>0.6.6</version>
     <executions>
         <execution>
             <goals><goal>generate</goal></goals>
