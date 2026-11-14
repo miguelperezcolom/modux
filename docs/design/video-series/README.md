@@ -202,3 +202,36 @@ EN/ES, versiones con voz y subtítulos, en este orden:
 El pipeline ya lo admite: una narración más por escena en `episode.json`, su voz en `lib/narrate.py`
 (Kokoro tiene voces femeninas en portugués de Brasil, chino, francés e italiano; ruso no: Piper) y una
 pista más en el montaje. La imagen es la misma.
+
+## Estado al pausar (2026-11-14, por consumo)
+
+Retomar por aquí, en orden:
+
+1. **PR #63** (fix/english-ai-complete, worktree `../modux-fix067`): CI en verde, **sin mergear**. Mergear y
+   publicar **0.6.7** (rama release/0.6.7: versiones en los pom, docs `cicd.md`/`maven-plugin.md`/quick-start/
+   installation/generating-code, `intellij-plugin/build.gradle.kts` + changeNotes, `media/video-series/02-first-app/pom.xml`;
+   PR, merge, tag `v0.6.7`), instalarla en local desde la etiqueta (`mvn install -DskipTests -Dgpg.skip` en
+   generator y plugin) y desplegar la doc a mano (Netlify, ver la memoria `reference_docs_deploy`).
+2. **Capítulo 3** (dos zonas, `episodes/03-two-zones`, rama `feat/video-series`, commit `a9b14a5d`): renderizado
+   sin la escena de `ai-complete`. Con 0.6.7: `STAGE=ai capture.sh`, añadir la escena, regrabar el aviso de
+   edición a mano y el `withdraw` (el aviso y el «…ejecutado» salen bien en 0.6.7), volver a renderizar.
+3. **Capítulo 4** (editor, worktree `../modux-ep04`, rama `feat/video-ep04`, 3 commits): renderizado (2:11) con
+   los arreglos que entran en 0.6.7. Publicable en cuanto salga 0.6.7. Textos en `publish/04-*.txt`.
+4. **Capítulo 5** (contextos, worktree `../modux-ep05`, rama `feat/video-ep05`): a medias, agente parado
+   durante el render. Revisar qué hay en `episodes/05-contexts` y `build/05-contexts` antes de seguir.
+5. **Capítulo 11** (importadores, worktree `../modux-ep11`, rama `feat/video-ep11`): a medias; el agente había
+   encontrado que `import-asyncapi` ignora `boundedContextId` (arreglo en curso, sin confirmar). Revisar.
+6. Publicar 3 y 4 (EN y ES, lista PLUJRhYAO8b3U, subtítulos EN/ES por vídeo — idioma del vídeo sin marcar
+   «predeterminado para mi canal» —, miniatura, título y descripción traducidos), enlazarlos desde su página
+   de docs, merge y despliegue de la doc.
+7. Seguir con 6–10 y 12–15 (un agente con Docker a la vez, con el cerrojo `build/.docker-lock`; otro sin
+   Docker en paralelo), y al acabar, el email al propietario.
+
+Pendientes de modux vistos y sin arreglar: listados CRUD que no se refrescan solos; enums en crudo en los
+listados (AVAILABLE) frente a la etiqueta en el formulario; el sistema generado sin `.gitignore`; nombres
+internos de eventos en español (`ConcertBorrado`); aviso de campo `final` en el view model; tooltips y docs del
+editor que describen gestos que ya no existen; el selector de relación muestra el id de un query service;
+cualquier guardado reescribe todos los ficheros del modelo; al desplegar un contexto sus hijos se solapan;
+la lente 3D ilegible en modelos medianos; etiquetas del editor en español aún en inglés (ACTOR, Value object).
+
+Folio vuelve a estar arrancado. Tickets y library, parados (sus volúmenes se conservan).
