@@ -2184,14 +2184,17 @@ public class GenerateCodeUseCase {
                 .map(m -> m.fields() == null ? List.<ModelFieldEntity>of() : m.fields()).orElse(List.of());
     }
 
-    /** The Java type a field travels as between services (enums and references as text). */
-    /** The words the generated UI adds on its own (a menu, a link) follow the project's language: English unless it says Spanish. */
-    static boolean speaksSpanish(ProjectEntity project) {
+    /**
+     * The words modux adds on its own (a menu, a link in the generated UI; the HLA document's
+     * headings) follow the project's language: English unless it says Spanish.
+     */
+    public static boolean speaksSpanish(ProjectEntity project) {
         var locale = project.defaultLocale() != null && !project.defaultLocale().isBlank() ? project.defaultLocale()
                 : project.locales() != null && !project.locales().isEmpty() ? project.locales().get(0) : "";
         return locale.toLowerCase().startsWith("es");
     }
 
+    /** The Java type a field travels as between services (enums and references as text). */
     private static String javaTypeOf(ModelFieldEntity f) {
         if (!f.basicType() || f.type() == null) return "String";
         return switch (f.type().name()) {

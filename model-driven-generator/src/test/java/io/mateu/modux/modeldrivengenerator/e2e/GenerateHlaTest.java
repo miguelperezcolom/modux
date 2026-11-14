@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -68,6 +69,32 @@ class GenerateHlaTest {
         var out = System.getProperty("hlaOut");
         if (out != null && !out.isBlank()) {
             generateHla.writeTo(Path.of(out));
+        }
+    }
+
+    /** The document's own words follow the project's language: English unless it speaks Spanish. */
+    @Test
+    void an_english_model_gets_an_english_document() throws Exception {
+        var temp = Files.createTempDirectory("hla-doc-test-en").resolve("model-driven-store.yaml");
+        var spanish = Files.readString(Path.of("..", "sample", "hla-booking", "model-driven-store.yaml"));
+        assertTrue(spanish.contains("  defaultLocale: \"es\"\n"));
+        Files.writeString(temp, spanish.replace("  defaultLocale: \"es\"\n", "  defaultLocale: \"en\"\n"));
+        repository.loadFrom(temp.toAbsolutePath().toString());
+
+        var md = generateHla.render();
+
+        assertTrue(md.contains("> Document generated from the modux model"), md);
+        assertTrue(md.contains("## 1. Context and objective"));
+        assertTrue(md.contains("## 2. Decisions (ADR)") && md.contains("| # | Decision | Rationale | Status |"));
+        assertTrue(md.contains("## 3. Structural view") && md.contains("[\"service "));
+        assertTrue(md.contains("## 5. Business processes"));
+        assertTrue(md.contains("task 'RevisarReservaFallida' (deadline PT4H)"));
+        assertTrue(md.contains("BookHotel (key `bookingReference`)"));
+        assertTrue(md.contains("## 9. Open points") && md.contains("_None"));
+        for (var spanishWord : java.util.List.of("Contexto y objetivo", "Vista estructural", "Puntos abiertos",
+                "Procesos de negocio", "Aspectos transversales", "Contratos expuestos", "tarea '", "(clave `",
+                "no editar a mano")) {
+            assertFalse(md.contains(spanishWord), "still in Spanish: " + spanishWord);
         }
     }
 }
