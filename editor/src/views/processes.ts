@@ -1,5 +1,6 @@
 import type { ModuxModel } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Processes view: each process as a horizontal chain — trigger → steps
@@ -34,7 +35,12 @@ export function processesScene(model: ModuxModel, layout: DiagramLayout): Scene 
       fill: '#f5f3ff',
       stroke: '#7c3aed',
       badge: `PROCESS${process.sla ? ` · SLA ${process.sla}` : ''}`,
-      tooltip: `${process.name}${boundedContextName(process.ownerBoundedContextId) ? ` — contexto ${boundedContextName(process.ownerBoundedContextId)}` : ''}${process.triggerEvent ? ` · arranca con ${process.triggerEvent}` : ''}`,
+      tooltip:
+        process.name +
+        (boundedContextName(process.ownerBoundedContextId)
+          ? t('views.processes.tooltipContext', { context: boundedContextName(process.ownerBoundedContextId) })
+          : '') +
+        (process.triggerEvent ? t('views.processes.tooltipTrigger', { event: process.triggerEvent }) : ''),
     });
 
     let previousId = process.id;
@@ -81,7 +87,7 @@ export function processesScene(model: ModuxModel, layout: DiagramLayout): Scene 
           fill: '#ffffff',
           stroke: '#dc2626',
           dashed: true,
-          badge: 'COMPENSACIÓN',
+          badge: t('views.processes.compensationBadge'),
         });
         edges.push({
           id: `pc:${step.id}`,
@@ -110,7 +116,7 @@ export function processesScene(model: ModuxModel, layout: DiagramLayout): Scene 
         symbol: 'event',
         fill: '#dcfce7',
         stroke: '#16a34a',
-        badge: 'EVENTO FINAL',
+        badge: t('views.processes.completionBadge'),
       });
       edges.push({
         id: `pd:${process.id}`,
