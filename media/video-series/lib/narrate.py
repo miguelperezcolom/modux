@@ -32,7 +32,7 @@ SAY_AS = {
            "CRUD": "crud", "UI": "u i", "API": "a pe i", "APIs": "ápis", "REST": "rest", "MIT": "eme i te",
            "Docker": "dóquer", "Kafka": "cafca", "Kubernetes": "cubernetes", "outbox": "áutbox",
            "gateway": "gueitwey", "e2e": "de extremo a extremo", "Maven": "méiven", "Spring Boot": "spring but",
-           "ISBN": "i ese be ene", "CI": "ce i"},
+           "ISBN": "i ese be ene", "CI": "ce i", "Java": "yava"},
 }
 
 
