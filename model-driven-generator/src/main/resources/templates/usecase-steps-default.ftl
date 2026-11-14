@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.custom;
 <#assign ucPackage = project.packageName + "." + module.slug + ".application.usecases." + usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
 <#assign customSteps = (usecase.steps![])?filter(s -> s.type == "Custom")>
@@ -31,10 +32,10 @@ public class Default${usecase.className}Steps implements ${usecase.className}Ste
         // Tip: `mvn modux:ai-complete` implements this hook from that intent.
         // Reject with BusinessRuleException.conflict/notFound/invalid("why"): the caller gets that status and message.
         throw new UnsupportedOperationException(
-            "Pendiente de implementar «${step.name}» (${usecase.name}): ${step.intent?j_string}");
+            "<#if uiEs>Pendiente de implementar «${step.name}» (${usecase.name})<#else>«${step.name}» (${usecase.name}) is not implemented yet</#if>: ${step.intent?j_string}");
 <#else>
         throw new UnsupportedOperationException(
-            "Pendiente de implementar «${step.name}» (${usecase.name})");
+            "<#if uiEs>Pendiente de implementar «${step.name}» (${usecase.name})<#else>«${step.name}» (${usecase.name}) is not implemented yet</#if>");
 </#if>
     }
 </#list>
