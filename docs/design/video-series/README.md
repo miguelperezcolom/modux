@@ -188,3 +188,17 @@ los importadores, el HLA en español; pendiente: el sistema generado no trae `.g
 git), el listado CRUD no se refresca solo cuando cambia el estado (hay que buscar otra vez), los nombres internos
 de los eventos de estado siguen en español en proyectos ingleses (`ConcertBorrado`), y Mateu avisa de un campo
 `final` en el view model generado.
+
+## Después de la serie: más idiomas
+
+Decisión del propietario (2026-11-14, la misma que para la serie de Mateu). Con la serie completa en
+EN/ES, versiones con voz y subtítulos, en este orden:
+
+1. Portugués de Brasil.
+2. Chino, solo si hay alguien que lo mueva en Bilibili.
+3. Francés e italiano.
+4. Ruso, solo si aparece una demanda concreta.
+
+El pipeline ya lo admite: una narración más por escena en `episode.json`, su voz en `lib/narrate.py`
+(Kokoro tiene voces femeninas en portugués de Brasil, chino, francés e italiano; ruso no: Piper) y una
+pista más en el montaje. La imagen es la misma.
