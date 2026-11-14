@@ -1229,6 +1229,10 @@ public class EditorApiController {
             }
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(r.withName(command.name())));
+            case "notification" -> repository.findById(command.id(), NotificationEntity.class)
+                    .ifPresent(n -> repository.save(new NotificationEntity(n.id(), command.name(),
+                            n.ownerBoundedContextId(), n.eventId(), n.channels(), n.recipientRoleIds(),
+                            n.recipientExpression(), n.subject(), n.body(), n.projectId(), n.description())));
             case "external-system" -> {
                 var project = projects.owningProject();
                 projects.replaceExternalSystems(projects.externalSystems().stream()
