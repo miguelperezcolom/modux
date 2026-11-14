@@ -114,7 +114,7 @@ public final class DrawioBridge implements Disposable {
             var request = GSON.fromJson(raw, JsonObject.class);
             var op = request.get("op").getAsString();
             if (files == null && !op.equals("setModified")) {
-                throw new IllegalStateException("no hay catálogo .modux/ por encima de este documento");
+                throw new IllegalStateException("no hay catálogo modux/ (ni .modux/) por encima de este documento");
             }
             var result = switch (op) {
                 case "list" -> GSON.toJsonTree(files.list(path(request)));
