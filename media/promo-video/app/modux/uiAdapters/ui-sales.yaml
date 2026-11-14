@@ -1,0 +1,18 @@
+---
+id: "ui-sales"
+name: "Sales"
+serviceId: "svc-sales"
+title: "Sales"
+path: "/sales"
+menuItems:
+- label: "Buy tickets"
+  id: "ui-sales-0"
+  useCaseId: "uc-buy"
+- label: "Cancel a purchase"
+  id: "ui-sales-1"
+  useCaseId: "uc-cancelPurchase"
+- label: "Purchases"
+  id: "ui-sales-2"
+  aggregateId: "purchase"
+appType: "APP"
+projectId: "tickets"

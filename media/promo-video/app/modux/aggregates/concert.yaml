@@ -1,0 +1,12 @@
+---
+id: "concert"
+name: "Concert"
+modelId: "model-concert"
+operations:
+- id: "op-close"
+  name: "closeSale"
+  type: "CUSTOM"
+  intent: "If the concert is ON_SALE it becomes CLOSED; if it is already closed, it\
+    \ is rejected with «The sale is already closed»."
+title: "Concerts"
+projectId: "tickets"

@@ -1,0 +1,15 @@
+---
+id: "m-charge-result"
+name: "ChargeResult"
+fields:
+- id: "f-m-charge-result-accepted"
+  name: "accepted"
+  basicType: true
+  type: "bool"
+  label: "Accepted"
+- id: "f-m-charge-result-reason"
+  name: "reason"
+  basicType: true
+  type: "string"
+  label: "Reason"
+projectId: "tickets"

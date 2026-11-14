@@ -1,0 +1,15 @@
+---
+id: "uc-eliminarPurchase"
+name: "RemovePurchase"
+steps:
+- id: "step-delete"
+  name: "deletePurchase"
+  type: "Custom"
+  aggregateId: "purchase"
+- id: "step-publish-ev-purchaseDeleted"
+  name: "publishPurchaseDeleted"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-purchaseDeleted"
+allowedRoles:
+- "CUSTOMER"
+projectId: "tickets"

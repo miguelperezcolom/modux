@@ -1,0 +1,7 @@
+---
+id: "rm-analytics-concerts"
+name: "ConcertView"
+boundedContextId: "bc-analytics"
+modelId: "model-concert"
+aggregateId: "concert"
+projectId: "tickets"

@@ -1,0 +1,10 @@
+---
+id: "qs-venues"
+name: "Venues"
+boundedContextId: "bc-catalog"
+operations:
+- id: "qs-venues-list"
+  name: "venues"
+  outputModelId: "m-venue"
+  cardinality: "Page"
+projectId: "tickets"

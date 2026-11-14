@@ -1,0 +1,20 @@
+---
+id: "m-venue"
+name: "Venue"
+fields:
+- id: "f-m-venue-name"
+  name: "name"
+  basicType: true
+  type: "string"
+  label: "Name"
+- id: "f-m-venue-city"
+  name: "city"
+  basicType: true
+  type: "string"
+  label: "City"
+- id: "f-m-venue-maxCapacity"
+  name: "maxCapacity"
+  basicType: true
+  type: "integer"
+  label: "Maximum capacity"
+projectId: "tickets"

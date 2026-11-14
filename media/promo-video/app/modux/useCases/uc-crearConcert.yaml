@@ -1,0 +1,16 @@
+---
+id: "uc-crearConcert"
+name: "AddConcert"
+inputModelId: "model-concert"
+steps:
+- id: "step-save"
+  name: "saveConcert"
+  type: "SaveAggregate"
+  aggregateId: "concert"
+- id: "step-publish-ev-concertCreated"
+  name: "publishConcertCreated"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-concertCreated"
+allowedRoles:
+- "PROMOTER"
+projectId: "tickets"

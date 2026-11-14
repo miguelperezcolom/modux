@@ -1,0 +1,25 @@
+---
+id: "bc-sales"
+name: "Sales"
+aggregateIds:
+- "purchase"
+useCaseIds:
+- "uc-crearPurchase"
+- "uc-actualizarPurchase"
+- "uc-eliminarPurchase"
+- "uc-buy"
+- "uc-confirmPurchase"
+- "uc-rejectPurchase"
+- "uc-cancelPurchase"
+- "uc-confirmManually"
+domainEventIds:
+- "ev-purchaseCreated"
+- "ev-purchaseUpdated"
+- "ev-purchaseDeleted"
+- "ev-purchase-placed"
+projectionIds:
+- "proj-concerts"
+readModelIds:
+- "rm-concerts"
+subdomainType: "GENERIC"
+projectId: "tickets"

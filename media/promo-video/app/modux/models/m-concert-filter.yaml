@@ -1,0 +1,10 @@
+---
+id: "m-concert-filter"
+name: "ConcertFilter"
+fields:
+- id: "f-m-concert-filter-artist"
+  name: "artist"
+  basicType: true
+  type: "string"
+  label: "Artist"
+projectId: "tickets"

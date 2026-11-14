@@ -1,0 +1,10 @@
+---
+id: "model-op-reject"
+name: "RejectInput"
+fields:
+- id: "f-model-op-reject-reason"
+  name: "reason"
+  basicType: true
+  type: "string"
+  label: "Reason"
+projectId: "tickets"

@@ -1,0 +1,7 @@
+---
+id: "rel-sales-payments"
+name: "Sales asks Payments to charge"
+sourceBoundedContextId: "bc-sales"
+targetBoundedContextId: "bc-payments"
+type: "CUSTOMER_SUPPLIER"
+projectId: "tickets"

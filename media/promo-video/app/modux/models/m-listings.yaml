@@ -1,0 +1,10 @@
+---
+id: "m-listings"
+name: "Listings"
+fields:
+- id: "f-m-listings-concerts"
+  name: "concerts"
+  type: "array"
+  modelId: "m-concert-row"
+  label: "Concerts"
+projectId: "tickets"

@@ -1,0 +1,16 @@
+---
+id: "uc-concertDetails"
+name: "ConcertDetails"
+exposedAsUi: true
+inputModelId: "m-concert-ref"
+outputModelId: "m-concert-details"
+steps:
+- id: "step-ConcertDetails"
+  name: "lookup"
+  type: "Custom"
+  intent: "Reads the concerts."
+title: "Concert details"
+projectId: "tickets"
+pageTemplate: "ITEM_OVERVIEW"
+templateFields:
+  title: "artist"

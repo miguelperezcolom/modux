@@ -1,0 +1,33 @@
+---
+id: "model-payment"
+name: "Payment"
+fields:
+- id: "f-model-payment-purchaseId"
+  name: "purchaseId"
+  basicType: true
+  type: "string"
+  validations:
+  - id: "v-f-model-payment-purchaseId"
+    type: "NotEmpty"
+  label: "Purchase"
+- id: "f-model-payment-amount"
+  name: "amount"
+  basicType: true
+  type: "money"
+  validations:
+  - id: "v-f-model-payment-amount"
+    type: "NotNull"
+  label: "Amount"
+- id: "f-model-payment-status"
+  name: "status"
+  enumId: "enum-payment"
+  validations:
+  - id: "v-f-model-payment-status"
+    type: "NotNull"
+  label: "Status"
+- id: "f-model-payment-reason"
+  name: "reason"
+  basicType: true
+  type: "string"
+  label: "Reason"
+projectId: "tickets"

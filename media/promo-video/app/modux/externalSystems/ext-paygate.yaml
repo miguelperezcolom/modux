@@ -1,0 +1,18 @@
+---
+id: "ext-paygate"
+name: "Paygate"
+description: "The bank's payment gateway: charges a card and says whether it accepts\
+  \ the charge."
+protocol: "REST"
+direction: "OUTBOUND"
+useCases:
+- id: "ext-paygate-charge"
+  name: "charge"
+  description: "Charges the amount to the card."
+  inputModelId: "m-charge"
+  outputModelId: "m-charge-result"
+- id: "ext-paygate-transactions"
+  name: "transactions"
+  description: "The charges the payment gateway made: what gets reconciled with the\
+    \ payments."
+baseUrl: "http://localhost:9099"

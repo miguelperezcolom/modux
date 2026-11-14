@@ -1,0 +1,20 @@
+---
+id: "m-price"
+name: "Price"
+fields:
+- id: "f-m-price-price"
+  name: "price"
+  basicType: true
+  type: "money"
+  label: "Price"
+- id: "f-m-price-status"
+  name: "status"
+  basicType: true
+  type: "string"
+  label: "Status"
+- id: "f-m-price-artist"
+  name: "artist"
+  basicType: true
+  type: "string"
+  label: "Artist"
+projectId: "tickets"

@@ -1,0 +1,9 @@
+---
+id: "role-promoter"
+name: "PROMOTER"
+allowedUseCaseIds:
+- "uc-crearConcert"
+- "uc-actualizarConcert"
+- "uc-eliminarConcert"
+- "uc-closeSale"
+projectId: "tickets"

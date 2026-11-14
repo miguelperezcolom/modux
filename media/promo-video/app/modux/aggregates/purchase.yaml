@@ -1,0 +1,57 @@
+---
+id: "purchase"
+name: "Purchase"
+modelId: "model-purchase"
+persistenceType: "EVENT_SOURCED"
+operations:
+- id: "op-confirm"
+  name: "confirm"
+  inputModelId: "model-op-confirm"
+  type: "CUSTOM"
+  intent: "A PENDING purchase becomes CONFIRMED; in any other status it is rejected\
+    \ with «The purchase is not pending»."
+- id: "op-reject"
+  name: "reject"
+  inputModelId: "model-op-reject"
+  type: "CUSTOM"
+  intent: "A PENDING purchase becomes REJECTED with the reason received; in any other\
+    \ status it is rejected with «The purchase is not pending»."
+- id: "op-cancel"
+  name: "cancel"
+  type: "CUSTOM"
+  intent: "A PENDING purchase becomes CANCELLED; a confirmed one cannot be cancelled:\
+    \ «A confirmed purchase cannot be cancelled»."
+invariants:
+- id: "inv-purchase-tickets"
+  name: "positiveTickets"
+  conditions:
+  - id: "inv-purchase-tickets-c"
+    custom: true
+    description: "A purchase is for at least one ticket."
+    errorMessage: "Buy at least one ticket"
+lifecycle:
+  stateField: "status"
+  initialState: "PENDING"
+  states:
+  - "PENDING"
+  - "CONFIRMED"
+  - "REJECTED"
+  - "CANCELLED"
+  transitions:
+  - id: "t-confirm"
+    fromState: "PENDING"
+    toState: "CONFIRMED"
+    operationId: "op-confirm"
+  - id: "t-reject"
+    fromState: "PENDING"
+    toState: "REJECTED"
+    operationId: "op-reject"
+  - id: "t-cancel"
+    fromState: "PENDING"
+    toState: "CANCELLED"
+    operationId: "op-cancel"
+  editableStates:
+  - "PENDING"
+title: "Purchases"
+projectId: "tickets"
+editable: true

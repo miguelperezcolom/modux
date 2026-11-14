@@ -1,0 +1,6 @@
+---
+id: "proj-transactions"
+name: "Transactions"
+readModelId: "rm-transactions"
+sourceExternalUseCaseId: "ext-paygate-transactions"
+projectId: "tickets"

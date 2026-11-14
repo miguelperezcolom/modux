@@ -1,0 +1,30 @@
+---
+id: "m-concert-row"
+name: "ConcertRow"
+fields:
+- id: "f-m-concert-row-id"
+  name: "id"
+  basicType: true
+  type: "string"
+  label: "Id"
+- id: "f-m-concert-row-artist"
+  name: "artist"
+  basicType: true
+  type: "string"
+  label: "Artist"
+- id: "f-m-concert-row-date"
+  name: "date"
+  basicType: true
+  type: "date"
+  label: "Date"
+- id: "f-m-concert-row-status"
+  name: "status"
+  basicType: true
+  type: "string"
+  label: "Status"
+- id: "f-m-concert-row-sold"
+  name: "sold"
+  basicType: true
+  type: "integer"
+  label: "Sold"
+projectId: "tickets"

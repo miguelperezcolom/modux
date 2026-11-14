@@ -1,0 +1,9 @@
+---
+id: "flow-charge"
+name: "charge"
+archetype: "TRIGGERS"
+triggerAggregateId: "purchase"
+triggerEvent: "PurchasePlaced"
+targetBoundedContextId: "bc-payments"
+targetUseCaseId: "uc-charge"
+projectId: "tickets"

@@ -1,0 +1,13 @@
+---
+id: "tickets"
+name: "Tickets"
+outputPath: "system"
+packageName: "io.tickets"
+serviceIds:
+- "svc-catalog"
+- "svc-sales"
+- "svc-payments"
+- "svc-analytics"
+objective: "A promoter sells tickets for its concerts. Far more people browse the\
+  \ catalog than buy; a purchase does not count until the payment confirms it, and\
+  \ if the payment fails the tickets go back on sale."

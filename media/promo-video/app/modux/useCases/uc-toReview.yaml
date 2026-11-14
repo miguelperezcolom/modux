@@ -1,0 +1,19 @@
+---
+id: "uc-toReview"
+name: "ToReview"
+exposedAsUi: true
+outputModelId: "m-listings"
+steps:
+- id: "step-ToReview"
+  name: "lookup"
+  type: "Custom"
+  intent: "Reads the concerts."
+title: "Concerts to review"
+projectId: "tickets"
+pageTemplate: "TODO_LIST"
+templateFields:
+  id: "id"
+  title: "artist"
+  group: "status"
+  caption: "date"
+itemUseCaseId: "uc-concertDetails"

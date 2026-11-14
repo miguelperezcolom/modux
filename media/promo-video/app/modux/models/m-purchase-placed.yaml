@@ -1,0 +1,51 @@
+---
+id: "m-purchase-placed"
+name: "PurchasePlaced"
+fields:
+- id: "f-m-purchase-placed-purchaseId"
+  name: "purchaseId"
+  basicType: true
+  type: "string"
+  label: "Purchase"
+- id: "f-m-purchase-placed-concertId"
+  name: "concertId"
+  basicType: true
+  type: "string"
+  label: "Concert"
+- id: "f-m-purchase-placed-customer"
+  name: "customer"
+  basicType: true
+  type: "string"
+  label: "Customer"
+- id: "f-m-purchase-placed-tickets"
+  name: "tickets"
+  basicType: true
+  type: "integer"
+  label: "Tickets"
+- id: "f-m-purchase-placed-amount"
+  name: "amount"
+  basicType: true
+  type: "money"
+  label: "Amount"
+- id: "f-m-purchase-placed-card"
+  name: "card"
+  basicType: true
+  type: "string"
+  label: "Card"
+- id: "f-m-purchase-placed-zones"
+  name: "zones"
+  type: "array"
+  modelId: "m-zone"
+  label: "Venue zones"
+- id: "f-m-purchase-placed-receipt"
+  name: "receipt"
+  basicType: true
+  type: "string"
+  label: "Receipt"
+  stereotype: "html"
+- id: "f-m-purchase-placed-pickupCode"
+  name: "pickupCode"
+  basicType: true
+  type: "string"
+  label: "Pickup code"
+projectId: "tickets"

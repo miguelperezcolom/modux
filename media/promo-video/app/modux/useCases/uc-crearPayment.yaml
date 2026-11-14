@@ -1,0 +1,14 @@
+---
+id: "uc-crearPayment"
+name: "AddPayment"
+inputModelId: "model-payment"
+steps:
+- id: "step-save"
+  name: "savePayment"
+  type: "SaveAggregate"
+  aggregateId: "payment"
+- id: "step-publish-ev-paymentCreated"
+  name: "publishPaymentCreated"
+  type: "PublishDomainEvent"
+  domainEventId: "ev-paymentCreated"
+projectId: "tickets"

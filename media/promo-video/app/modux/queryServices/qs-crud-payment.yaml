@@ -1,0 +1,9 @@
+---
+id: "qs-crud-payment"
+name: "PaymentQueries"
+boundedContextId: "bc-payments"
+operations:
+- id: "qs-crud-payment-list"
+  name: "list"
+  cardinality: "Page"
+projectId: "tickets"

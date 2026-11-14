@@ -1,0 +1,10 @@
+---
+id: "shell-tickets"
+name: "Tickets"
+title: "Tickets"
+serviceIds:
+- "svc-catalog"
+- "svc-sales"
+- "svc-payments"
+- "svc-analytics"
+projectId: "tickets"

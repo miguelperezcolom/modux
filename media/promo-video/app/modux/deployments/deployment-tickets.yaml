@@ -1,0 +1,14 @@
+---
+id: "deployment-tickets"
+emailProvider: "SMTP"
+dockerRegistry: "docker.io/miguelperezcolom"
+environments:
+- environment: "PROD"
+  kubernetesNamespace: "tickets"
+  kubernetesContext: "cloudfleet-hetzner"
+  ingressDomain: "ec1.mateu.io"
+  ingressTlsEnabled: true
+  ingressClassName: "nginx"
+  deployTarget: "KUBERNETES"
+  dnsProvider: "NETLIFY"
+  certIssuer: "letsencrypt"

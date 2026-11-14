@@ -1,0 +1,12 @@
+---
+id: "qs-dashboard"
+name: "Dashboard"
+boundedContextId: "bc-analytics"
+operations:
+- id: "qs-dashboard-purchases"
+  name: "purchases"
+  outputModelId: "model-purchase"
+  cardinality: "Page"
+  groupBy: "concertId"
+  filter: "status=CONFIRMED"
+projectId: "tickets"

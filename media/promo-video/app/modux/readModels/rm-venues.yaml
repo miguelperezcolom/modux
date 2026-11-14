@@ -1,0 +1,6 @@
+---
+id: "rm-venues"
+name: "VenueView"
+boundedContextId: "bc-catalog"
+modelId: "m-venue"
+projectId: "tickets"

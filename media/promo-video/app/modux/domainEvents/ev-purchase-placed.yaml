@@ -1,0 +1,5 @@
+---
+id: "ev-purchase-placed"
+name: "PurchasePlaced"
+modelId: "m-purchase-placed"
+projectId: "tickets"

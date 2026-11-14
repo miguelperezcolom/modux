@@ -1,0 +1,6 @@
+---
+id: "proj-venues"
+name: "Venues"
+readModelId: "rm-venues"
+sourceExternalTableId: "ext-legacy-venues"
+projectId: "tickets"

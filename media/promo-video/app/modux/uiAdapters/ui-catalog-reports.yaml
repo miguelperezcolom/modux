@@ -1,0 +1,12 @@
+---
+id: "ui-catalog-reports"
+name: "CatalogReports"
+serviceId: "svc-catalog"
+title: "Catalog reports"
+path: "/catalog-reports"
+menuItems:
+- label: "Concerts"
+  id: "ui-catalog-reports-0"
+  aggregateId: "concert"
+appType: "APP"
+projectId: "tickets"

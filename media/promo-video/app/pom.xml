@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>io.tickets</groupId>
+  <artifactId>tickets-model</artifactId>
+  <version>0.1.0</version>
+  <packaging>pom</packaging>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>io.mateu.modux</groupId>
+        <artifactId>modux-maven-plugin</artifactId>
+        <version>0.6.5-SNAPSHOT</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

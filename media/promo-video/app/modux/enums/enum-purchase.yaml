@@ -1,0 +1,12 @@
+---
+id: "enum-purchase"
+values:
+- id: "PENDING"
+  name: "PENDING"
+- id: "CONFIRMED"
+  name: "CONFIRMED"
+- id: "REJECTED"
+  name: "REJECTED"
+- id: "CANCELLED"
+  name: "CANCELLED"
+projectId: "tickets"

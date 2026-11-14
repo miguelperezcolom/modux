@@ -1,0 +1,26 @@
+---
+id: "bc-catalog"
+name: "Catalog"
+aggregateIds:
+- "concert"
+useCaseIds:
+- "uc-crearConcert"
+- "uc-actualizarConcert"
+- "uc-eliminarConcert"
+- "uc-lookupPrice"
+- "uc-closeSale"
+- "uc-salesDashboard"
+- "uc-listings"
+- "uc-toReview"
+- "uc-searchConcerts"
+- "uc-concertDetails"
+domainEventIds:
+- "ev-concertCreated"
+- "ev-concertUpdated"
+- "ev-concertDeleted"
+projectionIds:
+- "proj-venues"
+readModelIds:
+- "rm-venues"
+subdomainType: "GENERIC"
+projectId: "tickets"

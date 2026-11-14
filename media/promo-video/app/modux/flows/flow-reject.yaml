@@ -1,0 +1,9 @@
+---
+id: "flow-reject"
+name: "reject"
+archetype: "TRIGGERS"
+triggerAggregateId: "payment"
+triggerEvent: "PaymentDeclined"
+targetBoundedContextId: "bc-sales"
+targetUseCaseId: "uc-rejectPurchase"
+projectId: "tickets"

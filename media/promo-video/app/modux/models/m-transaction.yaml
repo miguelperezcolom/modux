@@ -1,0 +1,20 @@
+---
+id: "m-transaction"
+name: "Transaction"
+fields:
+- id: "f-m-transaction-purchaseId"
+  name: "purchaseId"
+  basicType: true
+  type: "string"
+  label: "Purchase"
+- id: "f-m-transaction-amount"
+  name: "amount"
+  basicType: true
+  type: "money"
+  label: "Amount"
+- id: "f-m-transaction-result"
+  name: "result"
+  basicType: true
+  type: "string"
+  label: "Result"
+projectId: "tickets"

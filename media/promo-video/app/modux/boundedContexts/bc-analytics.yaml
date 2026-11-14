@@ -1,0 +1,11 @@
+---
+id: "bc-analytics"
+name: "Analytics"
+projectionIds:
+- "proj-purchases"
+- "proj-analytics-concerts"
+readModelIds:
+- "rm-purchases"
+- "rm-analytics-concerts"
+subdomainType: "GENERIC"
+projectId: "tickets"

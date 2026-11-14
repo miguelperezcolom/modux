@@ -1,0 +1,12 @@
+---
+id: "uc-lookupPrice"
+name: "LookupPrice"
+inputModelId: "m-lookup-price"
+outputModelId: "m-price"
+steps:
+- id: "step-lookup"
+  name: "lookup"
+  type: "Custom"
+  intent: "Loads the concert by its id and returns its price, its status (ON_SALE\
+    \ or CLOSED) and its artist; if it does not exist, BusinessRuleException.notFound."
+projectId: "tickets"

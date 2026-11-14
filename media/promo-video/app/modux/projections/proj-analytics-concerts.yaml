@@ -1,0 +1,6 @@
+---
+id: "proj-analytics-concerts"
+name: "AnalyticsConcerts"
+readModelId: "rm-analytics-concerts"
+sourceAggregateId: "concert"
+projectId: "tickets"

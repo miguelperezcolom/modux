@@ -1,0 +1,5 @@
+---
+id: "ev-payment-declined"
+name: "PaymentDeclined"
+modelId: "m-payment-declined"
+projectId: "tickets"

@@ -1,0 +1,26 @@
+---
+id: "m-sales-dashboard"
+name: "SalesDashboard"
+fields:
+- id: "f-m-sales-dashboard-ticketsSold"
+  name: "ticketsSold"
+  basicType: true
+  type: "integer"
+  label: "Tickets sold"
+- id: "f-m-sales-dashboard-revenue"
+  name: "revenue"
+  basicType: true
+  type: "money"
+  label: "Revenue"
+- id: "f-m-sales-dashboard-latest"
+  name: "latest"
+  basicType: true
+  type: "string"
+  label: "Latest"
+  stereotype: "html"
+- id: "f-m-sales-dashboard-concerts"
+  name: "concerts"
+  type: "array"
+  modelId: "m-concert-row"
+  label: "Concerts"
+projectId: "tickets"

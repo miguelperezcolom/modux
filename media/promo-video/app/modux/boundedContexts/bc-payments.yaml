@@ -1,0 +1,22 @@
+---
+id: "bc-payments"
+name: "Payments"
+aggregateIds:
+- "payment"
+useCaseIds:
+- "uc-crearPayment"
+- "uc-actualizarPayment"
+- "uc-eliminarPayment"
+- "uc-charge"
+domainEventIds:
+- "ev-paymentCreated"
+- "ev-paymentUpdated"
+- "ev-paymentDeleted"
+- "ev-payment-accepted"
+- "ev-payment-declined"
+projectionIds:
+- "proj-transactions"
+readModelIds:
+- "rm-transactions"
+subdomainType: "GENERIC"
+projectId: "tickets"
