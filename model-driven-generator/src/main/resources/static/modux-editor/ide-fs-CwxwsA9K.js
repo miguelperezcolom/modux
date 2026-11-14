@@ -19,18 +19,18 @@ function I(o) {
     }
   return !1;
 }
-const Kt = (o) => (E(o) || M(o)) && !!o.anchor, z = Symbol("break visit"), No = Symbol("skip children"), he = Symbol("remove node");
+const Kt = (o) => (E(o) || M(o)) && !!o.anchor, z = Symbol("break visit"), Lo = Symbol("skip children"), he = Symbol("remove node");
 function le(o, e) {
   const t = Uo(e);
   be(o) ? Z(null, o.contents, t, Object.freeze([o])) === he && (o.contents = null) : Z(null, o, t, Object.freeze([]));
 }
 le.BREAK = z;
-le.SKIP = No;
+le.SKIP = Lo;
 le.REMOVE = he;
 function Z(o, e, t, a) {
   const n = Ro(o, e, t, a);
   if (I(n) || P(n))
-    return Bo(o, a, n), Z(o, n, t, a);
+    return jo(o, a, n), Z(o, n, t, a);
   if (typeof n != "symbol") {
     if (M(e)) {
       a = Object.freeze(a.concat(e));
@@ -88,7 +88,7 @@ function Ro(o, e, t, a) {
   if (re(e))
     return (l = t.Alias) == null ? void 0 : l.call(t, o, e, a);
 }
-function Bo(o, e, t) {
+function jo(o, e, t) {
   const a = e[e.length - 1];
   if (M(a))
     a.items[o] = t;
@@ -101,14 +101,14 @@ function Bo(o, e, t) {
     throw new Error(`Cannot replace node with ${n} parent`);
   }
 }
-const jo = {
+const Bo = {
   "!": "%21",
   ",": "%2C",
   "[": "%5B",
   "]": "%5D",
   "{": "%7B",
   "}": "%7D"
-}, Fo = (o) => o.replace(/[!,[\]{}]/g, (e) => jo[e]);
+}, Fo = (o) => o.replace(/[!,[\]{}]/g, (e) => Bo[e]);
 class D {
   constructor(e, t) {
     this.docStart = null, this.docEnd = !1, this.yaml = Object.assign({}, D.defaultYaml, e), this.tags = Object.assign({}, D.defaultTags, t);
@@ -377,7 +377,7 @@ class ht extends mt {
       const l = "This should not happen: Alias anchor was not resolved?";
       throw new ReferenceError(l);
     }
-    if (i >= 0 && (r.count += 1, r.aliasCount === 0 && (r.aliasCount = Le(n, s, a)), r.count * r.aliasCount > i)) {
+    if (i >= 0 && (r.count += 1, r.aliasCount === 0 && (r.aliasCount = Ne(n, s, a)), r.count * r.aliasCount > i)) {
       const l = "Excessive alias count indicates a resource exhaustion attack";
       throw new ReferenceError(l);
     }
@@ -396,19 +396,19 @@ class ht extends mt {
     return n;
   }
 }
-function Le(o, e, t) {
+function Ne(o, e, t) {
   if (re(e)) {
     const a = e.resolve(o), n = t && a && t.get(a);
     return n ? n.count * n.aliasCount : 0;
   } else if (M(e)) {
     let a = 0;
     for (const n of e.items) {
-      const i = Le(o, n, t);
+      const i = Ne(o, n, t);
       i > a && (a = i);
     }
     return a;
   } else if (P(e)) {
-    const a = Le(o, e.key, t), n = Le(o, e.value, t);
+    const a = Ne(o, e.key, t), n = Ne(o, e.value, t);
     return Math.max(a, n);
   }
   return 1;
@@ -595,7 +595,7 @@ function _(o, e) {
 const W = (o, e, t) => o.endsWith(`
 `) ? _(t, e) : t.includes(`
 `) ? `
-` + _(t, e) : (o.endsWith(" ") ? "" : " ") + t, Xt = "flow", ot = "block", Ne = "quoted";
+` + _(t, e) : (o.endsWith(" ") ? "" : " ") + t, Xt = "flow", ot = "block", Le = "quoted";
 function $e(o, e, t = "flow", { indentAtStart: a, lineWidth: n = 80, minContentWidth: i = 20, onFold: s, onOverflow: r } = {}) {
   if (!n || n < 0)
     return o;
@@ -609,7 +609,7 @@ function $e(o, e, t = "flow", { indentAtStart: a, lineWidth: n = 80, minContentW
   let m, u, f = !1, p = -1, g = -1, w = -1;
   t === ot && (p = Pt(o, p, e.length), p !== -1 && (d = p + l));
   for (let k; k = o[p += 1]; ) {
-    if (t === Ne && k === "\\") {
+    if (t === Le && k === "\\") {
       switch (g = p, o[p + 1]) {
         case "x":
           p += 3;
@@ -638,7 +638,7 @@ function $e(o, e, t = "flow", { indentAtStart: a, lineWidth: n = 80, minContentW
       if (p >= d)
         if (m)
           c.push(m), d = m + l, m = void 0;
-        else if (t === Ne) {
+        else if (t === Le) {
           for (; u === " " || u === "	"; )
             u = k, k = o[p += 1], f = !0;
           const b = p > w + 1 ? p - 2 : g - 1;
@@ -657,7 +657,7 @@ function $e(o, e, t = "flow", { indentAtStart: a, lineWidth: n = 80, minContentW
   for (let k = 0; k < c.length; ++k) {
     const b = c[k], x = c[k + 1] || o.length;
     b === 0 ? y = `
-${e}${o.slice(0, x)}` : (t === Ne && h[b] && (y += `${o[b]}\\`), y += `
+${e}${o.slice(0, x)}` : (t === Le && h[b] && (y += `${o[b]}\\`), y += `
 ${e}${o.slice(b + 1, x)}`);
   }
   return y;
@@ -756,7 +756,7 @@ function ge(o, e) {
         default:
           l += 1;
       }
-  return s = r ? s + t.slice(r) : t, a ? s : $e(s, i, Ne, He(e, !1));
+  return s = r ? s + t.slice(r) : t, a ? s : $e(s, i, Le, He(e, !1));
 }
 function at(o, e) {
   if (e.options.singleQuote === !1 || e.implicitKey && o.includes(`
@@ -1043,8 +1043,8 @@ ${t.indent}`;
     if (T || !O) {
       let H = !1;
       if (T && (S === "&" || S === "!")) {
-        let B = x.indexOf(" ");
-        S === "&" && B !== -1 && B < v && x[B + 1] === "!" && (B = x.indexOf(" ", B + 1)), (B === -1 || v < B) && (H = !0);
+        let j = x.indexOf(" ");
+        S === "&" && j !== -1 && j < v && x[j + 1] === "!" && (j = x.indexOf(" ", j + 1)), (j === -1 || v < j) && (H = !0);
       }
       H || (C = `
 ${t.indent}`);
@@ -1139,15 +1139,15 @@ function Yo(o, e, t) {
 }
 function ft(o, e, t) {
   const a = fe(o, void 0, t), n = fe(e, void 0, t);
-  return new L(a, n);
+  return new N(a, n);
 }
-class L {
+class N {
   constructor(e, t = null) {
     Object.defineProperty(this, R, { value: Gt }), this.key = e, this.value = t;
   }
   clone(e) {
     let { key: t, value: a } = this;
-    return I(t) && (t = t.clone(e)), I(a) && (a = a.clone(e)), new L(t, a);
+    return I(t) && (t = t.clone(e)), I(a) && (a = a.clone(e)), new N(t, a);
   }
   toJSON(e, t) {
     const a = t != null && t.mapAsMap ? /* @__PURE__ */ new Map() : {};
@@ -1168,10 +1168,10 @@ function Jo({ comment: o, items: e }, t, { blockItemPrefix: a, flowChars: n, ite
     const p = e[f];
     let g = null;
     if (I(p))
-      !d && p.spaceBefore && m.push(""), Be(t, m, p.commentBefore, d), p.comment && (g = p.comment);
+      !d && p.spaceBefore && m.push(""), je(t, m, p.commentBefore, d), p.comment && (g = p.comment);
     else if (P(p)) {
       const y = I(p.key) ? p.key : null;
-      y && (!d && y.spaceBefore && m.push(""), Be(t, m, y.commentBefore, d));
+      y && (!d && y.spaceBefore && m.push(""), je(t, m, y.commentBefore, d));
     }
     d = !1;
     let w = ne(p, h, () => g = null, () => d = !0);
@@ -1206,10 +1206,10 @@ function Xo({ items: o }, e, { flowChars: t, itemIndent: a }) {
     const p = o[f];
     let g = null;
     if (I(p))
-      p.spaceBefore && d.push(""), Be(e, d, p.commentBefore, !1), p.comment && (g = p.comment);
+      p.spaceBefore && d.push(""), je(e, d, p.commentBefore, !1), p.comment && (g = p.comment);
     else if (P(p)) {
       const y = I(p.key) ? p.key : null;
-      y && (y.spaceBefore && d.push(""), Be(e, d, y.commentBefore, !1), y.comment && (c = !0));
+      y && (y.spaceBefore && d.push(""), je(e, d, y.commentBefore, !1), y.comment && (c = !0));
       const k = I(p.value) ? p.value : null;
       k ? (k.comment && (g = k.comment), k.commentBefore && (c = !0)) : p.value == null && (y != null && y.comment) && (g = y.comment);
     }
@@ -1236,7 +1236,7 @@ ${n}${u}`;
   } else
     return `${m}${s}${d.join(" ")}${s}${u}`;
 }
-function Be({ indent: o, options: { commentString: e } }, t, a, n) {
+function je({ indent: o, options: { commentString: e } }, t, a, n) {
   if (a && n && (a = a.replace(/^\n+/, "")), a) {
     const i = _(e(a), o);
     t.push(i.trimStart());
@@ -1248,7 +1248,7 @@ function Q(o, e) {
     if (P(a) && (a.key === e || a.key === t || E(a.key) && a.key.value === t))
       return a;
 }
-class N extends Jt {
+class L extends Jt {
   static get tagName() {
     return "tag:yaml.org,2002:map";
   }
@@ -1284,7 +1284,7 @@ class N extends Jt {
   add(e, t) {
     var s;
     let a;
-    P(e) ? a = e : !e || typeof e != "object" || !("key" in e) ? a = new L(e, e == null ? void 0 : e.value) : a = new L(e.key, e.value);
+    P(e) ? a = e : !e || typeof e != "object" || !("key" in e) ? a = new N(e, e == null ? void 0 : e.value) : a = new N(e.key, e.value);
     const n = Q(this.items, a.key), i = (s = this.schema) == null ? void 0 : s.sortMapEntries;
     if (n) {
       if (!t)
@@ -1308,7 +1308,7 @@ class N extends Jt {
     return !!Q(this.items, e);
   }
   set(e, t) {
-    this.add(new L(e, t), !0);
+    this.add(new N(e, t), !0);
   }
   /**
    * @param ctx - Conversion context, originally set in Document#toJS()
@@ -1340,12 +1340,12 @@ class N extends Jt {
 const ce = {
   collection: "map",
   default: !0,
-  nodeClass: N,
+  nodeClass: L,
   tag: "tag:yaml.org,2002:map",
   resolve(o, e) {
     return ke(o) || e("Expected a mapping for this tag"), o;
   },
-  createNode: (o, e, t) => N.from(o, e, t)
+  createNode: (o, e, t) => L.from(o, e, t)
 };
 class Y extends Jt {
   static get tagName() {
@@ -1663,7 +1663,7 @@ function mo(o, e) {
       if (!P(a)) {
         if (ke(a)) {
           a.items.length > 1 && e("Each pair must have its own sequence indicator");
-          const n = a.items[0] || new L(new A(null));
+          const n = a.items[0] || new N(new A(null));
           if (a.commentBefore && (n.key.commentBefore = n.key.commentBefore ? `${a.commentBefore}
 ${n.key.commentBefore}` : a.commentBefore), a.comment) {
             const i = n.value ?? n.key;
@@ -1672,7 +1672,7 @@ ${i.comment}` : a.comment;
           }
           a = n;
         }
-        o.items[t] = P(a) ? a : new L(a);
+        o.items[t] = P(a) ? a : new N(a);
       }
     }
   else
@@ -1713,7 +1713,7 @@ const bt = {
 };
 class oe extends Y {
   constructor() {
-    super(), this.add = N.prototype.add.bind(this), this.delete = N.prototype.delete.bind(this), this.get = N.prototype.get.bind(this), this.has = N.prototype.has.bind(this), this.set = N.prototype.set.bind(this), this.tag = oe.tag;
+    super(), this.add = L.prototype.add.bind(this), this.delete = L.prototype.delete.bind(this), this.get = L.prototype.get.bind(this), this.has = L.prototype.has.bind(this), this.set = L.prototype.set.bind(this), this.tag = oe.tag;
   }
   /**
    * If `ctx` is given, the return type is actually `Map<unknown, unknown>`,
@@ -1862,13 +1862,13 @@ const sa = {
   resolve: (o, e, t) => ze(o, 2, 16, t),
   stringify: (o) => xt(o, 16, "0x")
 };
-class ae extends N {
+class ae extends L {
   constructor(e) {
     super(e), this.tag = ae.tag;
   }
   add(e) {
     let t;
-    P(e) ? t = e : e && typeof e == "object" && "key" in e && "value" in e && e.value === null ? t = new L(e.key, null) : t = new L(e, null), Q(this.items, t.key) || this.items.push(t);
+    P(e) ? t = e : e && typeof e == "object" && "key" in e && "value" in e && e.value === null ? t = new N(e.key, null) : t = new N(e, null), Q(this.items, t.key) || this.items.push(t);
   }
   /**
    * If `keepPair` is `true`, returns the Pair matching `key`.
@@ -1882,7 +1882,7 @@ class ae extends N {
     if (typeof t != "boolean")
       throw new Error(`Expected boolean value for set(key, value) in a YAML set, not ${typeof t}`);
     const a = Q(this.items, e);
-    a && !t ? this.items.splice(this.items.indexOf(a), 1) : !a && t && this.items.push(new L(e));
+    a && !t ? this.items.splice(this.items.indexOf(a), 1) : !a && t && this.items.push(new N(e));
   }
   toJSON(e, t) {
     return super.toJSON(e, t, Set);
@@ -1995,13 +1995,13 @@ const vo = {
   vo,
   bo,
   We
-], Lt = /* @__PURE__ */ new Map([
+], Nt = /* @__PURE__ */ new Map([
   ["core", Zo],
   ["failsafe", [ce, de, Ve]],
   ["json", oa],
   ["yaml11", Dt],
   ["yaml-1.1", Dt]
-]), Nt = {
+]), Lt = {
   binary: vt,
   bool: wt,
   float: ro,
@@ -2029,7 +2029,7 @@ const vo = {
   "tag:yaml.org,2002:timestamp": We
 };
 function Ye(o, e, t) {
-  const a = Lt.get(e);
+  const a = Nt.get(e);
   if (a && !o)
     return t && !a.includes(V) ? a.concat(V) : a.slice();
   let n = a;
@@ -2037,7 +2037,7 @@ function Ye(o, e, t) {
     if (Array.isArray(o))
       n = [];
     else {
-      const i = Array.from(Lt.keys()).filter((s) => s !== "yaml11").map((s) => JSON.stringify(s)).join(", ");
+      const i = Array.from(Nt.keys()).filter((s) => s !== "yaml11").map((s) => JSON.stringify(s)).join(", ");
       throw new Error(`Unknown schema "${e}"; use one of ${i} or define customTags array`);
     }
   if (Array.isArray(o))
@@ -2045,9 +2045,9 @@ function Ye(o, e, t) {
       n = n.concat(i);
   else typeof o == "function" && (n = o(n.slice()));
   return t && (n = n.concat(V)), n.reduce((i, s) => {
-    const r = typeof s == "string" ? Nt[s] : s;
+    const r = typeof s == "string" ? Lt[s] : s;
     if (!r) {
-      const l = JSON.stringify(s), c = Object.keys(Nt).map((h) => JSON.stringify(h)).join(", ");
+      const l = JSON.stringify(s), c = Object.keys(Lt).map((h) => JSON.stringify(h)).join(", ");
       throw new Error(`Unknown custom tag ${l}; use one of ${c}`);
     }
     return i.includes(r) || i.push(r), i;
@@ -2191,7 +2191,7 @@ class Se {
    */
   createPair(e, t, a = {}) {
     const n = this.createNode(e, null, a), i = this.createNode(t, null, a);
-    return new L(n, i);
+    return new N(n, i);
   }
   /**
    * Removes a value from the document.
@@ -2465,7 +2465,7 @@ function xo(o, e, t) {
 const Rt = "All mapping items must start at the same column";
 function ha({ composeNode: o, composeEmptyNode: e }, t, a, n, i) {
   var h;
-  const s = (i == null ? void 0 : i.nodeClass) ?? N, r = new s(t.schema);
+  const s = (i == null ? void 0 : i.nodeClass) ?? L, r = new s(t.schema);
   t.atRoot && (t.atRoot = !1);
   let l = a.offset, c = null;
   for (const d of a.items) {
@@ -2500,12 +2500,12 @@ function ha({ composeNode: o, composeEmptyNode: e }, t, a, n, i) {
       w && ((p == null ? void 0 : p.type) === "block-map" && !b.hasNewline && n(l, "BLOCK_AS_IMPLICIT_KEY", "Nested mappings are not allowed in compact mappings"), t.options.strict && g.start < b.found.offset - 1024 && n(k.range, "KEY_OVER_1024_CHARS", "The : indicator must be at most 1024 chars after the start of an implicit block mapping key"));
       const x = p ? o(t, p, b, n) : e(t, l, f, null, b, n);
       t.schema.compat && it(a.indent, p, n), l = x.range[2];
-      const C = new L(k, x);
+      const C = new N(k, x);
       t.options.keepSourceTokens && (C.srcToken = d), r.items.push(C);
     } else {
       w && n(k.range, "MISSING_CHAR", "Implicit map keys need to be followed by map values"), b.comment && (k.comment ? k.comment += `
 ` + b.comment : k.comment = b.comment);
-      const x = new L(k);
+      const x = new N(k);
       t.options.keepSourceTokens && (x.srcToken = d), r.items.push(x);
     }
   }
@@ -2566,7 +2566,7 @@ function Ce(o, e, t, a) {
 const Je = "Block collections are not allowed within flow collections", Xe = (o) => o && (o.type === "block-map" || o.type === "block-seq");
 function fa({ composeNode: o, composeEmptyNode: e }, t, a, n, i) {
   var g;
-  const s = a.start.source === "{", r = s ? "flow map" : "flow sequence", l = (i == null ? void 0 : i.nodeClass) ?? (s ? N : Y), c = new l(t.schema);
+  const s = a.start.source === "{", r = s ? "flow map" : "flow sequence", l = (i == null ? void 0 : i.nodeClass) ?? (s ? L : Y), c = new l(t.schema);
   c.flow = !0;
   const h = t.atRoot;
   h && (t.atRoot = !1), t.atKey && (t.atKey = !1);
@@ -2634,11 +2634,11 @@ function fa({ composeNode: o, composeEmptyNode: e }, t, a, n, i) {
       if (O.found) {
         if (!s && !S.found && t.options.strict) {
           if (x)
-            for (const j of x) {
-              if (j === O.found)
+            for (const B of x) {
+              if (B === O.found)
                 break;
-              if (j.type === "newline") {
-                n(j, "MULTILINE_IMPLICIT_KEY", "Implicit keys of flow sequence pairs need to be on a single line");
+              if (B.type === "newline") {
+                n(B, "MULTILINE_IMPLICIT_KEY", "Implicit keys of flow sequence pairs need to be on a single line");
                 break;
               }
             }
@@ -2648,15 +2648,15 @@ function fa({ composeNode: o, composeEmptyNode: e }, t, a, n, i) {
       const H = C ? o(t, C, O, n) : O.found ? e(t, O.end, x, null, O, n) : null;
       H ? Xe(C) && n(H.range, "BLOCK_IN_FLOW", Je) : O.comment && (T.comment ? T.comment += `
 ` + O.comment : T.comment = O.comment);
-      const B = new L(T, H);
-      if (t.options.keepSourceTokens && (B.srcToken = y), s) {
-        const j = c;
-        xo(t, j.items, T) && n(v, "DUPLICATE_KEY", "Map keys must be unique"), j.items.push(B);
+      const j = new N(T, H);
+      if (t.options.keepSourceTokens && (j.srcToken = y), s) {
+        const B = c;
+        xo(t, B.items, T) && n(v, "DUPLICATE_KEY", "Map keys must be unique"), B.items.push(j);
       } else {
-        const j = new N(t.schema);
-        j.flow = !0, j.items.push(B);
+        const B = new L(t.schema);
+        B.flow = !0, B.items.push(j);
         const It = (H ?? T).range;
-        j.range = [T.range[0], It[1], It[2]], c.items.push(j);
+        B.range = [T.range[0], It[1], It[2]], c.items.push(B);
       }
       d = H ? H.range[2] : O.end;
     }
@@ -2689,7 +2689,7 @@ function wa(o, e, t, a, n) {
     p && (!f || f.offset < p.offset) && n(p, "MISSING_CHAR", "Missing newline after block sequence props");
   }
   const r = t.type === "block-map" ? "map" : t.type === "block-seq" ? "seq" : t.start.source === "{" ? "map" : "seq";
-  if (!i || !s || s === "!" || s === N.tagName && r === "map" || s === Y.tagName && r === "seq")
+  if (!i || !s || s === "!" || s === L.tagName && r === "map" || s === Y.tagName && r === "seq")
     return Ze(o, e, t, n, s);
   let l = e.schema.tags.find((u) => u.tag === s && u.collection === r);
   if (!l) {
@@ -3112,7 +3112,7 @@ function Da({ options: o }, { offset: e, source: t, end: a }, n) {
   const s = e + t.length, r = Ce(a, s, o.strict, n);
   return i.range = [e, s, r.offset], r.comment && (i.comment = r.comment), i;
 }
-function La(o, e, { offset: t, start: a, value: n, end: i }, s) {
+function Na(o, e, { offset: t, start: a, value: n, end: i }, s) {
   const r = Object.assign({ _directives: e }, o), l = new Se(void 0, r), c = {
     atKey: !1,
     atRoot: !0,
@@ -3139,7 +3139,7 @@ function pe(o) {
   const { offset: e, source: t } = o;
   return [e, e + (typeof t == "string" ? t.length : 1)];
 }
-function Bt(o) {
+function jt(o) {
   var n;
   let e = "", t = !1, a = !1;
   for (let i = 0; i < o.length; ++i) {
@@ -3160,7 +3160,7 @@ function Bt(o) {
   }
   return { comment: e, afterEmptyLine: a };
 }
-class Na {
+class La {
   constructor(e = {}) {
     this.doc = null, this.atDirectives = !1, this.prelude = [], this.errors = [], this.warnings = [], this.onError = (t, a, n, i) => {
       const s = pe(t);
@@ -3168,7 +3168,7 @@ class Na {
     }, this.directives = new D({ version: e.version || "1.2" }), this.options = e;
   }
   decorate(e, t) {
-    const { comment: a, afterEmptyLine: n } = Bt(this.prelude);
+    const { comment: a, afterEmptyLine: n } = jt(this.prelude);
     if (a) {
       const i = e.contents;
       if (t)
@@ -3204,7 +3204,7 @@ ${s}` : a;
    */
   streamInfo() {
     return {
-      comment: Bt(this.prelude).comment,
+      comment: jt(this.prelude).comment,
       directives: this.directives,
       errors: this.errors,
       warnings: this.warnings
@@ -3231,7 +3231,7 @@ ${s}` : a;
         }), this.prelude.push(e.source), this.atDirectives = !0;
         break;
       case "document": {
-        const t = La(this.options, this.directives, e, this.onError);
+        const t = Na(this.options, this.directives, e, this.onError);
         this.atDirectives && !t.directives.docStart && this.onError(e, "MISSING_CHAR", "Missing directives-end/doc-start indicator line"), this.decorate(t, !1), this.doc && (yield this.doc), this.doc = t, this.atDirectives = !1;
         break;
       }
@@ -3357,9 +3357,9 @@ function F(o) {
       return !1;
   }
 }
-const jt = new Set("0123456789ABCDEFabcdef"), Ra = new Set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-#;/?:@&=+$_.!~*'()"), Ie = new Set(",[]{}"), Ba = new Set(` ,[]{}
-\r	`), et = (o) => !o || Ba.has(o);
-class ja {
+const Bt = new Set("0123456789ABCDEFabcdef"), Ra = new Set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-#;/?:@&=+$_.!~*'()"), Ie = new Set(",[]{}"), ja = new Set(` ,[]{}
+\r	`), et = (o) => !o || ja.has(o);
+class Ba {
   constructor() {
     this.atEnd = !1, this.blockScalarIndent = -1, this.blockScalarKeep = !1, this.buffer = "", this.flowKey = !1, this.flowLevel = 0, this.indentNext = 0, this.indentValue = 0, this.lineEndPos = null, this.next = null, this.pos = 0;
   }
@@ -3754,7 +3754,7 @@ class ja {
       for (; t; )
         if (Ra.has(t))
           t = this.buffer[++e];
-        else if (t === "%" && jt.has(this.buffer[e + 1]) && jt.has(this.buffer[e + 2]))
+        else if (t === "%" && Bt.has(this.buffer[e + 1]) && Bt.has(this.buffer[e + 2]))
           t = this.buffer[e += 3];
         else
           break;
@@ -3862,7 +3862,7 @@ function X(o) {
     ;
   return o.splice(e, o.length);
 }
-function je(o, e) {
+function Be(o, e) {
   if (e.length < 1e5)
     Array.prototype.push.apply(o, e);
   else
@@ -3872,7 +3872,7 @@ function je(o, e) {
 function qt(o) {
   if (o.start.type === "flow-seq-start")
     for (const e of o.items)
-      e.sep && !e.value && !G(e.start, "explicit-key-ind") && !G(e.sep, "map-value-ind") && (e.key && (e.value = e.key), delete e.key, Io(e.value) ? e.value.end ? je(e.value.end, e.sep) : e.value.end = e.sep : je(e.start, e.sep), delete e.sep);
+      e.sep && !e.value && !G(e.start, "explicit-key-ind") && !G(e.sep, "map-value-ind") && (e.key && (e.value = e.key), delete e.key, Io(e.value) ? e.value.end ? Be(e.value.end, e.sep) : e.value.end = e.sep : Be(e.start, e.sep), delete e.sep);
 }
 class qa {
   /**
@@ -3880,7 +3880,7 @@ class qa {
    *   each new line (in `parse()`, including the start of input).
    */
   constructor(e) {
-    this.atNewLine = !0, this.atScalar = !1, this.indent = 0, this.offset = 0, this.onKeyLine = !1, this.stack = [], this.source = "", this.type = "", this.lexer = new ja(), this.onNewLine = e;
+    this.atNewLine = !0, this.atScalar = !1, this.indent = 0, this.offset = 0, this.onKeyLine = !1, this.stack = [], this.source = "", this.type = "", this.lexer = new Ba(), this.onNewLine = e;
   }
   /**
    * Parse `source` as a YAML stream.
@@ -4143,7 +4143,7 @@ class qa {
           if (this.atIndentedComment(t.start, e.indent)) {
             const n = e.items[e.items.length - 2], i = (a = n == null ? void 0 : n.value) == null ? void 0 : a.end;
             if (Array.isArray(i)) {
-              je(i, t.start), i.push(this.sourceToken), e.items.pop();
+              Be(i, t.start), i.push(this.sourceToken), e.items.pop();
               return;
             }
           }
@@ -4276,7 +4276,7 @@ class qa {
           if (this.atIndentedComment(t.start, e.indent)) {
             const n = e.items[e.items.length - 2], i = (a = n == null ? void 0 : n.value) == null ? void 0 : a.end;
             if (Array.isArray(i)) {
-              je(i, t.start), i.push(this.sourceToken), e.items.pop();
+              Be(i, t.start), i.push(this.sourceToken), e.items.pop();
               return;
             }
           }
@@ -4463,7 +4463,7 @@ function $a(o) {
   return { lineCounter: o.lineCounter || e && new Fa() || null, prettyErrors: e };
 }
 function Ha(o, e = {}) {
-  const { lineCounter: t, prettyErrors: a } = $a(e), n = new qa(t == null ? void 0 : t.addNewLine), i = new Na(e);
+  const { lineCounter: t, prettyErrors: a } = $a(e), n = new qa(t == null ? void 0 : t.addNewLine), i = new La(e);
   let s = null;
   for (const r of i.compose(n.parse(o), !0, o.length))
     if (!s)
@@ -5000,7 +5000,10 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "archi.toast.cannotCreateStandalone": "“{element}” needs a container or cannot be created on its own yet",
   "archi.toast.connected": "{action}: “{source}” → “{target}”",
   // Standalone prototype pages
-  "archi.spike.banner": "real model · FREE-FORM view (you decide what it includes) · persisted in localStorage"
+  "archi.spike.banner": "real model · FREE-FORM view (you decide what it includes) · persisted in localStorage",
+  // default names of new elements (model content, in the UI language)
+  "archi.default.fieldN": "field{n}",
+  "archi.default.stepN": "step{n}"
 }, an = {
   "archi.layer.context": "Estratégico",
   "archi.layer.domain": "Dominio",
@@ -5198,7 +5201,9 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "archi.toast.relationNotValid": "«{relation}» no es válida entre «{source}» y «{target}»",
   "archi.toast.cannotCreateStandalone": "«{element}» necesita un contenedor o aún no se puede crear suelto",
   "archi.toast.connected": "{action}: «{source}» → «{target}»",
-  "archi.spike.banner": "modelo real · vista LIBRE (tú decides qué incluye) · persiste en localStorage"
+  "archi.spike.banner": "modelo real · vista LIBRE (tú decides qué incluye) · persiste en localStorage",
+  "archi.default.fieldN": "campo{n}",
+  "archi.default.stepN": "paso{n}"
 }, nn = {
   // Empty canvas
   "canvas.empty.title": "Empty canvas",
@@ -5533,7 +5538,15 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "editor.ownerKind.entity": "entity",
   "editor.ownerKind.aggregate": "aggregate",
   "editor.common.cancel": "Cancel",
-  "editor.common.save": "Save"
+  "editor.common.save": "Save",
+  // default names of new elements (model content, in the UI language)
+  "editor.default.tabN": "Tab {n}",
+  "editor.default.step": "Step",
+  "editor.default.stepN": "Step {n}",
+  "editor.default.page": "Page",
+  "editor.default.menuEntry": "Entry",
+  "editor.default.menuEntryN": "Entry {n}",
+  "editor.default.transformationN": "Transformation {n}"
 }, ln = {
   "editor.toolbar.brandHint": "Editor gráfico — context map, agregados, flows, procesos y eventstorming sobre lienzo editable; los cambios se guardan en el modelo",
   "editor.toolbar.brand": "Editor gráfico",
@@ -5789,7 +5802,14 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "editor.ownerKind.entity": "entidad",
   "editor.ownerKind.aggregate": "agregado",
   "editor.common.cancel": "Cancelar",
-  "editor.common.save": "Guardar"
+  "editor.common.save": "Guardar",
+  "editor.default.tabN": "Pestaña {n}",
+  "editor.default.step": "Paso",
+  "editor.default.stepN": "Paso {n}",
+  "editor.default.page": "Página",
+  "editor.default.menuEntry": "Entrada",
+  "editor.default.menuEntryN": "Entrada {n}",
+  "editor.default.transformationN": "Transformación {n}"
 }, cn = {
   // Node kinds (singular)
   "explorer.kind.root": "System",
@@ -6031,7 +6051,9 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "gestures.notice.idpWiring": "An IdP relates to contexts and ETL flows (here) or to apps (UI view); towards an external system it federates it",
   "gestures.notice.etlWiring": "An ETL flow reads from tables, APIs and events, and writes to APIs, tables and events",
   "gestures.notice.declarePublisherFirst": "First declare which use case publishes {event} (drag from the use case to the event) — the flow needs its trigger",
-  "gestures.notice.declareEmitterFirst": "First declare who emits {event} (drag from the aggregate or domain service to the event) — the flow needs its trigger"
+  "gestures.notice.declareEmitterFirst": "First declare who emits {event} (drag from the aggregate or domain service to the event) — the flow needs its trigger",
+  // default names written into the model (in the UI language)
+  "gestures.default.projection": "Projection"
 }, un = {
   "gestures.relation.ucCall.label": "Invocación",
   "gestures.relation.ucCall.hint": "Caso de uso → caso de uso: lo invoca como un paso",
@@ -6097,7 +6119,8 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "gestures.notice.idpWiring": "Un IdP se relaciona con contextos y flujos ETL (aquí) o con apps (vista UI); hacia un sistema externo lo federa",
   "gestures.notice.etlWiring": "Un flujo ETL lee de tablas, APIs y eventos, y escribe en APIs, tablas y eventos",
   "gestures.notice.declarePublisherFirst": "Declara primero qué caso de uso publica {event} (arrastra desde el caso de uso hasta el evento) — el flow necesita su disparador",
-  "gestures.notice.declareEmitterFirst": "Declara primero quién emite {event} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador"
+  "gestures.notice.declareEmitterFirst": "Declara primero quién emite {event} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador",
+  "gestures.default.projection": "Proyección"
 }, mn = {
   "hosts.loadingModel": "Loading the model…",
   // modux-editor-connected (web app, REST)
@@ -6114,7 +6137,9 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "hosts.ideFs.readOnlyReference": "Another project's model is read-only",
   // draw.io host
   "hosts.drawio.noBridge": "No bridge to the IDE (window.moduxBridge missing).",
-  "hosts.drawio.openModelFailed": "Could not open the model: {message}"
+  "hosts.drawio.openModelFailed": "Could not open the model: {message}",
+  // default names written into the model (in the UI language)
+  "hosts.default.project": "project"
 }, hn = {
   "hosts.loadingModel": "Cargando el modelo…",
   "hosts.connected.reloadedExternally": "El modelo ha cambiado fuera de este editor: recargado (historial de deshacer reiniciado)",
@@ -6128,7 +6153,8 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "hosts.ide.referencedModelNotFound": "No encuentro el modelo de {project}. Clónalo al lado de este repositorio, o dale un path a la referencia.",
   "hosts.ideFs.readOnlyReference": "El modelo de otro proyecto se lee, no se escribe",
   "hosts.drawio.noBridge": "Sin puente con el IDE (window.moduxBridge ausente).",
-  "hosts.drawio.openModelFailed": "No se pudo abrir el modelo: {message}"
+  "hosts.drawio.openModelFailed": "No se pudo abrir el modelo: {message}",
+  "hosts.default.project": "proyecto"
 }, gn = {
   "palette.group.strategic": "Strategic",
   "palette.group.domain": "Domain",
@@ -6591,7 +6617,21 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "store.readside.readModelWithoutContext": "Read model {id} does not belong to any bounded context",
   "store.readside.removeProjectionUpdated": "Projection {id} is updated by subscriptions; remove those actions first",
   "store.readside.invalidCron": "«{cron}» is not a Spring cron: it has six fields (second minute hour day month day-of-week)",
-  "store.readside.projectionNeedsSource": "A projection needs a source: aggregate, external operation or table"
+  "store.readside.projectionNeedsSource": "A projection needs a source: aggregate, external operation or table",
+  // default names and descriptions written into the model (model content, in the UI language)
+  "store.default.stepN": "Step {n}",
+  "store.default.tabN": "Tab {n}",
+  "store.default.sagaStepOperatesOn": "operates on {target}",
+  "store.default.sagaStepCallsGateway": "calls the gateway {gateway}",
+  "store.default.sagaStepCompensatedWith": "was compensated by step {step}",
+  "store.default.sagaAlsoTriggeredBy": "also triggered by: {events}",
+  "store.default.sagaTimeout": "saga timeout: {ms} ms",
+  "store.default.sagaRetries": "retries: {retries}",
+  "store.default.deleteAggregateDescription": "Deletes the aggregate {name}",
+  "store.default.queriesDescription": "Canonical listing of the aggregate {name}.",
+  "store.default.listDescription": "Paged listing of {name}",
+  "store.default.crudApiDescription": "CRUD of the aggregate {name}.",
+  "store.default.referencedProjectDescription": "Referenced modux project"
 }, yn = {
   "store.error.unknownKind": "{kind} desconocido: {id}",
   "store.kind.mcpGateway": "Gateway MCP",
@@ -6750,7 +6790,20 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   "store.readside.readModelWithoutContext": "El read model {id} no pertenece a ningún bounded context",
   "store.readside.removeProjectionUpdated": "La proyección {id} la actualizan subscriptions; quita esas acciones primero",
   "store.readside.invalidCron": "«{cron}» no es un cron de Spring: lleva seis campos (segundo minuto hora día mes día-semana)",
-  "store.readside.projectionNeedsSource": "La proyección necesita una fuente: agregado, operación externa o tabla"
+  "store.readside.projectionNeedsSource": "La proyección necesita una fuente: agregado, operación externa o tabla",
+  "store.default.stepN": "Paso {n}",
+  "store.default.tabN": "Pestaña {n}",
+  "store.default.sagaStepOperatesOn": "opera sobre {target}",
+  "store.default.sagaStepCallsGateway": "llama al gateway {gateway}",
+  "store.default.sagaStepCompensatedWith": "compensaba con el paso {step}",
+  "store.default.sagaAlsoTriggeredBy": "también la disparaban: {events}",
+  "store.default.sagaTimeout": "timeout de la saga: {ms} ms",
+  "store.default.sagaRetries": "reintentos: {retries}",
+  "store.default.deleteAggregateDescription": "Elimina el agregado {name}",
+  "store.default.queriesDescription": "Listado canónico del agregado {name}.",
+  "store.default.listDescription": "Listado paginado de {name}",
+  "store.default.crudApiDescription": "CRUD del agregado {name}.",
+  "store.default.referencedProjectDescription": "Proyecto modux referenciado"
 }, vn = {
   // Placeholders drawn where the model is still incomplete
   "views.placeholder.condition": "condition?",
@@ -7523,7 +7576,7 @@ const ve = (o, e) => o ? `${o}/${e}` : e, on = {
   ...fn,
   ...yn,
   ...bn
-}, _t = { en: kn, es: xn }, Lo = "en";
+}, _t = { en: kn, es: xn }, No = "en";
 function lt(o) {
   const e = o == null ? void 0 : o.trim().toLowerCase();
   if (e)
@@ -7539,13 +7592,13 @@ function Vt(o) {
 }
 function pt() {
   var o;
-  return ct ?? lt(typeof document < "u" ? (o = document.documentElement) == null ? void 0 : o.lang : void 0) ?? lt(typeof navigator < "u" ? navigator.language : void 0) ?? Lo;
+  return ct ?? lt(typeof document < "u" ? (o = document.documentElement) == null ? void 0 : o.lang : void 0) ?? lt(typeof navigator < "u" ? navigator.language : void 0) ?? No;
 }
 function An(o) {
   return dt.add(o), () => dt.delete(o);
 }
 function Sn(o, e) {
-  const t = _t[pt()][o] ?? _t[Lo][o] ?? o;
+  const t = _t[pt()][o] ?? _t[No][o] ?? o;
   return e ? t.replace(/\{(\w+)\}/g, (a, n) => {
     const i = e[n];
     return i == null ? a : String(i);
@@ -7587,10 +7640,10 @@ function On(o, e) {
 async function Dn(o) {
   return await o({ op: "readView" });
 }
-async function Ln(o, e) {
+async function Nn(o, e) {
   await o({ op: "writeView", content: e });
 }
-function Nn() {
+function Ln() {
   const o = globalThis.moduxBridge;
   return typeof o == "function" ? o : null;
 }
@@ -7639,7 +7692,7 @@ export {
   Cn as e,
   En as f,
   Mn as g,
-  Nn as h,
+  Ln as h,
   Un as i,
   Tn as l,
   qe as n,
@@ -7647,5 +7700,5 @@ export {
   Dn as r,
   Va as s,
   Sn as t,
-  Ln as w
+  Nn as w
 };
