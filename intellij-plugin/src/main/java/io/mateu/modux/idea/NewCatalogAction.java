@@ -23,8 +23,10 @@ public final class NewCatalogAction extends AnAction {
         var dir = ModuxActionSupport.targetDir(event);
         if (project == null || dir == null) return;
 
-        if (dir.findChild(ModuxProject.CATALOG_DIR) != null) {
-            Messages.showInfoMessage(project, "Ya hay un " + ModuxProject.CATALOG_DIR
+        var existing = ModuxProject.catalogIn(dir);
+        if (existing != null || dir.findChild(ModuxProject.CATALOG_DIR) != null) {
+            Messages.showInfoMessage(project, "Ya hay un "
+                    + (existing != null ? existing.getName() : ModuxProject.CATALOG_DIR)
                     + "/ en " + dir.getPath() + ".", "Modux");
             return;
         }

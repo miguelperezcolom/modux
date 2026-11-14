@@ -62,6 +62,8 @@ mvn modux:import-openapi \
 ```
 
 `serviceId` is optional. When provided, the gateway is automatically added to the service's `gatewayIds` list.
+The gateway is written to the repository's model (`modux/`, or `.modux/` when there is no
+`modux/`), like every other goal; `-Dmodux.modelPath` points it elsewhere.
 
 ### What gets created
 
@@ -140,6 +142,8 @@ mvn modux:import-asyncapi \
   -Dmodux.filePath=/path/to/asyncapi.yaml \
   -Dmodux.boundedContextId=my-context-id
 ```
+
+Like `import-openapi`, it writes to the repository's model (`-Dmodux.modelPath` to change it).
 
 ### What gets created
 
