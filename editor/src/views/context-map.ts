@@ -1,7 +1,7 @@
 import type {
   ModuxModel, ContextMapRelationType, FlowRef, FieldRef, ReferencedProject, UiComponentNodeRef,
 } from '../model.js';
-import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import type { Scene, SceneNode, SceneEdge, DiagramLayout, ViewLayout } from '../scene.js';
 import { menuNodeId, flattenMenu } from './ui.js';
 import { fieldNodeId } from './mappings.js';
 import { t, type MessageKey } from '../i18n/index.js';
@@ -582,6 +582,66 @@ export const ARCHIMATE_LABEL: Record<string, string> = Object.defineProperties(
   ),
 );
 
+/**
+ * The stand-alone data models a unified-canvas sheet draws as top-level boxes.
+ *
+ * A data model (`models/*.yaml`: a use case's input/output, an event payload, a read-model
+ * shape…) is not a strategic element — it has no owning context in the YAML, so on the system
+ * map it could only float loose, burying the actors, contexts and APIs under dozens of DTO
+ * boxes. The base sheet (`memberIds` absent) therefore draws NONE; a curated view draws the
+ * ones the user made members of it (that is how a model is deliberately put on a canvas). State
+ * models never qualify: they are an aggregate/entity's own fields, shown inside it.
+ */
+export function stageDataModelIds(
+  model: ModuxModel,
+  memberIds?: Iterable<string> | null,
+): Set<string> {
+  if (!memberIds) return new Set();
+  const members = new Set(memberIds);
+  const stateModelIds = new Set<string>([
+    ...(model.aggregates ?? []).map((a) => a.modelId),
+    ...(model.entities ?? []).map((e) => e.modelId),
+  ].filter((id): id is string => !!id));
+  return new Set(
+    (model.models ?? []).map((dm) => dm.id).filter((id) => members.has(id) && !stateModelIds.has(id)),
+  );
+}
+
+/**
+ * The base sheet without the geometry of data models it no longer draws (see
+ * {@link stageDataModelIds}): their positions, sizes, fills and unfold state — field chips
+ * included. Layouts saved before the rule carried a ref per model; dropping them on the next
+ * write keeps `diagrams/base.yaml` from hoarding dead refs. Returns the same object when there
+ * is nothing to drop.
+ */
+export function withoutOffStageDataModels(model: ModuxModel, layout: ViewLayout): ViewLayout {
+  const modelIds = new Set((model.models ?? []).map((dm) => dm.id));
+  if (!modelIds.size) return layout;
+  const offStage = (id: string) => {
+    if (modelIds.has(id)) return true;
+    const field = /^fld:([^:]+):/.exec(id);
+    return !!field && modelIds.has(field[1]);
+  };
+  const strip = <T>(rec: Record<string, T> | undefined) => {
+    if (!rec || !Object.keys(rec).some(offStage)) return rec;
+    return Object.fromEntries(Object.entries(rec).filter(([id]) => !offStage(id)));
+  };
+  const nodes = strip(layout.nodes)!;
+  const sizes = strip(layout.sizes);
+  const fills = strip(layout.fills);
+  const expanded = layout.expanded?.some(offStage) ? layout.expanded.filter((id) => !offStage(id)) : layout.expanded;
+  if (nodes === layout.nodes && sizes === layout.sizes && fills === layout.fills && expanded === layout.expanded) {
+    return layout;
+  }
+  return {
+    ...layout,
+    nodes,
+    ...(sizes ? { sizes } : {}),
+    ...(fills ? { fills } : {}),
+    ...(expanded ? { expanded } : {}),
+  };
+}
+
 export function contextMapScene(
   model: ModuxModel,
   layout: DiagramLayout,
@@ -589,8 +649,9 @@ export function contextMapScene(
   expandedIds: ReadonlySet<string> = new Set(),
   expandAll = false,
   rollup?: Map<string, string>,
+  dataModelIds: ReadonlySet<string> = new Set(),
 ): Scene {
-  return buildScene(model, layout, 'unified', sizes, expandedIds, expandAll, rollup);
+  return buildScene(model, layout, 'unified', sizes, expandedIds, expandAll, rollup, dataModelIds);
 }
 
 /** The distribution lens: contexts as module packagers, plus services and infrastructure. */
@@ -613,6 +674,7 @@ function buildScene(
   toggledIds: ReadonlySet<string> = new Set(),
   expandAll = false,
   rollup?: Map<string, string>,
+  dataModelIds: ReadonlySet<string> = new Set(),
 ): Scene {
   const distributionLevel = mode === 'distribution';
   // The yugo wants the WHOLE containment tree — its own folding decides what shows.
@@ -968,9 +1030,10 @@ function buildScene(
       process: true,
     }))),
     // An aggregate/entity's STATE model is its own data shape (its fields live there) — not a
-    // separate node. Only stand-alone data models float on the canvas; state models stay implicit.
+    // separate node. A stand-alone data model is not strategic either: it only takes the stage
+    // where a curated view lists it (see stageDataModelIds) — never loose on the system map.
     ...(distributionLevel ? [] : (model.models ?? [])
-      .filter((dm) => !stateModelIds.has(dm.id))
+      .filter((dm) => !stateModelIds.has(dm.id) && dataModelIds.has(dm.id))
       .map((dm) => ({
         ref: dm,
         external: false,
