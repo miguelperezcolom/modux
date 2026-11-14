@@ -6,7 +6,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+// An explicit bean name: a use case the model names Delete${aggregate.name} is another class with
+// the same simple name, and Spring's default name would clash.
+@Service("${aggregate.name?uncap_first}CrudDeleteUseCase")
 @RequiredArgsConstructor
 public class Delete${aggregate.name}UseCase {
 

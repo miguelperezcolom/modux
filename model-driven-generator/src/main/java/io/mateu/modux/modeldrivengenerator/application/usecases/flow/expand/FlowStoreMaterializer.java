@@ -120,7 +120,7 @@ public class FlowStoreMaterializer {
         }
         var k = key.apply(entity);
         if (seen.contains(k)) {
-            log.warn("Flow expansion: a {} matching '{}' already exists; skipping the derived one",
+            log.debug("Flow expansion: a {} matching '{}' already exists; skipping the derived one",
                     entity.getClass().getSimpleName(), k);
             return false;
         }

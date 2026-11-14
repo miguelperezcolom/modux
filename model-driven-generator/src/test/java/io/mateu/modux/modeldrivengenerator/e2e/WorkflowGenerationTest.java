@@ -147,7 +147,8 @@ class WorkflowGenerationTest {
         assertThat(definition).contains("\"type\" : \"HTTP_CALL\"", "\"path\" : \"/v1/cobrar\"", "\"status\" : \"ACTIVE\"");
         var config = Files.readString(output.resolve("procesos/config/application.yaml"));
         assertThat(config).contains("base-url: ${RESERVAS_URL:http://reservas:8080}", "auth: sistema",
-                "username: sistema", "password: ${MODUX_SYSTEM_PASSWORD}");
+                // an English model: the system identity is «system»
+                "username: system", "password: ${MODUX_SYSTEM_PASSWORD}");
         var compose = Files.readString(output.resolve("docker-compose.yml"));
         assertThat(compose).contains("image: ${EC_ORCHESTRATOR_IMAGE:-miguelperezcolom/orchestrator-standalone-app:2.38.1}",
                 "WORKFLOW_DEFINITIONS_DIRS: /workflows", "./procesos/config:/config:ro",
@@ -160,7 +161,7 @@ class WorkflowGenerationTest {
         try (Stream<Path> walk = Files.walk(output)) {
             var security = walk.filter(p -> p.getFileName().toString().equals("SecurityConfig.java"))
                     .filter(p -> p.toString().contains("reservas")).findFirst().orElseThrow();
-            assertThat(Files.readString(security)).contains("withUsername(\"sistema\")", "roles(\"SISTEMA\")");
+            assertThat(Files.readString(security)).contains("withUsername(\"system\")", "roles(\"SYSTEM\", \"SISTEMA\")");
         }
     }
 

@@ -48,17 +48,17 @@ public class Deployer {
             if (t.path("name").asText().equalsIgnoreCase(settings.environment())) target = t;
         }
         if (target == null) {
-            throw new IllegalArgumentException("No hay un entorno «" + settings.environment() + "» en el modelo; hay: "
+            throw new IllegalArgumentException("No environment '" + settings.environment() + "' in the model; available: "
                     + String.join(", ", names));
         }
         if (settings.build()) {
             for (var dir : targets.path("builds")) {
-                log.accept("Modux: compilando " + dir.asText());
+                log.accept("Modux: building " + dir.asText());
                 shell.run(List.of("mvn", "-q", "-DskipTests", "install"), output.resolve(dir.asText()), null);
             }
         }
         if ("DOCKER".equals(target.path("target").asText())) {
-            log.accept("Modux: levantando el sistema en Docker");
+            log.accept("Modux: starting the system in Docker");
             shell.run(List.of("docker", "compose", "-f", target.path("compose").asText(), "up", "-d", "--build"), output, null);
             return List.of("http://localhost:8088");
         }
@@ -74,11 +74,11 @@ public class Deployer {
             var ref = image.path("image").asText() + ":" + settings.tag();
             var dir = output.resolve(image.path("dir").asText());
             if (kind != null) {
-                log.accept("Modux: imagen " + ref + " → kind " + kind);
+                log.accept("Modux: image " + ref + " → kind " + kind);
                 shell.run(List.of("docker", "build", "-q", "-t", ref, "."), dir, null);
                 shell.run(List.of("kind", "load", "docker-image", ref, "--name", kind), output, null);
             } else {
-                log.accept("Modux: imagen " + ref + " (" + settings.platform() + ") → registro");
+                log.accept("Modux: image " + ref + " (" + settings.platform() + ") → registry");
                 shell.run(List.of("docker", "buildx", "build", "--platform", settings.platform(), "-t", ref, "--push", "."), dir, null);
             }
         }
@@ -96,13 +96,13 @@ public class Deployer {
             var auth = HexFormat.of().formatHex(new SecureRandom().generateSeed(32));
             shell.run(concat(kubectl, "-n", namespace, "create", "secret", "generic", secret,
                     "--from-literal=password=" + password, "--from-literal=auth=" + auth), output, null);
-            log.accept("Modux: creado el secreto " + secret);
+            log.accept("Modux: created secret " + secret);
         }
         var manifest = Files.readString(output.resolve(target.path("manifest").asText())).replace("__TAG__", settings.tag());
-        log.accept("Modux: aplicando " + target.path("manifest").asText() + " en " + context + "/" + namespace);
+        log.accept("Modux: applying " + target.path("manifest").asText() + " to " + context + "/" + namespace);
         shell.run(concat(kubectl, "apply", "-f", "-"), output, manifest);
         for (var image : target.path("images")) {
-            log.accept("Modux: esperando a " + image.path("name").asText());
+            log.accept("Modux: waiting for " + image.path("name").asText());
             shell.run(concat(kubectl, "-n", namespace, "rollout", "status", "deploy/" + image.path("name").asText(),
                     "--timeout=600s"), output, null);
         }
@@ -111,8 +111,8 @@ public class Deployer {
         var hosts = target.path("hosts");
         if (hosts.isEmpty()) {
             var front = target.path("images").get(target.path("images").size() - 1).path("name").asText();
-            log.accept("Modux: el entorno no declara URLs. Para entrar: kubectl --context=" + context + " -n "
-                    + namespace + " port-forward svc/gateway 8088 (o svc/" + front + ")");
+            log.accept("Modux: the environment declares no URLs. To reach it: kubectl --context=" + context + " -n "
+                    + namespace + " port-forward svc/gateway 8088 (or svc/" + front + ")");
             return urls;
         }
         var address = ingressAddress(kubectl, namespace, output);
@@ -121,9 +121,9 @@ public class Deployer {
             var h = host.asText();
             urls.add("https://" + h);
             if (resolvesTo(h, address)) {
-                log.accept("Modux: " + h + " ya resuelve a " + address);
+                log.accept("Modux: " + h + " already resolves to " + address);
             } else if (provider == null || provider.isBlank()) {
-                log.accept("Modux: AVISO: " + h + " no resuelve a " + address + " y el entorno no tiene dnsProvider");
+                log.accept("Modux: WARNING: " + h + " does not resolve to " + address + " and the environment has no dnsProvider");
             } else {
                 log.accept("Modux: DNS " + DnsProviders.forName(provider, env).upsert(h, address));
             }
@@ -140,7 +140,7 @@ public class Deployer {
             if (!out.isBlank()) return out;
             Thread.sleep(5000);
         }
-        throw new IOException("El ingress no ha publicado dirección en 5 minutos: ¿hay un controlador de ingress?");
+        throw new IOException("The ingress published no address within 5 minutes: is there an ingress controller?");
     }
 
     private static boolean resolvesTo(String host, String address) {

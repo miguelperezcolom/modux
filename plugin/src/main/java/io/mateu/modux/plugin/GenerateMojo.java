@@ -51,19 +51,19 @@ public class GenerateMojo extends AbstractMojo {
             var model = ModuxModel.read(path);
 
             var id = override(projectId, model.projectString("id")
-                    .orElseThrow(() -> new IllegalStateException("El proyecto no tiene id")));
+                    .orElseThrow(() -> new IllegalStateException("The project has no id")));
             var output = override(outputPath, model.projectString("outputPath").orElse("generated"));
             var pkg = override(packageName, model.projectString("packageName")
                     .orElseThrow(() -> new IllegalStateException(
-                            "El proyecto no declara packageName y el pom no lo aporta")));
+                            "The project declares no packageName and the pom does not provide one")));
 
-            getLog().info("Modux: generando '" + id + "' desde " + path + " → " + output);
+            getLog().info("Modux: generating '" + id + "' from " + path + " → " + output);
             System.setProperty("modux.model-file", path.toAbsolutePath().toString());
             try (var ctx = ModuxContext.create()) {
                 var errors = ModelGate.check(ctx, getLog(), java.util.Set.of());
                 if (!errors.isEmpty()) {
                     if (!skipChecks) throw new MojoFailureException(ModelGate.summary(errors));
-                    getLog().warn("Modux: se genera con errores en el modelo (modux.skipChecks=true)");
+                    getLog().warn("Modux: generating despite model errors (modux.skipChecks=true)");
                 }
                 ctx.getBean(GenerateCodeUseCase.class)
                         .handle(new GenerateCodeCommand(id, output, pkg, sourceOnly));

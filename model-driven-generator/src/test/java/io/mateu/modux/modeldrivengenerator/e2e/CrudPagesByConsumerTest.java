@@ -211,7 +211,8 @@ class CrudPagesByConsumerTest {
         assertTrue(useCase.replaceAll("\\s+", " ").contains("autor.renombrar( renombrarAutorOperation, new"), "the use case runs the operation itself: " + useCase);
         assertTrue(useCase.contains("command.autorId()"), "an {aggregate}Id loads it (a lookup on screen): " + useCase);
         assertFalse(file(out, "RenombrarSteps.java").isPresent(), "nothing is left to a use-case hook");
-        assertTrue(read(out, "UpdateAutorUseCase.java").contains("no se edita directamente"));
+        // the model declares no language: English
+        assertTrue(read(out, "UpdateAutorUseCase.java").contains("is not edited directly"));
         assertTrue(read(out, "AutorCrudOrchestrator.java").contains("canEdit()"));
     }
 

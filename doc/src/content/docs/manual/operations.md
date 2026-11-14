@@ -120,7 +120,8 @@ envioRepository.save(envio);
 ```
 
 The aggregate is loaded from the command's `id`, or from its `{aggregate}Id` field (which the
-generated form shows as a lookup of that aggregate). Each input field is taken from the command
+generated form shows as a lookup of that aggregate — or, from another context, of the read model
+kept of it, see [projections](/manual/projections/#an-aggregates-state-in-one-line)). Each input field is taken from the command
 field with its name; when one is missing the step stays a hook, with the operation as its intent.
 
 ### Values the system supplies

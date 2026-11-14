@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 <#macro lookup field><#if lookups?? && lookups[field.name]??><#assign sup = lookups[field.name].suppliers>@io.mateu.uidl.annotations.Lookup(search = ${sup}IdOptionsSupplier.class, label = ${sup}IdLabelSupplier.class)</#if></#macro>
 <#assign ucSlug = usecase.name?lower_case?replace("[^a-z0-9]","",'r')>
 <#assign ucClass = usecase.className>
@@ -189,23 +190,23 @@ ${req}    ${lbl}String ${field.name}Id;
 <#if hayValidaciones>
         // Model-declared validations (NotNull / NotBlank / NotEmpty) — fail legibly before
         // touching the use case.
-        var faltan = new java.util.ArrayList<String>();
+        var missing = new java.util.ArrayList<String>();
 <#list inputModel.fields as field>
 <#if field.basicType?? && field.basicType && field.validations?? && field.validations?has_content>
 <#list field.validations as v>
 <#assign lbl = ((field.label?? && field.label?has_content)?then(field.label, field.name))?j_string>
 <#if v.type == "NotNull">
-        if (${field.name} == null) faltan.add("${lbl}");
+        if (${field.name} == null) missing.add("${lbl}");
 <#elseif v.type == "NotBlank" || v.type == "NotEmpty">
 <#if !(field.type?? && (field.type == "integer" || field.type == "number" || field.type == "money" || field.type == "bool" || field.type == "date" || field.type == "time" || field.type == "dateTime"))>
-        if (${field.name} == null || ${field.name}.isBlank()) faltan.add("${lbl}");
+        if (${field.name} == null || ${field.name}.isBlank()) missing.add("${lbl}");
 </#if>
 </#if>
 </#list>
 </#if>
 </#list>
-        if (!faltan.isEmpty()) {
-            throw new IllegalArgumentException("Faltan datos obligatorios: " + String.join(", ", faltan));
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("<#if uiEs>Faltan datos obligatorios<#else>Missing required fields</#if>: " + String.join(", ", missing));
         }
 </#if>
 </#if>
@@ -221,12 +222,12 @@ ${req}    ${lbl}String ${field.name}Id;
 </#list>
 <#assign renderedNames = outputRendered?map(f -> f.name)>
 <#assign scalarOut = (outputModel.fields![])?filter(f -> !isGrid(f) && !renderedNames?seq_contains(f.name))>
-        resultado = <#if (outputGrids?has_content || outputRendered?has_content) && !scalarOut?has_content && !outputGrids?has_content>"${usecase.title!usecase.className}"<#elseif outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()<#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
+        resultado = <#if (outputGrids?has_content || outputRendered?has_content) && !scalarOut?has_content && !outputGrids?has_content>"${usecase.title!usecase.className}"<#elseif outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + <#if (f.type!"") == "money">java.util.Optional.ofNullable(result.${f.name}()).map(v -> v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()).orElse("")<#else>result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()</#if><#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
 <#else>
         useCase.handle(new ${ucClass}Command(${args}));
         resultado = "${usecase.name} ejecutado";
 </#if>
-        return List.of(new Message("${usecase.title!usecase.className}: hecho"), new State(this));
+        return List.of(new Message("${usecase.title!usecase.className}: <#if uiEs>hecho<#else>done</#if>"), new State(this));
     }
 
 }

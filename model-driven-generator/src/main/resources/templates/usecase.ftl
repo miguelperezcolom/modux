@@ -1,7 +1,10 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')};
-<#-- With an outbox the event is stored with the state change, so a publishing use case is one transaction -->
+<#-- With an outbox the event is stored with the state change, so a publishing use case is one transaction;
+     a correlative number (SEQUENCE) is taken inside the transaction that saves it -->
 <#assign usecaseTransactional = (usecase.transactionBoundary?? && usecase.transactionBoundary?has_content)
-    || ((service.outboxEnabled!false) && (usecase.steps![])?filter(s -> s.type == "PublishDomainEvent")?has_content)>
+    || ((service.outboxEnabled!false) && (usecase.steps![])?filter(s -> s.type == "PublishDomainEvent")?has_content)
+    || (usecase.usesSequences!false)>
 <#-- Aggregate-level imports for ReadAggregate / SaveAggregate / CallAggregateOperation steps -->
 <#assign aggregateImports = []>
 <#if usecase.steps?has_content>
@@ -138,7 +141,7 @@ public class ${usecase.className}UseCase {
         var ${step.aggregate.name?uncap_first} = ${step.aggregate.name?uncap_first}Repository
                 .findById(new ${step.aggregate.name}Id(Long.valueOf(String.valueOf(command.${step.idField}()))))
                 .orElseThrow(() -> ${project.packageName}.application.BusinessRuleException.notFound(
-                        "${step.aggregate.name} " + command.${step.idField}() + " no existe"));
+                        "${step.aggregate.name} " + command.${step.idField}() + "<#if uiEs> no existe<#else> does not exist</#if>"));
 <#elseif step.type == "CallAggregateOperation" && step.aggregate??>
 <#if step.operationCall??>
         ${step.aggregate.name?uncap_first}.${step.operation.name?uncap_first}(${step.operationClass?uncap_first}<#if step.operationInputArgs??>, new ${project.packageName}.${module.slug}.domain.aggregates.${step.aggregate.name?lower_case}.${step.operationClass}.Input(${step.operationInputArgs})</#if>);

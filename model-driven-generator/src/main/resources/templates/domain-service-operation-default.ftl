@@ -1,10 +1,11 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 <#assign modpkg = project.packageName + "." + module.name?lower_case?replace("[^a-z0-9]","",'r')>
 <#function c s=""><#return ((s!"")?replace("\r"," ")?replace("\n"," "))></#function>
 <#-- Guided outline of a modeled operation body (all // comments, so it always compiles). -->
 <#macro outline steps indent>
 <#list steps as step>
 <#if step.type == "If">
-        //${indent} if (${c(step.condition)!"¿condición?"}) {
+        //${indent} if (${c(step.condition)!uiEs?then("¿condición?", "condition?")}) {
 <#if step.then??><@outline steps=step.then indent=indent + "  "/></#if>
 <#if step.elseBranch??>
         //${indent} } else {
@@ -12,7 +13,7 @@
 </#if>
         //${indent} }
 <#elseif step.type == "ForEach">
-        //${indent} for (${c(step.itemVar)!"item"} : ${c(step.collection)!"¿colección?"}) {
+        //${indent} for (${c(step.itemVar)!"item"} : ${c(step.collection)!uiEs?then("¿colección?", "collection?")}) {
 <#if step.body??><@outline steps=step.body indent=indent + "  "/></#if>
         //${indent} }
 <#elseif step.type == "CheckPrecondition">
@@ -56,7 +57,7 @@ public class Default${domainService.name} implements ${domainService.name} {
 <@outline steps=op.steps indent=""/>
 </#if>
         throw new UnsupportedOperationException(
-            "Pendiente de implementar «${op.name}» de ${domainService.name}");
+            "<#if uiEs>Pendiente de implementar «${op.name}» de ${domainService.name}<#else>«${op.name}» of ${domainService.name} is not implemented yet</#if>");
     }
 </#list>
 }

@@ -24,7 +24,7 @@ services:
 </#list>
 </#if>
 <#if procesos??>
-      # the workflow engine calls the use cases as user «sistema» (role SISTEMA) with this password
+      # the workflow engine calls the use cases as user «${project.systemUser!"sistema"}» (role SYSTEM) with this password
       MODUX_SYSTEM_PASSWORD: ${r"${"}MODUX_SYSTEM_PASSWORD:-sistema-local${r"}"}
 </#if>
 <#list (gatewayEnvs[svc.name]![]) as ge>

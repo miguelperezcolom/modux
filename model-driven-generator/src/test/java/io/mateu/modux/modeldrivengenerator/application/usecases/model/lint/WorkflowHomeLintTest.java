@@ -81,7 +81,7 @@ class WorkflowHomeLintTest {
 
         assertThat(findings).singleElement().satisfies(f -> {
             assertThat(f.severity()).isEqualTo(LintSeverity.ERROR);
-            assertThat(f.message()).contains("no genera definición");
+            assertThat(f.message()).contains("no definition is generated");
         });
     }
 

@@ -73,11 +73,11 @@ final class HookImplementer {
             }
         }
         if (pending.isEmpty() && outdated.isEmpty()) {
-            log.accept("Modux: " + service.getFileName() + " no tiene ganchos pendientes.");
+            log.accept("Modux: " + service.getFileName() + " has no pending hooks.");
             return List.of();
         }
-        log.accept("Modux: " + service.getFileName() + ": " + pending.size() + " gancho(s) pendiente(s)"
-                + (outdated.isEmpty() ? "" : ", " + outdated.size() + " por adaptar al modelo") + ".");
+        log.accept("Modux: " + service.getFileName() + ": " + pending.size() + " pending hook(s)"
+                + (outdated.isEmpty() ? "" : ", " + outdated.size() + " to adapt to the model") + ".");
         var originals = new LinkedHashMap<Path, String>(pending);
         originals.putAll(outdated);
         var contracts = contracts(service);
@@ -100,20 +100,20 @@ final class HookImplementer {
             }
             var build = run(settings.buildCommand(), service, null);
             if (build.exit() == 0 && pendingHooks(root).isEmpty()) {
-                log.accept("Modux: " + service.getFileName() + " compila (intento " + attempt + ").");
+                log.accept("Modux: " + service.getFileName() + " compiles (attempt " + attempt + ").");
                 return written;
             }
             feedback = build.exit() != 0
                     ? "It does not compile:\n" + errorsOf(build.output())
                     : "Some files still say they are pending: implement them.";
-            log.accept("Modux: intento " + attempt + " fallido en " + service.getFileName() + ".");
+            log.accept("Modux: attempt " + attempt + " failed in " + service.getFileName() + ".");
         }
         for (var file : written) {
             if (!originals.containsKey(file)) Files.deleteIfExists(file);
         }
         for (var original : originals.entrySet()) Files.writeString(original.getKey(), original.getValue());
-        throw new IllegalStateException("No se pudieron implementar los ganchos de " + service.getFileName()
-                + " tras " + ATTEMPTS + " intentos; quedan como estaban.\n" + feedback);
+        throw new IllegalStateException("Could not implement the hooks of " + service.getFileName()
+                + " after " + ATTEMPTS + " attempts; they are left as they were.\n" + feedback);
     }
 
     private Map<Path, String> pendingHooks(Path root) throws IOException {
@@ -227,7 +227,7 @@ final class HookImplementer {
         while (matcher.find()) {
             var target = normalizedRoot.resolve(matcher.group(1)).normalize();
             if (!target.startsWith(normalizedRoot) || !target.toString().endsWith(".java")) {
-                throw new IllegalStateException("Ruta fuera de la zona custom: " + matcher.group(1));
+                throw new IllegalStateException("Path outside the custom zone: " + matcher.group(1));
             }
             files.put(root.resolve(normalizedRoot.relativize(target)), matcher.group(2).replaceAll("(?m)^```.*\\R?", ""));
         }
@@ -239,7 +239,7 @@ final class HookImplementer {
         try {
             var result = run(settings.aiCommand(), scratch, prompt);
             if (result.exit() != 0) {
-                throw new IllegalStateException("El comando de IA terminó con " + result.exit() + ": " + result.output());
+                throw new IllegalStateException("The AI command exited with " + result.exit() + ": " + result.output());
             }
             return result.output();
         } finally {
@@ -259,7 +259,7 @@ final class HookImplementer {
             }
             if (!process.waitFor(settings.timeoutMinutes(), TimeUnit.MINUTES)) {
                 process.destroyForcibly();
-                throw new IllegalStateException("Tiempo agotado ejecutando " + command.get(0));
+                throw new IllegalStateException("Timed out running " + command.get(0));
             }
             return new Result(process.exitValue(), Files.readString(output));
         } finally {

@@ -49,6 +49,50 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void generating_again_over_an_untouched_tree_reports_no_hand_edits() throws Exception {
+        // a UI's home replaces the service's default Home.java in the same run: two writes, one file
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(GenerateCodeUseCase.class);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            generateCodeUseCase.handle(new GenerateCodeCommand("entradas", out.toString(), null, true));
+        } finally {
+            logger.detachAppender(appender);
+        }
+        var handEdits = appender.list.stream().map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                .filter(m -> m.contains("edited by hand")).toList();
+        assertTrue(handEdits.isEmpty(), handEdits.toString());
+    }
+
+    @Test
+    void a_form_field_naming_another_contexts_aggregate_picks_it_from_the_read_model_kept_here() throws Exception {
+        // comprar (Ventas) takes a conciertoId; Concierto lives in Catálogo, Ventas keeps ConciertoView
+        var page = read("ComprarPage.java");
+        assertTrue(page.contains("@io.mateu.uidl.annotations.Lookup(search = es.entradas.ventas.infra.in.ui.suppliers"
+                + ".ConciertoViewReadModelIdOptionsSupplier.class, label = es.entradas.ventas.infra.in.ui.suppliers"
+                + ".ConciertoViewReadModelIdLabelSupplier.class)"), page);
+        var options = read("ConciertoViewReadModelIdOptionsSupplier.java");
+        assertTrue(options.contains("@Service(\"ventasConciertoViewReadModelIdOptionsSupplier\")"), options);
+        // shown by its first text field, the artist, not by its id
+        assertTrue(options.contains("row.artista()"), options);
+        var label = read("ConciertoViewReadModelIdLabelSupplier.java");
+        assertTrue(label.contains("queryService.getById(String.valueOf(id))"), label);
+        // the Spanish model keeps its Spanish message for what is missing
+        assertTrue(page.contains("Faltan datos obligatorios"), page);
+    }
+
+    @Test
+    void an_operation_that_takes_a_correlative_number_runs_in_one_transaction() throws Exception {
+        // confirmar fills the purchase's localizador from a SEQUENCE, which needs the caller's transaction
+        var useCase = read("ConfirmarCompraUseCase.java");
+        assertTrue(useCase.contains("sequences.next("), useCase);
+        assertTrue(useCase.contains("@Transactional"), useCase);
+        // the Spanish model keeps its Spanish messages
+        assertTrue(useCase.contains(" no existe"), useCase);
+    }
+
+    @Test
     void an_aggregate_feeding_a_read_model_publishes_its_state_on_every_save_and_delete() throws Exception {
         var repo = read("ConciertoDBRepository.java");
         // it reads through a stored procedure (JDBC): a write is flushed, so reading it back in the
@@ -166,6 +210,10 @@ class HighLevelPatternsTest {
         var listing = read("CompraViewListing.java");
         assertTrue(listing.contains("@io.mateu.uidl.annotations.Label(\"Concierto\") String conciertoId"), listing);
         assertTrue(listing.contains("setScale(2, java.math.RoundingMode.HALF_UP)"), listing);
+        // and so does the message a use case's screen shows when it is done
+        var page = read("ComprarPage.java");
+        assertTrue(page.contains("\"Importe: \" + java.util.Optional.ofNullable(result.importe()).map(v -> v.setScale(2, java.math.RoundingMode.HALF_UP)"), page);
+        assertTrue(page.contains(": hecho\""), "a Spanish model, a Spanish message: " + page);
     }
 
     @Test

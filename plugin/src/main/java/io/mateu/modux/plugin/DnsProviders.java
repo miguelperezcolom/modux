@@ -40,15 +40,15 @@ public final class DnsProviders {
             case "HETZNER" -> new Hetzner("https://api.hetzner.cloud/v1", required(env, "HCLOUD_TOKEN"));
             case "GODADDY" -> new GoDaddy("https://api.godaddy.com/v1",
                     required(env, "GODADDY_API_KEY"), required(env, "GODADDY_API_SECRET"));
-            default -> throw new IllegalArgumentException("Proveedor de DNS desconocido: " + name
-                    + " (NETLIFY, CLOUDFLARE, HETZNER o GODADDY)");
+            default -> throw new IllegalArgumentException("Unknown DNS provider: " + name
+                    + " (NETLIFY, CLOUDFLARE, HETZNER or GODADDY)");
         };
     }
 
     private static String required(Function<String, String> env, String variable) {
         var value = env.apply(variable);
         if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Falta la variable de entorno " + variable + " para actualizar el DNS");
+            throw new IllegalStateException("Missing environment variable " + variable + " to update the DNS");
         }
         return value;
     }
@@ -131,17 +131,17 @@ public final class DnsProviders {
                 }
                 if (zone != null) break;
             }
-            if (zone == null) throw new IOException("Ninguna zona de Netlify sirve " + host);
+            if (zone == null) throw new IOException("No Netlify zone serves " + host);
             var zoneId = zone.path("id").asText();
             for (var r : call("GET", "/dns_zones/" + zoneId + "/dns_records", null)) {
                 if (!host.equals(r.path("hostname").asText()) || !type.equals(r.path("type").asText())) continue;
-                if (address.equals(r.path("value").asText())) return host + " ya apunta a " + address + " (Netlify)";
+                if (address.equals(r.path("value").asText())) return host + " already points to " + address + " (Netlify)";
                 // Netlify has no update: the old record goes, the new one comes
                 call("DELETE", "/dns_zones/" + zoneId + "/dns_records/" + r.path("id").asText(), null);
             }
             call("POST", "/dns_zones/" + zoneId + "/dns_records",
                     Map.of("type", type, "hostname", host, "value", address, "ttl", 300));
-            return host + " → " + address + " (" + type + ", Netlify, zona " + zone.path("name").asText() + ")";
+            return host + " → " + address + " (" + type + ", Netlify, zone " + zone.path("name").asText() + ")";
         }
     }
 
@@ -172,17 +172,17 @@ public final class DnsProviders {
                     break;
                 }
             }
-            if (zoneId == null) throw new IOException("Ninguna zona de Cloudflare sirve " + host);
+            if (zoneId == null) throw new IOException("No Cloudflare zone serves " + host);
             var body = Map.of("type", type, "name", host, "content", address, "ttl", 300, "proxied", false);
             var existing = call("GET", "/zones/" + zoneId + "/dns_records?type=" + type + "&name=" + enc(host), null);
             if (existing != null && existing.path("result").size() > 0) {
                 var record = existing.path("result").get(0);
-                if (address.equals(record.path("content").asText())) return host + " ya apunta a " + address + " (Cloudflare)";
+                if (address.equals(record.path("content").asText())) return host + " already points to " + address + " (Cloudflare)";
                 call("PUT", "/zones/" + zoneId + "/dns_records/" + record.path("id").asText(), body);
             } else {
                 call("POST", "/zones/" + zoneId + "/dns_records", body);
             }
-            return host + " → " + address + " (" + type + ", Cloudflare, zona " + zoneName + ")";
+            return host + " → " + address + " (" + type + ", Cloudflare, zone " + zoneName + ")";
         }
     }
 
@@ -207,7 +207,7 @@ public final class DnsProviders {
             for (var candidate : candidateZones(host)) {
                 if (call("GET", "/zones/" + enc(candidate), null) != null) { zone = candidate; break; }
             }
-            if (zone == null) throw new IOException("Ninguna zona de Hetzner sirve " + host);
+            if (zone == null) throw new IOException("No Hetzner zone serves " + host);
             var name = relative(host, zone);
             var value = "CNAME".equals(type) ? address.replaceAll("\\.?$", ".") : address;
             var records = List.of(Map.of("value", value));
@@ -217,12 +217,12 @@ public final class DnsProviders {
             } else {
                 var current = rrset.path("rrset").path("records");
                 if (current.size() == 1 && value.equals(current.get(0).path("value").asText())) {
-                    return host + " ya apunta a " + address + " (Hetzner)";
+                    return host + " already points to " + address + " (Hetzner)";
                 }
                 call("POST", "/zones/" + enc(zone) + "/rrsets/" + enc(name) + "/" + type + "/actions/set_records",
                         Map.of("records", records));
             }
-            return host + " → " + address + " (" + type + ", Hetzner, zona " + zone + ")";
+            return host + " → " + address + " (" + type + ", Hetzner, zone " + zone + ")";
         }
     }
 
@@ -249,15 +249,15 @@ public final class DnsProviders {
             for (var candidate : candidateZones(host)) {
                 if (call("GET", "/domains/" + enc(candidate), null) != null) { domain = Optional.of(candidate); break; }
             }
-            var zone = domain.orElseThrow(() -> new IOException("Ningún dominio de GoDaddy sirve " + host));
+            var zone = domain.orElseThrow(() -> new IOException("No GoDaddy domain serves " + host));
             var name = relative(host, zone);
             var current = call("GET", "/domains/" + enc(zone) + "/records/" + type + "/" + enc(name), null);
             if (current != null && current.size() == 1 && address.equals(current.get(0).path("data").asText())) {
-                return host + " ya apunta a " + address + " (GoDaddy)";
+                return host + " already points to " + address + " (GoDaddy)";
             }
             call("PUT", "/domains/" + enc(zone) + "/records/" + type + "/" + enc(name),
                     List.of(Map.of("data", address, "ttl", 600)));
-            return host + " → " + address + " (" + type + ", GoDaddy, dominio " + zone + ")";
+            return host + " → " + address + " (" + type + ", GoDaddy, domain " + zone + ")";
         }
     }
 }

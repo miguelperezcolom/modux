@@ -60,10 +60,10 @@ class InteractionLintRulesTest {
 
         // 'fantasma' appears as trigger AND in two messages: one finding per usage group
         assertEquals(2, findings.size(), () -> "findings: " + findings);
-        assertTrue(findings.stream().anyMatch(f -> f.message().contains("disparador 'fantasma'")));
+        assertTrue(findings.stream().anyMatch(f -> f.message().contains("Trigger 'fantasma'")));
         assertTrue(findings.stream().anyMatch(f -> f.message().contains("'fantasma'")
-                && f.message().contains("mensaje 1 (destino)")
-                && f.message().contains("mensaje 2 (origen)")), () -> "findings: " + findings);
+                && f.message().contains("message 1 (target)")
+                && f.message().contains("message 2 (source)")), () -> "findings: " + findings);
         assertTrue(findings.stream().allMatch(f -> f.severity() == LintSeverity.WARNING
                 && f.ruleId().equals("interaction-dangling-participant")
                 && f.elementId().equals("i1")));
@@ -86,7 +86,7 @@ class InteractionLintRulesTest {
                 null, null, null, null);
         var findings = dangling.apply(withoutEvent);
         assertEquals(1, findings.size());
-        assertTrue(findings.get(0).message().contains("no existe ningún evento"));
+        assertTrue(findings.get(0).message().contains("no event has that name"));
     }
 
     @Test
@@ -132,7 +132,7 @@ class InteractionLintRulesTest {
         assertEquals("interaction-message-without-backing", finding.ruleId());
         assertEquals(LintSeverity.WARNING, finding.severity());
         assertEquals("i1", finding.elementId());
-        assertTrue(finding.message().contains("Mensaje 2")
+        assertTrue(finding.message().contains("Message 2")
                 && finding.message().contains("huesped → uc-cancelar")
                 && finding.message().contains("COMMAND"), finding.message());
     }

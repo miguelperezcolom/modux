@@ -330,6 +330,23 @@ class LintRulesTest {
                 null, null, null, null, null, null, null, null, null, null, null);
     }
 
+    @Test
+    void a_polled_projection_needs_no_rebuild_strategy_but_an_event_one_does() {
+        var byEvents = new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity(
+                "p-events", "ByEvents", "rm", List.of(), null, null, null, false, null, null, null, null, null);
+        var fromTable = new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity(
+                "p-table", "FromTable", "rm", List.of(), null, null, null, false, null, null, null, "ext-legacy-venues", null);
+        var fromOperation = new io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectionEntity(
+                "p-op", "FromOperation", "rm", List.of(), null, null, null, false, null, null, "ext-gateway-transactions", null, null);
+        var snapshot = new ModelSnapshot(null, null, null, null, null, null, null, null, null,
+                List.of(byEvents, fromTable, fromOperation), null, null, null, null, null, null, null, null, null, null, null, null);
+
+        var findings = new LintRules.ProjectionRebuild().apply(snapshot);
+
+        // every poll re-reads the whole table or operation: the mirror rebuilds itself
+        assertEquals(List.of("p-events"), findings.stream().map(LintFinding::elementId).toList());
+    }
+
     private static ModelSnapshot snapshotWith(BoundedContextEntity boundedContext) {
         return new ModelSnapshot(null, null, List.of(boundedContext), null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null);

@@ -132,8 +132,9 @@ The definition is translated so it runs on its own:
 | `deadline` | A duration (`PT2H`) or a moment from the process data (`${fechaLimite}`) |
 | `timeoutStepId` | Where the flow goes when the step runs out of time, instead of failing |
 
-The engine calls the services as user **`sistema`** with role **`SISTEMA`**: a use case a
-workflow runs lists `SISTEMA` among its roles. Its password comes from
+The engine calls the services as the system identity: user **`system`** (**`sistema`** when the
+project's language is Spanish, see [i18n](/manual/i18n/)) with role **`SYSTEM`** — a use case a
+workflow runs lists a role named `SYSTEM` (or `SISTEMA`: the identity carries both) among its roles. Its password comes from
 `MODUX_SYSTEM_PASSWORD` (the services only create that user when it is set). Kafka
 subscriptions and scheduled triggers act as the same identity.
 

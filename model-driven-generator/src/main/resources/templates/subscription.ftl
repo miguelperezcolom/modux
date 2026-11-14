@@ -138,14 +138,16 @@ public class ${subscription.name?cap_first}Subscription {
     }
 
     /**
-     * Nobody is signed in here: the work acts as the system — user «sistema», role SISTEMA. A use
-     * case lets it in by listing SISTEMA among its roles (explicit permissions), and its history
-     * records «sistema».
+     * Nobody is signed in here: the work acts as the system — user «${project.systemUser!"sistema"}», role
+     * SYSTEM (or SISTEMA: both name it). A use case lets it in by listing that role among its roles
+     * (explicit permissions), and its history records «${project.systemUser!"sistema"}».
      */
     static void asSystem(Runnable work) {
         var context = org.springframework.security.core.context.SecurityContextHolder.createEmptyContext();
         context.setAuthentication(org.springframework.security.authentication.UsernamePasswordAuthenticationToken.authenticated(
-                "sistema", null, java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SISTEMA"))));
+                "${project.systemUser!"sistema"}", null, java.util.List.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SYSTEM"),
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_SISTEMA"))));
         org.springframework.security.core.context.SecurityContextHolder.setContext(context);
         try {
             work.run();

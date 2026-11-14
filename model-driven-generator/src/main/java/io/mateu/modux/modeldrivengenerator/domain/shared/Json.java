@@ -66,7 +66,7 @@ public final class Json {
         try {
             return mapper.writeValueAsString(object);
         } catch (Exception e) {
-            throw new IllegalStateException("No se pudo serializar " + object, e);
+            throw new IllegalStateException("Could not serialize " + object, e);
         }
     }
 
@@ -79,7 +79,7 @@ public final class Json {
         try {
             return mapper.readValue(json == null || json.isEmpty() ? "{}" : json, new TypeReference<>() {});
         } catch (Exception e) {
-            throw new IllegalStateException("No se pudo leer el JSON como mapa", e);
+            throw new IllegalStateException("Could not read the JSON as a map", e);
         }
     }
 
@@ -88,7 +88,7 @@ public final class Json {
         try {
             return mapper.readerForListOf(type).readValue(json == null || json.isEmpty() ? "[]" : json);
         } catch (Exception e) {
-            throw new IllegalStateException("No se pudo leer una lista de " + type.getSimpleName(), e);
+            throw new IllegalStateException("Could not read a list of " + type.getSimpleName(), e);
         }
     }
 }

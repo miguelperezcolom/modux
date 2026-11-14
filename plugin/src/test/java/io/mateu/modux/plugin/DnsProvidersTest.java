@@ -51,7 +51,7 @@ class DnsProvidersTest {
                 "DELETE /dns_zones/z1/dns_records/r1", "",
                 "POST /dns_zones/z1/dns_records", "{}"));
         var result = new DnsProviders.Netlify(base, "t").upsert("tienda.ec1.mateu.io", "135.181.84.98");
-        assertTrue(result.contains("zona mateu.io"), result);
+        assertTrue(result.contains("zone mateu.io"), result);
         assertTrue(calls.contains("DELETE /dns_zones/z1/dns_records/r1"), calls.toString());
         assertTrue(calls.stream().anyMatch(c -> c.startsWith("POST /dns_zones/z1/dns_records") && c.contains("\"value\":\"135.181.84.98\"")), calls.toString());
     }
@@ -61,7 +61,7 @@ class DnsProvidersTest {
         var base = start(Map.of(
                 "GET /dns_zones", "[{\"id\":\"z1\",\"name\":\"mateu.io\"}]",
                 "GET /dns_zones/z1/dns_records", "[{\"id\":\"r1\",\"hostname\":\"a.mateu.io\",\"type\":\"A\",\"value\":\"9.9.9.9\"}]"));
-        assertTrue(new DnsProviders.Netlify(base, "t").upsert("a.mateu.io", "9.9.9.9").contains("ya apunta"));
+        assertTrue(new DnsProviders.Netlify(base, "t").upsert("a.mateu.io", "9.9.9.9").contains("already points"));
         assertTrue(calls.stream().noneMatch(c -> c.startsWith("POST") || c.startsWith("DELETE")), calls.toString());
     }
 
@@ -73,7 +73,7 @@ class DnsProvidersTest {
                 "GET /zones/cz/dns_records?type=A&name=app.ec1.acme.com", "{\"result\":[]}",
                 "POST /zones/cz/dns_records", "{\"success\":true}"));
         var result = new DnsProviders.Cloudflare(base, "t").upsert("app.ec1.acme.com", "10.0.0.1");
-        assertTrue(result.contains("zona acme.com"), result);
+        assertTrue(result.contains("zone acme.com"), result);
         assertTrue(calls.stream().anyMatch(c -> c.startsWith("POST /zones/cz/dns_records") && c.contains("\"proxied\":false")), calls.toString());
     }
 
@@ -85,7 +85,7 @@ class DnsProvidersTest {
                 "GET /zones/acme.com/rrsets/app/A", "{\"rrset\":{\"records\":[{\"value\":\"1.1.1.1\"}]}}",
                 "POST /zones/acme.com/rrsets/app/A/actions/set_records", "{}"));
         var result = new DnsProviders.Hetzner(base, "t").upsert("app.acme.com", "2.2.2.2");
-        assertTrue(result.contains("zona acme.com"), result);
+        assertTrue(result.contains("zone acme.com"), result);
         assertTrue(calls.stream().anyMatch(c -> c.startsWith("POST /zones/acme.com/rrsets/app/A/actions/set_records") && c.contains("2.2.2.2")), calls.toString());
     }
 

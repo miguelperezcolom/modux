@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.${module.slug}.infra.out.remote;
 
 import ${project.packageName}.${module.slug}.application.out.remote.${remote.className}Client;
@@ -57,7 +58,7 @@ public class ${remote.className}RestClient implements ${remote.className}Client 
         var body = new String(response.getBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         var detail = java.util.regex.Pattern.compile("\"detail\"\\s*:\\s*\"((?:[^\"\\\\]|\\\\.)*)\"").matcher(body);
         var message = detail.find() ? unescape(detail.group(1))
-                : body.isBlank() ? "${remote.service} rechazó la petición (" + response.getStatusCode().value() + ")" : body;
+                : body.isBlank() ? "${remote.service} <#if uiEs>rechazó la petición<#else>rejected the request</#if> (" + response.getStatusCode().value() + ")" : body;
         return switch (response.getStatusCode().value()) {
             case 404 -> ${project.packageName}.application.BusinessRuleException.notFound(message);
             case 409 -> ${project.packageName}.application.BusinessRuleException.conflict(message);

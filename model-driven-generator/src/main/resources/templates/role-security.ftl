@@ -175,11 +175,11 @@ public class SecurityConfig {
 </#list>
         );
         // The system identity, for the workflow engine's calls: only when its password is
-        // configured (never a known default), and with no role but SISTEMA — a use case lets it in
-        // by listing that role.
+        // configured (never a known default), and with no role but SYSTEM (SISTEMA in a Spanish
+        // model: both name it) — a use case lets it in by listing that role.
         if (systemPassword != null && !systemPassword.isBlank()) {
             users.createUser(org.springframework.security.core.userdetails.User
-                    .withUsername("sistema").password("{noop}" + systemPassword).roles("SISTEMA").build());
+                    .withUsername("${project.systemUser!"sistema"}").password("{noop}" + systemPassword).roles("SYSTEM", "SISTEMA").build());
         }
         return users;
     }

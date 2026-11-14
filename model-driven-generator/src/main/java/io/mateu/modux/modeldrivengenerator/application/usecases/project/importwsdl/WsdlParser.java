@@ -40,7 +40,7 @@ public final class WsdlParser {
         }
         if (operations.isEmpty()) {
             throw new IllegalArgumentException(
-                    "El WSDL no declara operaciones (¿es un WSDL 1.1 con portType?): " + wsdl);
+                    "The WSDL declares no operations (is it a WSDL 1.1 with a portType?): " + wsdl);
         }
         return List.copyOf(operations);
     }

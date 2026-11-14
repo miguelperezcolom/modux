@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 <#assign modpkg = project.packageName + "." + module.name?lower_case?replace("[^a-z0-9]","",'r')>
 package ${project.packageName}.custom;
 
@@ -20,7 +21,7 @@ import org.springframework.stereotype.Component;
 public class Default${aggregate.name}Invariants implements ${aggregate.name}Invariants {
 
     /**
-     * Pendiente de implementar: the invariants of ${aggregate.name} listed above. Reject an invalid
+     * <#if uiEs>Pendiente de implementar<#else>Not implemented yet</#if>: the invariants of ${aggregate.name} listed above. Reject an invalid
      * state with BusinessRuleException.invalid("why") or .conflict("why") (they answer 400/409 with
      * that message); read the state via context.${aggregate.name?uncap_first}(), and inject the
      * repositories or query services you need (a uniqueness rule reads the others).

@@ -1218,7 +1218,10 @@ public class GenerateCodeUseCase {
                 });
             }
             model.put("gridClasses", gridClasses);
-            model.put("lookups", lookupsOf(project, service, boundedContext));
+            var lookups = lookupsOf(project, service, boundedContext);
+            readModelLookupsOf(project, boundedContext, useCase, boundedContextDir, boundedContextPackageDir)
+                    .forEach(lookups::putIfAbsent);
+            model.put("lookups", lookups);
             model.put("enumOptions", enumOptionsOf(useCase));
 
             var templateFile = pageTemplateFile(useCase);
@@ -1294,6 +1297,59 @@ public class GenerateCodeUseCase {
                     .ifPresent(aggregate -> lookups.put(uncapitalize(aggregate.name()) + "Id", Map.of(
                             "suppliers", project.packageName() + "." + boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "")
                                     + ".infra.in.ui.suppliers." + aggregate.name())));
+        }
+        return lookups;
+    }
+
+    /**
+     * The input fields of a use case that name an aggregate of ANOTHER context ({@code concertId} in
+     * Sales, Concert living in Catalog) which this context keeps a read model of: the form picks one
+     * from that read model, shown by its first text field, instead of asking for an id. The
+     * suppliers are generated here, next to the page; a name clash with an aggregate of the context
+     * itself is left to that aggregate's own lookup ({@link #lookupsOf}).
+     */
+    private Map<String, Map<String, String>> readModelLookupsOf(ProjectEntity project, BoundedContextEntity boundedContext,
+                                                               UseCaseEntity useCase, String boundedContextDir,
+                                                               String boundedContextPackageDir) {
+        var lookups = new HashMap<String, Map<String, String>>();
+        if (useCase.inputModelId() == null || useCase.inputModelId().isBlank()) return lookups;
+        var input = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
+        if (input == null || input.fields() == null) return lookups;
+        var contextSlug = boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        var basePackage = project.packageName() + "." + contextSlug;
+        for (var field : input.fields()) {
+            if (!field.basicType() || field.name() == null || !field.name().endsWith("Id") || field.name().equals("id")) continue;
+            var referenced = field.name().substring(0, field.name().length() - 2);
+            for (var rmId : boundedContext.readModelIds() != null ? boundedContext.readModelIds() : List.<String>of()) {
+                var rm = repository.findById(rmId, ReadModelEntity.class).orElse(null);
+                if (rm == null || rm.aggregateId() == null) continue;
+                var aggregate = repository.findById(rm.aggregateId(), AggregateEntity.class).orElse(null);
+                if (aggregate == null || !aggregate.name().equalsIgnoreCase(referenced)) continue;
+                var labelAccessor = repository.findById(rm.modelId(), ModelEntity.class)
+                        .map(m -> m.fields() == null ? List.<ModelFieldEntity>of() : m.fields()).orElse(List.of()).stream()
+                        .filter(f -> f.basicType() && f.type() != null && "string".equals(f.type().name()) && !"id".equals(f.name()))
+                        .map(ModelFieldEntity::name)
+                        .findFirst().orElse("id");
+                var className = toTypeName(rm.name()).replaceAll("ReadModel$", "") + "ReadModel";
+                var supplierPackage = basePackage + ".infra.in.ui.suppliers";
+                var supplierModel = new HashMap<String, Object>();
+                supplierModel.put("supplierPackage", supplierPackage);
+                supplierModel.put("className", className);
+                // two contexts of one service may keep a view of the same name: the bean name says whose
+                supplierModel.put("beanPrefix", contextSlug + className);
+                supplierModel.put("queryService", basePackage + ".application.query." + className + "QueryService");
+                supplierModel.put("queryServiceSimple", className + "QueryService");
+                supplierModel.put("labelAccessor", labelAccessor);
+                supplierModel.put("aggregateName", aggregate.name());
+                supplierModel.put("readModelName", rm.name());
+                supplierModel.put("fieldName", field.name());
+                var dir = "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers/";
+                createDir(boundedContextDir, dir);
+                createFile(boundedContextDir, supplierModel, "readmodel-options-supplier.ftl", dir + className + "IdOptionsSupplier.java");
+                createFile(boundedContextDir, supplierModel, "readmodel-label-supplier.ftl", dir + className + "IdLabelSupplier.java");
+                lookups.put(field.name(), Map.of("suppliers", supplierPackage + "." + className));
+                break;
+            }
         }
         return lookups;
     }
@@ -1780,7 +1836,7 @@ public class GenerateCodeUseCase {
             if (n.channels() == null || !n.channels().contains("EMAIL")) continue;
             var event = n.eventId() == null ? null : repository.findById(n.eventId(), DomainEventEntity.class).orElse(null);
             if (event == null) {
-                log.warn("la notificación '{}' no dice con qué evento sale (eventId)", n.name());
+                log.warn("notification '{}' does not say which event sends it (eventId)", n.name());
                 continue;
             }
             // the topic its publisher writes to: the integration topic when the event travels to other
@@ -2080,6 +2136,13 @@ public class GenerateCodeUseCase {
     }
 
     /** The Java type a field travels as between services (enums and references as text). */
+    /** The words the generated UI adds on its own (a menu, a link) follow the project's language: English unless it says Spanish. */
+    static boolean speaksSpanish(ProjectEntity project) {
+        var locale = project.defaultLocale() != null && !project.defaultLocale().isBlank() ? project.defaultLocale()
+                : project.locales() != null && !project.locales().isEmpty() ? project.locales().get(0) : "";
+        return locale.toLowerCase().startsWith("es");
+    }
+
     private static String javaTypeOf(ModelFieldEntity f) {
         if (!f.basicType() || f.type() == null) return "String";
         return switch (f.type().name()) {
@@ -2579,8 +2642,8 @@ public class GenerateCodeUseCase {
         repository.findAllOfType(WorkflowEntity.class).stream()
                 .filter(workflow -> inScope(workflow.id()))
                 .filter(workflow -> homeContextOf(workflow) == null)
-                .forEach(workflow -> log.warn("el workflow '{}' no genera definición: no se sabe"
-                        + " desde qué contexto arranca. Dale un trigger, o un paso con caso de uso.",
+                .forEach(workflow -> log.warn("workflow '{}' generates no definition: it is unknown"
+                        + " which context it starts from. Give it a trigger, or a step with a use case.",
                         workflow.name()));
     }
 
@@ -2645,7 +2708,7 @@ public class GenerateCodeUseCase {
                     .configure(com.fasterxml.jackson.databind.SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true)
                     .writerWithDefaultPrettyPrinter().writeValueAsString(value);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException("no se pudo serializar la definición del workflow", e);
+            throw new IllegalStateException("could not serialize the workflow definition", e);
         }
     }
 
@@ -3445,7 +3508,7 @@ public class GenerateCodeUseCase {
                     .filter(node -> page.id().equals(node.detailPageId()))
                     .filter(node -> node.queryServiceId() != null)
                     .findFirst().orElse(null);
-            var tree = ComponentTreeJava.of(page.content(), wiring, detailSource);
+            var tree = ComponentTreeJava.of(page.content(), wiring, detailSource, speaksSpanish(project));
             model.put("componentTree", tree.expression());
             model.put("treeImports", tree.imports());
             model.put("treeFields", tree.classFields());
@@ -3810,7 +3873,8 @@ public class GenerateCodeUseCase {
             var className = aggregate.name() + "HistoryListing";
             var slug = aggregate.name().toLowerCase() + "historial";
             var moduleSlug = boundedContextSlug(unit.name());
-            var label = "Historial de " + (it.label() != null && !it.label().isBlank() ? it.label().toLowerCase() : aggregate.name());
+            var shown = it.label() != null && !it.label().isBlank() ? it.label() : aggregate.name();
+            var label = speaksSpanish(project) ? "Historial de " + shown.toLowerCase() : aggregate.name() + " history";
             var historyModel = buildBaseModel(project, service, unit);
             historyModel.put("className", className);
             historyModel.put("aggregateName", aggregate.name());
@@ -3959,8 +4023,8 @@ public class GenerateCodeUseCase {
                     destinations.put(io.mateu.modux.modeldrivengenerator.application.usecases.workflow
                             .EventConductorWorkflowDefinition.destinationOf(event), topic.get());
                 } else {
-                    log.warn("el workflow '{}' espera el evento '{}', que no sale a ningún topic: publícalo"
-                            + " (un flow que lo dispare, o publishAsIntegrationEvent)", workflow.name(), event);
+                    log.warn("workflow '{}' waits for event '{}', which is not published to any topic: publish it"
+                            + " (a flow that emits it, or publishAsIntegrationEvent)", workflow.name(), event);
                 }
             }
             Map<String, Object> model = new HashMap<>();
@@ -5054,7 +5118,15 @@ public class GenerateCodeUseCase {
                 .map(this::serviceToMap)
                 .toList();
         map.put("services", services);
+        // the identity unattended work runs as (workflows, triggers, subscriptions): its name is seen
+        // in every history it writes, so it speaks the project's language
+        map.put("systemUser", systemUserOf(project));
         return map;
+    }
+
+    /** The system identity's user name: «sistema» in a Spanish project, «system» otherwise. */
+    static String systemUserOf(ProjectEntity project) {
+        return speaksSpanish(project) ? "sistema" : "system";
     }
 
     /**
@@ -5385,6 +5457,11 @@ public class GenerateCodeUseCase {
         if (generationRoot == null || !file.exists()) {
             return;
         }
+        // a file written twice in one generation (a UI's home replacing the service's default one)
+        // already holds this run's first version: only its first write compares with the last run
+        if (currentManifest.containsKey(relPath(file))) {
+            return;
+        }
         var prev = previousManifest.get(relPath(file));
         if (prev != null && !prev.equals(hashFile(file))) {
             log.warn("Generated file was edited by hand and is being overwritten: {} — put custom logic in the *-custom boundedContext instead.",
@@ -5474,8 +5551,8 @@ public class GenerateCodeUseCase {
         } catch (NoClassDefFoundError | IllegalAccessError e) {
             formatterAvailable = Boolean.FALSE;
             log.warn("""
-                    El formateador de código generado no puede arrancar en esta JVM — los .java \
-                    se generan SIN formatear. Añade a las opciones de arranque (VM options):
+                    The generated-code formatter cannot start on this JVM — the .java files \
+                    are generated UNFORMATTED. Add to the JVM startup options (VM options):
                     --add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED \
                     --add-exports jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED \
                     --add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED \

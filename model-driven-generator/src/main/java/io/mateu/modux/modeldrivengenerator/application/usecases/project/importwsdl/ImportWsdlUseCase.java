@@ -32,7 +32,7 @@ public class ImportWsdlUseCase {
         var hasBoundedContext = command.boundedContextId() != null && !command.boundedContextId().isBlank();
         if (hasExternal == hasBoundedContext) {
             throw new IllegalArgumentException(
-                    "Elige UN destino: un sistema externo o un bounded context");
+                    "Choose ONE target: an external system or a bounded context");
         }
         var operations = WsdlParser.parse(Path.of(command.filePath()));
         if (hasExternal) {

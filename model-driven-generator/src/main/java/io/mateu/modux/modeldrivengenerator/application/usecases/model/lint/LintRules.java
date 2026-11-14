@@ -104,8 +104,8 @@ public final class LintRules {
                             .filter(op -> op.targetBoundedContextId() == null && op.targetUseCaseId() == null)
                             .map(op -> new LintFinding(id(), LintSeverity.WARNING, "ApiOperation",
                                     op.id(), api.name() + "." + op.name(),
-                                    "Operación publicada sin implementador: apúntala a un bounded"
-                                            + " context, un caso de uso o una policy.")))
+                                    "Published operation with no implementer: point it at a bounded"
+                                            + " context, a use case or a policy.")))
                     .toList();
         }
     }
@@ -128,9 +128,9 @@ public final class LintRules {
                 if (triggerRef != null && !triggerRef.isBlank() && !triggerResolves(catalog, interaction)) {
                     findings.add(new LintFinding(id(), LintSeverity.WARNING, "Interaction",
                             interaction.id(), interaction.name(),
-                            "El disparador '" + triggerRef + "' no resuelve a ningún elemento"
+                            "Trigger '" + triggerRef + "' does not resolve to any element"
                                     + (interaction.triggerKind() == InteractionTriggerKind.EVENT
-                                            ? " (no existe ningún evento con ese nombre)." : ".")));
+                                            ? " (no event has that name)." : ".")));
                 }
                 // ref → where it shows up ("mensaje 2 (origen)", …), in first-appearance order
                 var occurrences = new java.util.LinkedHashMap<String, List<String>>();
@@ -138,19 +138,19 @@ public final class LintRules {
                     var message = interaction.messages().get(i);
                     if (message.fromRef() != null) {
                         occurrences.computeIfAbsent(message.fromRef(), k -> new ArrayList<>())
-                                .add("mensaje " + (i + 1) + " (origen)");
+                                .add("message " + (i + 1) + " (source)");
                     }
                     if (message.toRef() != null) {
                         occurrences.computeIfAbsent(message.toRef(), k -> new ArrayList<>())
-                                .add("mensaje " + (i + 1) + " (destino)");
+                                .add("message " + (i + 1) + " (target)");
                     }
                 }
                 occurrences.forEach((ref, where) -> {
                     if (catalog.typeOf(ref) != InteractionParticipantType.UNKNOWN) return;
                     findings.add(new LintFinding(id(), LintSeverity.WARNING, "Interaction",
                             interaction.id(), interaction.name(),
-                            "La referencia '" + ref + "' (" + String.join(", ", where)
-                                    + ") no resuelve a ningún elemento del modelo."));
+                            "Reference '" + ref + "' (" + String.join(", ", where)
+                                    + ") does not resolve to any element of the model."));
                 });
             }
             return findings;
@@ -191,9 +191,9 @@ public final class LintRules {
                     if (InteractionBackingResolver.isBacked(catalog, message)) continue;
                     findings.add(new LintFinding(id(), LintSeverity.WARNING, "Interaction",
                             interaction.id(), interaction.name(),
-                            "Mensaje " + (i + 1) + " (" + message.fromRef() + " → " + message.toRef()
+                            "Message " + (i + 1) + " (" + message.fromRef() + " → " + message.toRef()
                                     + (message.kind() != null ? ", " + message.kind().name() : "")
-                                    + ") sin mecanismo que lo realice — materialízalo o ajusta la secuencia."));
+                                    + ") has no mechanism that realizes it — materialize it or adjust the sequence."));
                 }
             }
             return findings;
@@ -211,8 +211,8 @@ public final class LintRules {
                     .filter(r -> !queried.contains(r.id()))
                     .map(r -> new LintFinding(id(), LintSeverity.INFO, "Rag", r.id(),
                             r.name(),
-                            "RAG sin consumidor: ningún agente lo consulta — lígalo a un agente"
-                                    + " o elimínalo."))
+                            "RAG with no consumer: no agent queries it — link it to an agent"
+                                    + " or remove it."))
                     .toList();
         }
     }
@@ -232,9 +232,9 @@ public final class LintRules {
                             && a.mcpGatewayIds().isEmpty())
                     .map(a -> new LintFinding(id(), LintSeverity.INFO, "AiAgent", a.id(),
                             a.name(),
-                            "Agente sin herramientas: no consume casos de uso, query services,"
-                                    + " operaciones (de API o externas), servidores MCP, gateways"
-                                    + " ni delega en otros agentes — no puede actuar."))
+                            "Agent without tools: it consumes no use cases, query services,"
+                                    + " operations (API or external), MCP servers or gateways"
+                                    + " and delegates to no other agent — it cannot act."))
                     .toList();
         }
     }
@@ -253,8 +253,8 @@ public final class LintRules {
                             || !a.reactsToEventIds().isEmpty())
                     .map(a -> new LintFinding(id(), LintSeverity.WARNING, "AiAgent", a.id(),
                             a.name(),
-                            "Agente EXTERNO con herramientas internas directas — debe entrar por"
-                                    + " un gateway MCP, que es quien cura y protege la superficie."))
+                            "EXTERNAL agent with direct internal tools — it must come in through"
+                                    + " an MCP gateway, which curates and protects the surface."))
                     .toList();
         }
     }
@@ -270,8 +270,8 @@ public final class LintRules {
                             && g.ragIds().isEmpty())
                     .map(g -> new LintFinding(id(), LintSeverity.INFO, "McpGateway", g.id(),
                             g.name(),
-                            "Gateway MCP vacío: no agrega ni expone nada — conéctale APIs,"
-                                    + " operaciones, casos de uso, servidores MCP o RAGs."))
+                            "Empty MCP gateway: it aggregates and exposes nothing — connect APIs,"
+                                    + " operations, use cases, MCP servers or RAGs to it."))
                     .toList();
         }
     }
@@ -290,7 +290,7 @@ public final class LintRules {
                 if (reaches(agent.id(), agent.id(), delegates, new HashSet<>())) {
                     findings.add(new LintFinding(id(), LintSeverity.WARNING, "AiAgent",
                             agent.id(), agent.name(),
-                            "Ciclo de delegación: este agente acaba delegándose a sí mismo."));
+                            "Delegation cycle: this agent ends up delegating to itself."));
                 }
             }
             return findings;
@@ -322,9 +322,9 @@ public final class LintRules {
                             && p.sourceExternalTableId() == null)
                     .map(p -> new LintFinding(id(), LintSeverity.WARNING, "Projection", p.id(),
                             p.name(),
-                            "Proyección sin fuente: ni maneja eventos ni proyecta un agregado,"
-                                    + " operación o tabla externa — el read model nunca se"
-                                    + " alimentará."))
+                            "Projection without a source: it neither handles events nor projects an aggregate,"
+                                    + " operation or external table — the read model will never"
+                                    + " be fed."))
                     .toList();
         }
     }
@@ -356,8 +356,8 @@ public final class LintRules {
                     .filter(uc -> !invoked.contains(uc.id()))
                     .map(uc -> new LintFinding(id(), LintSeverity.WARNING, "UseCase", uc.id(),
                             uc.name(),
-                            "Policy sin disparador: ningún evento la invoca (subscription, flow,"
-                                    + " proceso o workflow) — nunca se ejecutará."))
+                            "Policy without a trigger: no event invokes it (subscription, flow,"
+                                    + " process or workflow) — it will never run."))
                     .toList();
         }
     }
@@ -371,8 +371,8 @@ public final class LintRules {
                     .filter(uc -> uc.policy() && uc.exposedAsUi())
                     .map(uc -> new LintFinding(id(), LintSeverity.WARNING, "UseCase", uc.id(),
                             uc.name(),
-                            "Policy expuesta como UI: una policy reacciona a eventos, no la usa"
-                                    + " una persona — quita exposedAsUi o hazla caso de uso normal."))
+                            "Policy exposed as UI: a policy reacts to events, it is not used by"
+                                    + " a person — remove exposedAsUi or make it a regular use case."))
                     .toList();
         }
     }
@@ -464,9 +464,9 @@ public final class LintRules {
             return m.workflows().stream()
                     .filter(w -> !homed(w, owned))
                     .map(w -> new LintFinding(id(), LintSeverity.ERROR, "Workflow", w.id(), w.name(),
-                            "No se sabe desde qué contexto arranca: no genera definición para el"
-                                    + " motor. Dale un trigger (agregado, servicio de dominio o"
-                                    + " caso de uso), o un paso con caso de uso."))
+                            "It is unknown which context it starts from: no definition is generated for the"
+                                    + " engine. Give it a trigger (aggregate, domain service or"
+                                    + " use case), or a step with a use case."))
                     .toList();
         }
 
@@ -585,6 +585,9 @@ public final class LintRules {
                     .filter(p -> p.rebuildStrategy() == null || p.rebuildStrategy().isBlank())
                     // a state projection rebuilds itself: its source republishes the whole state on startup
                     .filter(p -> p.sourceAggregateId() == null || p.sourceAggregateId().isBlank())
+                    // a polled projection too: every poll re-reads the whole table or operation it mirrors
+                    .filter(p -> (p.sourceExternalTableId() == null || p.sourceExternalTableId().isBlank())
+                            && (p.sourceExternalUseCaseId() == null || p.sourceExternalUseCaseId().isBlank()))
                     .map(p -> new LintFinding(id(), LintSeverity.WARNING, "Projection", p.id(), p.name(),
                             "No rebuild strategy — the read model cannot recover from projection bugs."))
                     .toList();
@@ -910,7 +913,7 @@ public final class LintRules {
             return m.decisions().stream()
                     .filter(d -> d.status() == io.mateu.modux.modeldrivengenerator.domain.aggregates.decision.vo.DecisionStatus.PROPOSED)
                     .map(d -> new LintFinding(id(), LintSeverity.INFO, "Decision", d.id(), d.name(),
-                            "Open decision: " + (d.decision() != null ? d.decision() : "(sin enunciado)")
+                            "Open decision: " + (d.decision() != null ? d.decision() : "(no statement)")
                                     + " — resolve it (ACCEPTED/…) and reflect the outcome in the model."))
                     .toList();
         }

@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.in.ui.pages.${aggregate.name?lower_case};
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#assign enumPackage = project.packageName + "." + module.name?lower_case?replace("[^a-z0-9]","",'r') + ".domain.aggregates." + aggregate.name?lower_case + ".vo.">
@@ -63,6 +64,9 @@ public class ${aggregate.name}ViewModel implements Identifiable {
     @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.${field.stereotype})
     <#elseif (field.primitiveType!"") == "json">
     @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.textarea)
+    <#elseif field.money!false>
+    <#-- money reads as money (two decimals, the UI's grouping) on the detail, not as a bare 40 -->
+    @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.money)
     </#if>
     <#if lookups?? && lookups[field.name]??>
     <@lookup field/>
@@ -102,7 +106,7 @@ public class ${aggregate.name}ViewModel implements Identifiable {
         try {
             return objectMapper.writeValueAsString(rows != null ? rows : List.of());
         } catch (Exception e) {
-            throw new IllegalArgumentException("Filas no válidas", e);
+            throw new IllegalArgumentException("<#if uiEs>Filas no válidas<#else>Invalid rows</#if>", e);
         }
     }
 

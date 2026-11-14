@@ -26,7 +26,7 @@ public class ReopenCurrentRepositoryOnStartup {
             try {
                 openUseCase.handle(repositoryId);
             } catch (RuntimeException e) {
-                log.warn("no se pudo reabrir el repositorio {} ({}); sigo con el store por defecto",
+                log.warn("could not reopen repository {} ({}); continuing with the default store",
                         repositoryId, e.getMessage());
             }
         });

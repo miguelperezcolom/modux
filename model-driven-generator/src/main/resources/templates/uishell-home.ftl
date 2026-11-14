@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${shellPackage}.infra.in.ui;
 
 import io.mateu.uidl.annotations.FavIcon;
@@ -49,7 +50,7 @@ public class ${shellClassName}Home<#if idp??> implements WidgetSupplier</#if> {
 <#if tasks!false>
     /** The person's tasks of the workflows (EventConductor's worklist), through the gateway. */
     @Menu
-    RemoteMenu tareas = new RemoteMenu("/_forms").withLabel("Tareas");
+    RemoteMenu tareas = new RemoteMenu("/_forms").withLabel("<#if uiEs>Tareas<#else>Tasks</#if>");
 
 </#if>
 <#else>
@@ -76,8 +77,8 @@ public class ${shellClassName}Home<#if idp??> implements WidgetSupplier</#if> {
                             .style("margin-right: 20px;")
                             .build())
                     .content(VerticalLayout.builder().content(List.of(
-                                    new Text("Usuario: " + who.getName()),
-                                    new Anchor("Salir", "/logout"))
+                                    new Text("<#if uiEs>Usuario<#else>User</#if>: " + who.getName()),
+                                    new Anchor("<#if uiEs>Salir<#else>Log out</#if>", "/logout"))
                             ).spacing(true)
                             .padding(true)
                             .build())

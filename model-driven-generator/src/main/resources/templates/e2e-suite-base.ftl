@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package e2e;
 
 import com.microsoft.playwright.Browser;
@@ -28,7 +29,7 @@ public abstract class BaseE2eTest {
                 .inheritIO()
                 .start();
         if (install.waitFor() != 0) {
-            throw new IllegalStateException("playwright install chromium falló — revísalo a mano");
+            throw new IllegalStateException("<#if uiEs>playwright install chromium falló — revísalo a mano<#else>playwright install chromium failed — check it by hand</#if>");
         }
         playwright = Playwright.create();
         browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));

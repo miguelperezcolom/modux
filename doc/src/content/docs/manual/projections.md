@@ -136,6 +136,11 @@ cases read (`mvn modux:ai-complete` is told so), and a menu entry on a query who
 the aggregate's model lists it, labels and amounts formatted. A projection added later catches
 up by itself: its consumer group is new, so it reads the topic from the beginning.
 
+It also gives that context's forms a **picker**. An input field named after the aggregate —
+`concertId` in a Sales use case, Concert living in Catalog — is shown as a lookup over the read
+model Sales keeps of it, each concert by its first text field (its artist), instead of an id to
+type. Inside the aggregate's own context the same field is a lookup of the aggregate itself.
+
 ### An external operation or a legacy table, polled
 
 A projection whose source is an **external system's operation** or one of its **tables** is a
