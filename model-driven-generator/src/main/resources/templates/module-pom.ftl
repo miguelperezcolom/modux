@@ -44,17 +44,17 @@
         <dependency>
             <groupId>io.mateu</groupId>
             <artifactId>mateu-annotation-processor-mvc</artifactId>
-            <version>3.0-beta.64</version>
+            <version>3.0-beta.68</version>
         </dependency>
         <dependency>
             <groupId>io.mateu</groupId>
             <artifactId>mateu-mvc</artifactId>
-            <version>3.0-beta.64</version>
+            <version>3.0-beta.68</version>
         </dependency>
         <dependency>
             <groupId>io.mateu</groupId>
             <artifactId>mateu-vaadin</artifactId>
-            <version>3.0-beta.64</version>
+            <version>3.0-beta.68</version>
         </dependency>
         <dependency>
             <groupId>io.mateu.workflow</groupId>
@@ -118,7 +118,7 @@
                         <path>
                             <groupId>io.mateu</groupId>
                             <artifactId>mateu-annotation-processor-mvc</artifactId>
-                            <version>3.0-beta.64</version>
+                            <version>3.0-beta.68</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
