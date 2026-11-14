@@ -1,0 +1,4 @@
+[INFO]   from pom.xml
+[ERROR] Modux: aggregates/agg-book.modelId points to 'model-bok', which does not exist in the model
+[INFO] BUILD FAILURE
+[INFO] Total time:  0.788 s

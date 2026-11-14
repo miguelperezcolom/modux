@@ -1,0 +1,14 @@
+{
+  "name": "modux-video-series",
+  "private": true,
+  "type": "module",
+  "description": "The modux video series: narrated episodes, every frame rendered from the real thing (HTML title/diagram scenes and the running system recorded live with Playwright, paused clock), voiced locally with Kokoro in English and Spanish.",
+  "scripts": {
+    "episode": "node lib/episode.mjs"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "5.2.8",
+    "@fontsource-variable/jetbrains-mono": "5.2.8",
+    "playwright": "1.65.0"
+  }
+}

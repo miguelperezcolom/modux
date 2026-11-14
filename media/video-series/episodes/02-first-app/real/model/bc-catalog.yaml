@@ -1,0 +1,5 @@
+id: bc-catalog
+name: Catalog
+aggregateIds:
+  - agg-book
+projectId: library

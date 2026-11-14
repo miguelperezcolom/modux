@@ -1,0 +1,11 @@
+[INFO] Modux: building catalog
+[INFO] Modux: building sales
+[INFO] Modux: building payments
+[INFO] Modux: building analytics
+[INFO] Modux: building gateway
+[INFO] Modux: building tickets
+[INFO] Modux: starting the system in Docker
+[INFO] Modux: deployed 'local' (20261114-000245)
+[INFO] Modux:   http://localhost:8088
+[INFO] BUILD SUCCESS
+[INFO] Total time:  31.371 s

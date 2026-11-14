@@ -1,0 +1,5 @@
+[INFO]   from pom.xml
+[INFO] Modux: generating 'library' from /Users/mguel/IdeaProjects/modux/media/video-series/build/02-first-app/repo/modux → system
+[INFO] Modux: model checked — 0 error(s), 0 warning(s)
+[INFO] BUILD SUCCESS
+[INFO] Total time:  2.009 s

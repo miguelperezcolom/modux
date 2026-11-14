@@ -1,0 +1,6 @@
+[INFO] Modux: building library
+[INFO] Modux: starting the system in Docker
+[INFO] Modux: deployed 'local' (20261114-133134)
+[INFO] Modux:   http://localhost:8088
+[INFO] BUILD SUCCESS
+[INFO] Total time:  15.546 s

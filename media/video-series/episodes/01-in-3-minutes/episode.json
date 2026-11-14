@@ -1,0 +1,120 @@
+{
+  "number": 1,
+  "slug": "in-3-minutes",
+  "series": "modux in N minutes",
+  "title": { "en": "modux in 3 minutes", "es": "modux en 3 minutos" },
+  "thumbnail": { "scene": "stats", "at": 3 },
+  "scenes": [
+    { "id": "open", "kind": "title", "min": 3.6,
+      "title": "modux in 3 minutes", "subtitle": "Enterprise systems, model first." },
+
+    { "id": "hook", "kind": "statement", "lines": ["How much of your system", "is actually <span class=\"accent\">the business</span>?"],
+      "narration": { "en": "How much of your system is actually the business?",
+                     "es": "¿Cuánto de tu sistema es de verdad el negocio?" } },
+
+    { "id": "spec", "kind": "spec", "title": "A promoter sells concert tickets.", "step": 2.4,
+      "rules": ["A purchase counts only when the payment confirms it", "A failed payment puts the tickets back on sale",
+                "Every purchase keeps its history", "A sales dashboard per concert"],
+      "narration": { "en": "Take a promoter selling concert tickets. A purchase only counts once the payment confirms it. A failed payment puts the tickets back on sale. Every purchase keeps its history, and management wants a dashboard. That's the business.",
+                     "es": "Piensa en un promotor que vende entradas de conciertos. Una compra solo cuenta cuando el pago la confirma. Si el pago falla, las entradas vuelven a la venta. Cada compra guarda su historial, y dirección quiere un panel. Eso es el negocio." } },
+
+    { "id": "production", "kind": "production", "title": "A promoter sells concert tickets.",
+      "rules": ["A purchase counts only when the payment confirms it", "A failed payment puts the tickets back on sale",
+                "Every purchase keeps its history", "A sales dashboard per concert"],
+      "chips": ["REST APIs", "Database migrations", "Kafka topics", "Outbox", "Projections", "API gateway", "Single sign-on", "Roles",
+                "Screens", "Docker", "Kubernetes", "CI pipeline", "Unit tests", "End-to-end tests", "Observability"],
+      "lead": "Production adds the rest.",
+      "narration": { "en": "Then production adds the rest: APIs, database migrations, messaging that must not lose an event, read models, a gateway, sign-in, screens, containers, pipelines and tests. Weeks of work before the first rule runs.",
+                     "es": "Luego producción añade el resto: APIs, migraciones, mensajería que no puede perder un evento, modelos de lectura, un gateway, el inicio de sesión, pantallas, contenedores, pipelines y tests. Semanas de trabajo antes de que corra la primera regla." } },
+
+    { "id": "editor", "kind": "live", "script": "live/editor.mjs", "scale": 1.2,
+      "narration": { "en": "With modux you model the business instead. Four bounded contexts, the people who use them, the card gateway, and how they talk to each other. The editor draws it.",
+                     "es": "Con modux modelas el negocio. Cuatro contextos, las personas que los usan, la pasarela de pago y cómo se hablan entre ellos. El editor lo dibuja." } },
+
+    { "id": "yaml", "kind": "code", "lang": "yaml", "file": "modux/aggregates/purchase.yaml",
+      "code": "@file:../../../promo-video/app/modux/aggregates/purchase.yaml", "to": 22, "emph": [[4, 4], [6, 10]],
+      "caption": "Model the business. In YAML, in your repo.",
+      "narration": { "en": "And it's YAML in your repository. Here is the purchase: event-sourced, with operations that say what they mean, in plain words.",
+                     "es": "Y es YAML en tu repositorio. Esta es la compra: con event sourcing y con operaciones que dicen lo que significan, con palabras normales." } },
+
+    { "id": "generate", "kind": "terminal", "cwd": "~/tickets", "title": "terminal — tickets", "command": "mvn modux:generate",
+      "lines": "@lines:real/generate.txt", "box": { "x": 200, "y": 240, "w": 1520, "h": 420 }, "size": 26,
+      "narration": { "en": "One command generates the system.",
+                     "es": "Un comando genera el sistema." } },
+
+    { "id": "stats", "kind": "stats",
+      "items": [ { "v": "@json:real/counts.json:modelLines", "u": "lines of model" }, { "v": "@json:real/counts.json:files", "u": "files" }, { "v": "@json:real/counts.json:lines", "u": "lines generated" } ],
+      "chips": ["4 services", "API gateway", "Federated UI", "Migrations", "Kafka + outbox", "Docker · Kubernetes", "CI + tests"],
+      "lead": "Generated, not scaffolded: the same output every time.",
+      "narration": { "en": "Four services, the gateway, the screens, the migrations, Kafka with an outbox, Docker, Kubernetes, CI and tests. Seventeen hundred lines of model become seventeen thousand lines of code, and the same model always gives the same code.",
+                     "es": "Cuatro servicios, el gateway, las pantallas, las migraciones, Kafka con outbox, Docker, Kubernetes, CI y tests. Mil setecientas líneas de modelo se convierten en diecisiete mil líneas de código, y el mismo modelo da siempre el mismo código." } },
+
+    { "id": "zones", "kind": "split", "label": "Two zones",
+      "left": { "file": "payments/…/charge/ChargeSteps.java · generated", "lang": "java", "size": 19,
+                "code": "@file:../../../promo-video/app/system/payments/payments/src/main/java/io/tickets/payments/application/usecases/charge/ChargeSteps.java" },
+      "right": { "file": "payments-custom/…/DefaultChargeSteps.java · yours", "lang": "java", "size": 16,
+                 "code": "@file:../../../promo-video/app/system/payments/payments-custom/src/main/java/io/tickets/custom/DefaultChargeSteps.java" },
+      "rightAt": 2.4, "caption": "The business logic is the only code that is yours.",
+      "narration": { "en": "The business logic is the only code that's yours. Generated code declares a hook, and you implement it in a module of your own, which generation never touches.",
+                     "es": "La lógica de negocio es el único código que es tuyo. El código generado declara un punto de enganche, y tú lo implementas en un módulo propio que la generación no toca nunca." } },
+
+    { "id": "aicomplete", "kind": "terminal", "cwd": "~/tickets", "title": "terminal — tickets", "command": "mvn modux:ai-complete",
+      "lines": "@lines:real/aicomplete.txt", "box": { "x": 200, "y": 200, "w": 1520, "h": 560 }, "size": 24, "perLine": 0.35,
+      "caption": "Opt-in: it uses the AI CLI on your machine.",
+      "narration": { "en": "If you want, ai-complete writes a first version of those hooks from the intent in the model, with the AI tool on your own machine, and checks that each service compiles. Then you review it like any other code.",
+                     "es": "Si quieres, ai-complete escribe una primera versión de esos enganches a partir de la intención del modelo, con la herramienta de IA de tu propia máquina, y comprueba que cada servicio compila. Después lo revisas como cualquier otro código." } },
+
+    { "id": "deploy", "kind": "terminal", "cwd": "~/tickets", "title": "terminal — tickets", "command": "mvn modux:deploy",
+      "lines": "@lines:real/deploy.txt", "box": { "x": 200, "y": 170, "w": 1520, "h": 640 }, "size": 24, "perLine": 0.3,
+      "narration": { "en": "Deploy it, locally with Docker or to Kubernetes.",
+                     "es": "Despliégalo, en local con Docker o en Kubernetes." } },
+
+    { "id": "concert", "kind": "live", "script": "live/concert.mjs",
+      "narration": { "en": "And it runs. The promoter puts a concert on sale.",
+                     "es": "Y funciona. El promotor pone un concierto a la venta." } },
+
+    { "id": "buy", "kind": "live", "script": "live/buy.mjs",
+      "narration": { "en": "A customer picks it and buys three tickets. The purchase is pending, then confirmed when the payment goes through.",
+                     "es": "Un cliente lo elige y compra tres entradas. La compra queda pendiente, y se confirma cuando el pago pasa." } },
+
+    { "id": "declined", "kind": "live", "script": "live/declined.mjs",
+      "narration": { "en": "A declined card leaves the purchase rejected, with the bank's reason, and the tickets back on sale.",
+                     "es": "Una tarjeta rechazada deja la compra rechazada, con el motivo del banco, y las entradas otra vez a la venta." } },
+
+    { "id": "after", "kind": "live", "script": "live/after.mjs",
+      "narration": { "en": "Every step is in the purchase's history, the confirmation email goes out, and the dashboard adds it all up.",
+                     "es": "Cada paso queda en el historial de la compra, sale el email de confirmación y el panel lo suma todo." } },
+
+    { "id": "change", "kind": "code", "lang": "diff", "file": "git diff — modux/models/model-concert.yaml", "numbers": false,
+      "code": "@file:real/change-model.diff", "box": { "x": 200, "y": 170, "w": 1520, "h": 520 }, "size": 24,
+      "caption": "Five lines of model.",
+      "narration": { "en": "When the business changes, you change the model. A genre for every concert: five lines.",
+                     "es": "Cuando el negocio cambia, cambias el modelo. Un género para cada concierto: cinco líneas." } },
+
+    { "id": "regenerate", "kind": "terminal", "cwd": "~/tickets", "title": "terminal — tickets", "command": "mvn modux:generate && git diff --stat",
+      "lines": ["@lines:real/change-generate.txt", "@lines:real/change-stat.txt", "@lines:real/change-services.txt"],
+      "box": { "x": 200, "y": 170, "w": 1520, "h": 600 }, "size": 24, "perLine": 0.3,
+      "narration": { "en": "Generate again: thirty files change, in the three services that need the new field, because the read models that copy a concert carry it too.",
+                     "es": "Vuelves a generar: cambian treinta ficheros, en los tres servicios que necesitan el campo nuevo, porque los modelos de lectura que copian un concierto también lo llevan." } },
+
+    { "id": "migration", "kind": "code", "lang": "sql", "file": "catalog/…/db/migration/V2__model_changes.sql", "numbers": false,
+      "code": "@file:real/change-migration.sql", "box": { "x": 200, "y": 300, "w": 1520, "h": 300 }, "size": 26,
+      "caption": "The migration is written for you.",
+      "narration": { "en": "And modux writes the database migration.",
+                     "es": "Y modux escribe la migración de la base de datos." } },
+
+    { "id": "more", "kind": "cards", "title": "This series, one part at a time", "cols": 3, "step": 0.15,
+      "cards": [ { "n": "02", "t": "From one aggregate to a running app" }, { "n": "03", "t": "Two zones: the code that is yours" },
+                 { "n": "04", "t": "The graphical editor" }, { "n": "05", "t": "Contexts that talk to each other" },
+                 { "n": "06", "t": "Business rules" }, { "n": "07", "t": "Workflows and human tasks" },
+                 { "n": "08", "t": "Security and identity" }, { "n": "09", "t": "Deploying" },
+                 { "n": "10", "t": "The tests that come with it" } ],
+      "narration": { "en": "The rest of this series takes it one part at a time: the editor, the two zones, contexts and events, workflows, security, deployment and tests.",
+                     "es": "El resto de la serie va parte por parte: el editor, las dos zonas, los contextos y los eventos, los workflows, la seguridad, el despliegue y los tests." } },
+
+    { "id": "close", "kind": "close", "title": "Model first. Everything else is generated.",
+      "lines": ["modux.mateu.io", "github.com/miguelperezcolom/modux · MIT"], "min": 6,
+      "narration": { "en": "modux. Model first, and everything else is generated. Open source, under the MIT license. Start at modux.mateu.io.",
+                     "es": "modux. Primero el modelo, y todo lo demás se genera. Código abierto, con licencia MIT. Empieza en modux.mateu.io." } }
+  ]
+}

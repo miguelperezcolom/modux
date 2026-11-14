@@ -1,0 +1,80 @@
+{
+  "number": 2,
+  "slug": "first-app",
+  "series": "modux in N minutes",
+  "title": { "en": "From one aggregate to a running app", "es": "De un agregado a una aplicación" },
+  "thumbnail": { "scene": "list", "at": 6 },
+  "scenes": [
+    { "id": "open", "kind": "title", "min": 3.6, "title": "From one aggregate<br>to a running app",
+      "subtitle": "An empty repository, a model, two commands." },
+
+    { "id": "pom", "kind": "code", "lang": "xml", "file": "library/pom.xml", "code": "@file:real/model/pom.xml",
+      "emph": [[9, 13]], "box": { "x": 260, "y": 150, "w": 1400, "h": 640 }, "size": 24,
+      "narration": { "en": "Let's build an application from nothing. All you need is a Maven project with the modux plugin.",
+                     "es": "Vamos a construir una aplicación desde cero. Basta un proyecto Maven con el plugin de modux." } },
+
+    { "id": "model", "kind": "split", "label": "modux/ — one YAML file per element",
+      "left": { "file": "modux/aggregates/agg-book.yaml", "lang": "yaml", "size": 22, "code": "@file:real/model/agg-book.yaml" },
+      "right": { "file": "modux/models/model-book.yaml", "lang": "yaml", "size": 17, "code": "@file:real/model/model-book.yaml" },
+      "rightAt": 3.0,
+      "narration": { "en": "The model lives in a folder called modux, one YAML file per element: a project, a service, a bounded context called Catalog, and one aggregate. A book, with a title, an author, an ISBN, a price and a status.",
+                     "es": "El modelo vive en una carpeta llamada modux, un fichero YAML por elemento: un proyecto, un servicio, un contexto llamado Catalog y un agregado. Un libro, con título, autor, ISBN, precio y estado." } },
+
+    { "id": "typo", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:validate",
+      "lines": "@lines:real/validate-broken.txt", "box": { "x": 160, "y": 260, "w": 1600, "h": 380 }, "size": 24,
+      "narration": { "en": "Before generating anything, validate. A typo in an id is caught here, with the element and the field that carry it.",
+                     "es": "Antes de generar nada, valida. Una errata en un id se detecta aquí, con el elemento y el campo que la contienen." } },
+
+    { "id": "valid", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:validate",
+      "lines": "@lines:real/validate.txt", "box": { "x": 160, "y": 260, "w": 1600, "h": 380 }, "size": 24,
+      "narration": { "en": "Fix it, and the model is clean.",
+                     "es": "Se corrige, y el modelo queda limpio." } },
+
+    { "id": "generate", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:generate",
+      "lines": "@lines:real/generate.txt", "box": { "x": 160, "y": 260, "w": 1600, "h": 380 }, "size": 24,
+      "narration": { "en": "Now generate.",
+                     "es": "Ahora genera." } },
+
+    { "id": "tree", "kind": "code", "lang": "text", "file": "system/ — {@json:real/counts.json:files} files, {@json:real/counts.json:lines} lines",
+      "code": "@file:real/tree-short.txt", "numbers": false, "perLine": 0.12, "box": { "x": 200, "y": 120, "w": 1520, "h": 800 }, "size": 25,
+      "narration": { "en": "Out comes a Spring Boot service in hexagonal layers: the domain, the use cases and queries, persistence with its migrations, the screens, the tests, and everything to build and run it, from Docker and Kubernetes to the CI workflow.",
+                     "es": "Sale un servicio Spring Boot por capas hexagonales: el dominio, los casos de uso y las consultas, la persistencia con sus migraciones, las pantallas, los tests, y todo lo necesario para construirlo y arrancarlo, desde Docker y Kubernetes hasta el workflow de CI." } },
+
+    { "id": "deploy", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:deploy",
+      "lines": "@lines:real/deploy.txt", "box": { "x": 160, "y": 220, "w": 1600, "h": 460 }, "size": 24, "perLine": 0.35,
+      "narration": { "en": "One more command builds it and starts it, with its database, in Docker.",
+                     "es": "Un comando más lo construye y lo arranca, con su base de datos, en Docker." } },
+
+    { "id": "create", "kind": "live", "script": "live/create.mjs",
+      "narration": { "en": "Here it is, with no books yet. Create one: the title is required, so saving an empty form is refused. Fill it in, and save.",
+                     "es": "Aquí está, todavía sin libros. Creas uno: el título es obligatorio, así que guardar el formulario vacío no se acepta. Lo rellenas y lo guardas." } },
+
+    { "id": "list", "kind": "live", "script": "live/list.mjs",
+      "narration": { "en": "The listing searches, the price reads as money, and the detail shows the whole record.",
+                     "es": "El listado busca, el precio se lee como dinero y el detalle enseña el registro entero." } },
+
+    { "id": "change", "kind": "code", "lang": "diff", "file": "git diff — modux/models/model-book.yaml", "numbers": false,
+      "code": "@file:real/change-model.diff", "box": { "x": 200, "y": 170, "w": 1520, "h": 520 }, "size": 24,
+      "narration": { "en": "Now the library wants the number of pages of each book. Add four lines to the model.",
+                     "es": "Ahora la biblioteca quiere el número de páginas de cada libro. Añades cuatro líneas al modelo." } },
+
+    { "id": "regenerate", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:generate && git diff --stat",
+      "lines": ["@lines:real/change-generate.txt", "@lines:real/change-stat.txt"], "box": { "x": 160, "y": 220, "w": 1600, "h": 460 }, "size": 24,
+      "narration": { "en": "Generate again. The entity, the screens and the queries follow…",
+                     "es": "Vuelves a generar. La entidad, las pantallas y las consultas vienen detrás…" } },
+
+    { "id": "migration", "kind": "code", "lang": "sql", "file": "library-app/…/db/migration/V2__model_changes.sql", "numbers": false,
+      "code": "@file:real/change-migration.sql", "box": { "x": 160, "y": 300, "w": 1600, "h": 300 }, "size": 24,
+      "narration": { "en": "…and a new migration adds the column.",
+                     "es": "…y una migración nueva añade la columna." } },
+
+    { "id": "newfield", "kind": "live", "script": "live/newfield.mjs",
+      "narration": { "en": "Redeploy, and the books you already had are still there, and the form has the new field.",
+                     "es": "Vuelves a desplegar: los libros que ya tenías siguen ahí, y el formulario tiene el campo nuevo." } },
+
+    { "id": "close", "kind": "close", "title": "One aggregate. A running service.", "min": 6,
+      "lines": ["Next: the code that is yours."],
+      "narration": { "en": "One aggregate, a running service, and nothing written by hand yet. Next, the code that is yours: business logic, and where it lives.",
+                     "es": "Un agregado, un servicio en marcha y todavía nada escrito a mano. En el siguiente, el código que es tuyo: la lógica de negocio, y dónde vive." } }
+  ]
+}

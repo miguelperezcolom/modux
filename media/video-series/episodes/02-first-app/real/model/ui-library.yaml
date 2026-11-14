@@ -1,0 +1,10 @@
+id: ui-library
+name: Library
+serviceId: svc-library
+title: Library
+path: /library
+appType: APP
+menuItems:
+  - id: ui-library-books
+    label: Books
+    aggregateId: agg-book

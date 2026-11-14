@@ -1,0 +1,7 @@
+diff --git a/modux/aggregates/agg-book.yaml b/modux/aggregates/agg-book.yaml
+index 46118e5..ae8f9a3 100644
+--- a/modux/aggregates/agg-book.yaml
++++ b/modux/aggregates/agg-book.yaml
+@@ -4 +4 @@ title: Books
+-modelId: model-book
++modelId: model-bok
