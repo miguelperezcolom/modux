@@ -6,6 +6,7 @@ import type { Scene, SceneNode, SceneEdge, Point } from './scene.js';
 import { CONTAINER_HEADER, CONTAINER_INSET, containerMinSize } from './scene.js';
 import { orthogonalRoute } from './edge-routing.js';
 import { snapDragged, snapValue } from './snap.js';
+import { LanguageController, t } from './i18n/index.js';
 
 /** Segment intersection with parameter t on (a→b); endpoints excluded. */
 function segIntersect(
@@ -219,6 +220,7 @@ export type CanvasTool =
 
 @customElement('modux-canvas')
 export class ModuxCanvas extends LitElement {
+  readonly _i18n = new LanguageController(this);
   @property({ attribute: false }) scene: Scene = { nodes: [], edges: [] };
   @property({ attribute: false }) selectedId: string | null = null;
   /** Additional highlighted nodes (multi-selection, host-owned). */
@@ -1761,7 +1763,7 @@ export class ModuxCanvas extends LitElement {
                           e.stopPropagation();
                           this.removeWaypoint(edge, i);
                         }}>
-                  <title>Arrastra para ajustar · Supr o doble click para quitar el punto</title>
+                  <title>${t('canvas.waypoint.tooltip')}</title>
                 </circle>`;
             })
           : ''}
@@ -1773,7 +1775,7 @@ export class ModuxCanvas extends LitElement {
                   fill="var(--modux-canvas-bg, #ffffff)" stroke="#0000FF" stroke-width="1.4"
                   pointer-events="all" style="cursor: crosshair"
                   @pointerdown=${(e: PointerEvent) => this.beginBendDrag(e, edge, i)}>
-                  <title>Arrastra para crear un punto de ruptura</title></circle>`;
+                  <title>${t('canvas.bendpoint.tooltip')}</title></circle>`;
             })
           : ''}
       </g>
@@ -1801,6 +1803,39 @@ export class ModuxCanvas extends LitElement {
     if (!this._measureCtx) return text.length * 7.3; // headless fallback
     this._measureCtx.font = font;
     return this._measureCtx.measureText(text).width;
+  }
+
+  /** Tooltip of a node's connect handle: what dragging it to another element does. */
+  private handleTooltip(node: SceneNode, isChild: boolean): string {
+    if (!isChild) {
+      switch (node.kind) {
+        case 'note': return t('canvas.handle.note');
+        case 'service': return t('canvas.handle.service');
+        case 'boundedContext': return t('canvas.handle.boundedContext');
+        case 'actor': return t('canvas.handle.actor');
+        case 'ai-agent': return t('canvas.handle.aiAgent');
+        case 'mcp-gateway': return t('canvas.handle.mcpGateway');
+        case 'rag': return t('canvas.handle.rag');
+        case 'workflow-step': return t('canvas.handle.workflowStep');
+        case 'external-system': return t('canvas.handle.externalSystem');
+        case 'api': return t('canvas.handle.api');
+        case 'proxy-api': return t('canvas.handle.proxyApi');
+        case 'workflow': return t('canvas.handle.workflow');
+        default: return t('canvas.handle.default');
+      }
+    }
+    switch (node.kind) {
+      case 'api': return t('canvas.handle.childApi');
+      case 'proxy-api': return t('canvas.handle.childProxyApi');
+      case 'domain-event':
+      case 'application-event': return t('canvas.handle.childEvent');
+      case 'external-use-case':
+      case 'external-table': return t('canvas.handle.childExternalSource');
+      case 'api-operation': return t('canvas.handle.childApiOperation');
+      case 'api-op-occurrence': return t('canvas.handle.childApiOpOccurrence');
+      case 'use-case': return t('canvas.handle.childUseCase');
+      default: return t('canvas.handle.childDefault');
+    }
   }
 
   /** Label clipped with an ellipsis so it never spills past `maxW` px of its box. */
@@ -1846,7 +1881,7 @@ export class ModuxCanvas extends LitElement {
       isChild && node.label.length > 14 ? `${node.label.slice(0, 13)}…` : node.label;
     // Derived nodes (machine-made stubs) carry the ✦ mark and say so in their tooltip.
     const tooltip = node.derived
-      ? `${node.tooltip ? `${node.tooltip} — ` : ''}Inferido: stub generado por el sistema (no declarado a mano)`
+      ? `${node.tooltip ? `${node.tooltip} — ` : ''}${t('canvas.node.derivedTooltip')}`
       : node.tooltip;
     // Archi's "boxed" notation: EVERY element is a plain rectangle with its type icon
     // in the top-right corner and the name at the top — no distinctive silhouettes.
@@ -1889,8 +1924,8 @@ export class ModuxCanvas extends LitElement {
                   stroke=${node.diffKind === 'ADDED' ? '#16a34a' : '#d97706'}
                   stroke-width="2" stroke-dasharray="7 4" opacity="0.9">
                 <title>${node.diffKind === 'ADDED'
-                  ? 'Nuevo en esta solución (no existe en el sistema)'
-                  : 'Modificado respecto al sistema'}</title>
+                  ? t('canvas.node.diffAdded')
+                  : t('canvas.node.diffModified')}</title>
               </rect>`
           : ''}
         <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${amRx}
@@ -1918,8 +1953,8 @@ export class ModuxCanvas extends LitElement {
                   <text text-anchor="middle" y="4" font-size="12" style="fill: var(--modux-text-dim, #475569)"
                         pointer-events="none">${node.collapsed ? '▸' : '▾'}</text>
                   <title>${node.collapsed
-                    ? 'Expandir: muestra los hijos del nodo'
-                    : 'Contraer: oculta los hijos'}</title>
+                    ? t('canvas.node.expand')
+                    : t('canvas.node.collapse')}</title>
                 </g>`
           : ''}
         ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer || this.archimate)
@@ -2047,47 +2082,7 @@ export class ModuxCanvas extends LitElement {
                         style="fill: var(--modux-primary, #2563eb); stroke: var(--modux-surface, #ffffff)"
                         stroke-width="1.5"
                         @pointerdown=${(e: PointerEvent) => this.onHandlePointerDown(e, node)}>
-                  <title>${!isChild
-                    ? node.kind === 'note'
-                      ? 'Arrastra hasta cualquier elemento o relación: la nota quedará atada con un hilo'
-                    : node.kind === 'service'
-                      ? 'Arrastra hasta un módulo (o su contexto) para desplegarlo en este servicio'
-                    : node.kind === 'boundedContext'
-                      ? 'Arrastra hasta otro contexto (elige el patrón DDD), un IdP (identidad) o cualquier elemento (relación ArchiMate)'
-                    : node.kind === 'actor'
-                      ? 'Arrastra hasta un caso de uso, query service o agregado (deriva una UI), o hasta un sistema externo (dependencia)'
-                      : node.kind === 'ai-agent'
-                        ? 'Arrastra hasta una herramienta (caso de uso, query service, operación, servidor MCP, gateway), otro agente o un RAG'
-                        : node.kind === 'mcp-gateway'
-                          ? 'Arrastra hasta lo que expone: un servidor MCP, una API, una operación, un caso de uso o un RAG'
-                        : node.kind === 'rag'
-                          ? 'Arrastra hasta un read model: el RAG indexará su contenido'
-                          : node.kind === 'workflow-step'
-                          ? 'Arrastra hasta otro paso: el destino esperará a que éste complete'
-                          : node.kind === 'external-system'
-                            ? 'Arrastra hasta un caso de uso (lo llamará vía ACL), otro sistema externo, una API o un proxy (dependencia)'
-                            : node.kind === 'api'
-                              ? 'Arrastra hasta el sistema externo que la publica: la API se anida en él'
-                              : node.kind === 'proxy-api'
-                                ? 'Arrastra hasta la API que proxea, o hasta el sistema externo que lo aloja'
-                                : node.kind === 'workflow'
-                                  ? 'Arrastra hasta un caso de uso: el workflow lo orquestará como un paso'
-                                  : 'Arrastra hasta otro nodo para crear una relación'
-                    : node.kind === 'api'
-                      ? 'Arrastra hasta otro sistema externo: la API se moverá a ese publicador'
-                      : node.kind === 'proxy-api'
-                      ? 'Arrastra hasta la API que proxea, o a otro sistema externo para moverlo'
-                      : node.kind === 'domain-event' || node.kind === 'application-event'
-                      ? 'Arrastra hasta otro contexto o un read model para materializarlo (flow)'
-                      : node.kind === 'external-use-case' || node.kind === 'external-table'
-                        ? 'Arrastra hasta un read model o un contexto para proyectarlo (polling)'
-                        : node.kind === 'api-operation'
-                          ? 'Arrastra hasta el caso de uso, policy o contexto que la implementa'
-                          : node.kind === 'api-op-occurrence'
-                          ? 'Arrastra hasta la implementación que sirve esta operación (la API publicada o la de un bounded context)'
-                          : node.kind === 'use-case'
-                        ? 'Arrastra hasta otro caso de uso para invocarlo, o hasta un evento de aplicación para publicarlo'
-                        : 'Arrastra hasta un evento de dominio para declarar que lo emite'}</title>
+                  <title>${this.handleTooltip(node, isChild)}</title>
                 </circle>`,
             )
           : ''}
@@ -2118,7 +2113,7 @@ export class ModuxCanvas extends LitElement {
                         + '; stroke: ' + (this.archimate ? '#5C5C5C' : 'var(--modux-surface, #ffffff)')}
                       stroke-width=${this.archimate ? 1 : 1.5}
                       @pointerdown=${(e: PointerEvent) => this.onResizePointerDown(e, node, sx, sy)}>
-                  <title>Arrastra para cambiar el tamaño (Shift: simétrico desde el centro)</title>
+                  <title>${t('canvas.resize.tooltip')}</title>
                 </rect>`;
               },
             )
@@ -2250,7 +2245,7 @@ export class ModuxCanvas extends LitElement {
     return html`
       <div
         class="minimap"
-        title="Minimapa — click o arrastra para navegar"
+        title=${t('canvas.minimap.tooltip')}
         @pointerdown=${(e: PointerEvent) => {
           e.stopPropagation();
           try {
@@ -2445,8 +2440,8 @@ export class ModuxCanvas extends LitElement {
         ${this.scene.nodes.length === 0
           ? svg`<text x="50%" y="45%" text-anchor="middle" font-size="15" style="fill: var(--modux-text-faint, #94a3b8)"
                     font-family="ui-sans-serif, system-ui" pointer-events="none">
-                  <tspan x="50%">Lienzo vacío</tspan>
-                  <tspan x="50%" dy="1.5em">Arrastra elementos de la paleta para empezar</tspan>
+                  <tspan x="50%">${t('canvas.empty.title')}</tspan>
+                  <tspan x="50%" dy="1.5em">${t('canvas.empty.hint')}</tspan>
                 </text>`
           : ''}
       </svg>

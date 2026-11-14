@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Scene } from './scene.js';
 import type { ModuxModel, UiMenuEntryRef } from './model.js';
+import { LanguageController, language, t, type MessageKey } from './i18n/index.js';
 
 /**
  * Explorador radial del modelo: un árbol vivo con física de muelles.
@@ -80,66 +81,79 @@ const KIND_COLOR: Record<string, string> = {
   'mcp-server': '#c026d3',
 };
 
-const KIND_LABEL: Record<string, string> = {
-  root: 'Sistema',
-  boundedContext: 'Bounded context',
-  group: 'Grupo',
-  'external-system': 'Sistema externo',
-  'ui-app': 'App',
-  page: 'Página',
-  actor: 'Actor',
-  workflow: 'Workflow',
-  'identity-provider': 'IdP',
-  'ai-agent': 'Agente IA',
-  aggregate: 'Agregado',
-  entity: 'Entidad',
-  'use-case': 'Caso de uso',
-  policy: 'Policy',
-  'domain-event': 'Evento de dominio',
-  'application-event': 'Evento de aplicación',
-  'read-model': 'Read model',
-  'domain-service': 'Servicio de dominio',
-  'query-service': 'Servicio de consulta',
-  'scheduled-trigger': 'Trigger programado',
-  'etl-flow': 'Flujo ETL',
-  notification: 'Notificación',
-  document: 'Documento',
-  api: 'API',
-  'api-operation': 'Operación',
-  'external-use-case': 'Caso de uso externo',
-  'external-table': 'Tabla externa',
-  'mcp-server': 'MCP',
+/** Message key of each kind's display name (translated at render time). */
+const KIND_LABEL: Record<string, MessageKey> = {
+  root: 'explorer.kind.root',
+  boundedContext: 'explorer.kind.boundedContext',
+  group: 'explorer.kind.group',
+  'external-system': 'explorer.kind.externalSystem',
+  'ui-app': 'explorer.kind.uiApp',
+  page: 'explorer.kind.page',
+  actor: 'explorer.kind.actor',
+  workflow: 'explorer.kind.workflow',
+  'identity-provider': 'explorer.kind.identityProvider',
+  'ai-agent': 'explorer.kind.aiAgent',
+  aggregate: 'explorer.kind.aggregate',
+  entity: 'explorer.kind.entity',
+  'use-case': 'explorer.kind.useCase',
+  policy: 'explorer.kind.policy',
+  'domain-event': 'explorer.kind.domainEvent',
+  'application-event': 'explorer.kind.applicationEvent',
+  'read-model': 'explorer.kind.readModel',
+  'domain-service': 'explorer.kind.domainService',
+  'query-service': 'explorer.kind.queryService',
+  'scheduled-trigger': 'explorer.kind.scheduledTrigger',
+  'etl-flow': 'explorer.kind.etlFlow',
+  notification: 'explorer.kind.notification',
+  document: 'explorer.kind.document',
+  api: 'explorer.kind.api',
+  'api-operation': 'explorer.kind.apiOperation',
+  'external-use-case': 'explorer.kind.externalUseCase',
+  'external-table': 'explorer.kind.externalTable',
+  'mcp-server': 'explorer.kind.mcpServer',
 };
 
-/** Plural, for the hover summary («5 agregados», «3 casos de uso»). */
-const KIND_PLURAL: Record<string, string> = {
-  boundedContext: 'bounded contexts',
-  'external-system': 'sistemas externos',
-  'ui-app': 'apps',
-  page: 'páginas',
-  actor: 'actores',
-  workflow: 'workflows',
-  'identity-provider': 'IdPs',
-  'ai-agent': 'agentes IA',
-  aggregate: 'agregados',
-  entity: 'entidades',
-  'use-case': 'casos de uso',
-  policy: 'policies',
-  'domain-event': 'eventos de dominio',
-  'application-event': 'eventos de aplicación',
-  'read-model': 'read models',
-  'domain-service': 'servicios de dominio',
-  'query-service': 'servicios de consulta',
-  'scheduled-trigger': 'triggers programados',
-  'etl-flow': 'flujos ETL',
-  notification: 'notificaciones',
-  document: 'documentos',
-  api: 'APIs',
-  'api-operation': 'operaciones',
-  'external-use-case': 'casos de uso externos',
-  'external-table': 'tablas externas',
-  'mcp-server': 'MCPs',
+/** Plural, for the hover summary («5 aggregates», «3 use cases»). */
+const KIND_PLURAL: Record<string, MessageKey> = {
+  boundedContext: 'explorer.kindPlural.boundedContext',
+  'external-system': 'explorer.kindPlural.externalSystem',
+  'ui-app': 'explorer.kindPlural.uiApp',
+  page: 'explorer.kindPlural.page',
+  actor: 'explorer.kindPlural.actor',
+  workflow: 'explorer.kindPlural.workflow',
+  'identity-provider': 'explorer.kindPlural.identityProvider',
+  'ai-agent': 'explorer.kindPlural.aiAgent',
+  aggregate: 'explorer.kindPlural.aggregate',
+  entity: 'explorer.kindPlural.entity',
+  'use-case': 'explorer.kindPlural.useCase',
+  policy: 'explorer.kindPlural.policy',
+  'domain-event': 'explorer.kindPlural.domainEvent',
+  'application-event': 'explorer.kindPlural.applicationEvent',
+  'read-model': 'explorer.kindPlural.readModel',
+  'domain-service': 'explorer.kindPlural.domainService',
+  'query-service': 'explorer.kindPlural.queryService',
+  'scheduled-trigger': 'explorer.kindPlural.scheduledTrigger',
+  'etl-flow': 'explorer.kindPlural.etlFlow',
+  notification: 'explorer.kindPlural.notification',
+  document: 'explorer.kindPlural.document',
+  api: 'explorer.kindPlural.api',
+  'api-operation': 'explorer.kindPlural.apiOperation',
+  'external-use-case': 'explorer.kindPlural.externalUseCase',
+  'external-table': 'explorer.kindPlural.externalTable',
+  'mcp-server': 'explorer.kindPlural.mcpServer',
 };
+
+/** Display name of a node kind in the current language; the raw kind when unknown. */
+function kindLabel(kind: string): string {
+  const key = KIND_LABEL[kind];
+  return key ? t(key) : kind;
+}
+
+/** Plural display name of a node kind in the current language; the raw kind when unknown. */
+function kindPlural(kind: string): string {
+  const key = KIND_PLURAL[kind];
+  return key ? t(key) : kind;
+}
 
 const RADIUS = [30, 20, 13, 9.5, 7.5];
 const REST = [0, 180, 118, 80, 58];
@@ -152,6 +166,7 @@ const ANCHOR_K = 0.015;
 
 @customElement('modux-explorer')
 export class ModuxExplorer extends LitElement {
+  readonly _i18n = new LanguageController(this, { root: true });
   static styles = css`
     :host {
       display: block;
@@ -358,6 +373,8 @@ export class ModuxExplorer extends LitElement {
   /** Naming a curated view built from what is unfolded right now. */
   @state() private _viewNaming = false;
   @state() private _viewName = '';
+  /** Language the tree's baked labels were built in. */
+  private _treeLanguage = language();
   /** alt+click focus: only these keys render; undefined = everything. */
   private focusKeys?: Set<string>;
 
@@ -587,7 +604,8 @@ export class ModuxExplorer extends LitElement {
   }
 
   protected updated(changed: Map<string, unknown>): void {
-    if (changed.has('model') || changed.has('scene')) this.buildTree();
+    // The tree bakes translated labels (root, groups): a language change rebuilds it.
+    if (changed.has('model') || changed.has('scene') || (this.root && this._treeLanguage !== language())) this.buildTree();
     if (changed.has('sceneKey') && changed.get('sceneKey') !== undefined) {
       // A different view/vista took the stage: restore the hand-picked depth if
       // this scene has one. The scene now carries the WHOLE containment tree
@@ -618,7 +636,8 @@ export class ModuxExplorer extends LitElement {
 
   private buildTree(): void {
     if (this.root) this.rememberSubtree(this.root);
-    this.root = this.makeNode('root', 'root', 'Sistema', 0, undefined);
+    this.root = this.makeNode('root', 'root', t('explorer.kind.root'), 0, undefined);
+    this._treeLanguage = language();
     this.root.x = 0;
     this.root.y = 0;
     if (!this.prevByKey.has(this.root.key)) this.root.expanded = true;
@@ -750,8 +769,8 @@ export class ModuxExplorer extends LitElement {
           (m.emissions ?? []).filter((e) => aggIds.has(e.sourceId)).map((e) => e.domainEventId),
         );
         return [
-          ...(aggs.length ? [mk('group', `aggregates:${n.refId}`, `Agregados · ${aggs.length}`)] : []),
-          ...(ucs.length ? [mk('group', `use-cases:${n.refId}`, `Casos de uso · ${ucs.length}`)] : []),
+          ...(aggs.length ? [mk('group', `aggregates:${n.refId}`, t('explorer.tree.aggregatesGroup', { count: aggs.length }))] : []),
+          ...(ucs.length ? [mk('group', `use-cases:${n.refId}`, t('explorer.tree.useCasesGroup', { count: ucs.length }))] : []),
           ...(mod.domainEvents ?? [])
             .filter((x) => !emittedByAggregate.has(x.id))
             .map((x) => mk('domain-event', x.id, x.name)),
@@ -1560,10 +1579,10 @@ export class ModuxExplorer extends LitElement {
     for (const c of contents) counts.set(c.kind, (counts.get(c.kind) ?? 0) + 1);
     const lines: string[] = [];
     for (const [kind, count] of counts) {
-      lines.push(`${count} ${count === 1 ? (KIND_LABEL[kind] ?? kind).toLowerCase() : (KIND_PLURAL[kind] ?? kind)}`);
+      lines.push(`${count} ${count === 1 ? kindLabel(kind).toLowerCase() : kindPlural(kind)}`);
       if (lines.length === 4) {
         const rest = [...counts.keys()].length - 4;
-        if (rest > 0) lines[3] += ` (+${rest} tipos más)`;
+        if (rest > 0) lines[3] += ` ${t('explorer.card.moreKinds', { count: rest })}`;
         break;
       }
     }
@@ -1573,10 +1592,10 @@ export class ModuxExplorer extends LitElement {
       .map((c) => ({ label: c.label.length > 30 ? c.label.slice(0, 29) + '…' : c.label, color: c.color }));
     const more = contents.length - names.length;
     const title = n.label;
-    const sub = KIND_LABEL[n.kind] ?? n.kind;
+    const sub = kindLabel(n.kind);
     const hint =
-      (n.children?.length ? (n.expanded ? 'click: plegar' : 'click: expandir') : '') +
-      (n.kind !== 'root' ? (n.children?.length ? ' · ' : '') + 'doble click: abrir' : '');
+      (n.children?.length ? (n.expanded ? t('explorer.card.clickCollapse') : t('explorer.card.clickExpand')) : '') +
+      (n.kind !== 'root' ? (n.children?.length ? ' · ' : '') + t('explorer.card.doubleClickOpen') : '');
     ctx.save();
     ctx.font = '600 13px system-ui, sans-serif';
     const wTitle = ctx.measureText(title).width;
@@ -1628,7 +1647,7 @@ export class ModuxExplorer extends LitElement {
     });
     if (more > 0) {
       ctx.fillStyle = this.pal('--modux-text-faint', '#94a3b8');
-      ctx.fillText(`… y ${more} más`, 24, ny);
+      ctx.fillText(t('explorer.card.andMore', { count: more }), 24, ny);
     }
     if (hint) {
       ctx.fillStyle = this.pal('--modux-text-faint', '#94a3b8');
@@ -1971,7 +1990,7 @@ export class ModuxExplorer extends LitElement {
       <div class="search" @pointerdown=${(e: Event) => e.stopPropagation()}>
         <input
           type="text"
-          placeholder="Buscar en el modelo…"
+          placeholder=${t('explorer.search.placeholder')}
           .value=${this._q}
           @input=${this.onSearchInput}
           @keydown=${this.onSearchKeydown}
@@ -1986,58 +2005,58 @@ export class ModuxExplorer extends LitElement {
                 >
                   <span class="dot" style="background:${n.color}"></span>
                   <span class="name">${n.label}</span>
-                  <span class="path">${this.pathOf(n) || (KIND_LABEL[n.kind] ?? n.kind)}</span>
+                  <span class="path">${this.pathOf(n) || kindLabel(n.kind)}</span>
                 </li>`,
               )}
             </ul>`
           : this._q.trim().length >= 2
-            ? html`<ul class="sugs"><li class="empty">sin resultados</li></ul>`
+            ? html`<ul class="sugs"><li class="empty">${t('explorer.search.noResults')}</li></ul>`
             : null}
       </div>
       <div class="controls" @pointerdown=${(e: Event) => e.stopPropagation()}>
-        <span>Niveles</span>
+        <span>${t('explorer.controls.levels')}</span>
         <input
           type="range"
           min="0"
           max=${Math.max(5, this.sceneDepth())}
           step="1"
           .value=${String(this._levels)}
-          title="Cuántos niveles se ven abiertos"
+          title=${t('explorer.controls.levelsTooltip')}
           @input=${(e: Event) => this.applyLevelsManually(Number((e.target as HTMLInputElement).value))}
         />
-        <button title="Plegarlo todo y volver a empezar" @click=${() => this.applyLevelsManually(0)}>
-          Replegar
+        <button title=${t('explorer.controls.collapseAllTooltip')} @click=${() => this.applyLevelsManually(0)}>
+          ${t('explorer.controls.collapseAll')}
         </button>
-        <span>Física</span>
+        <span>${t('explorer.controls.physics')}</span>
         <input
           type="range"
           min="0"
           max="100"
           step="5"
           .value=${String(Math.round(this._motion * 100))}
-          title="Cuánto se mueve el mapa: 0 aparca los nodos en equilibrio"
+          title=${t('explorer.controls.physicsTooltip')}
           @input=${(e: Event) => (this._motion = Number((e.target as HTMLInputElement).value) / 100)}
         />
         <button
-          title=${this._motion > 0 ? 'Parar del todo (física a 0)' : 'Reanudar el movimiento'}
+          title=${this._motion > 0 ? t('explorer.controls.stopMotion') : t('explorer.controls.resumeMotion')}
           @click=${() => (this._motion = this._motion > 0 ? 0 : 1)}
         >
           ${this._motion > 0 ? '⏸' : '▶'}
         </button>
         <button
           title=${this._threads
-            ? 'Enseñar los hilos de relaciones solo al hacer hover'
-            : 'Enseñar SIEMPRE los hilos de relaciones'}
+            ? t('explorer.controls.threadsHoverTooltip')
+            : t('explorer.controls.threadsAlwaysTooltip')}
           @click=${() => (this._threads = !this._threads)}
         >
-          ${this._threads ? '∿ Hilos: siempre' : '∿ Hilos: hover'}
+          ∿ ${this._threads ? t('explorer.controls.threadsAlways') : t('explorer.controls.threadsHover')}
         </button>
         ${this._viewNaming
           ? html`
               <input
                 type="text"
                 style="width: 130px"
-                placeholder="Nombre de la vista…"
+                placeholder=${t('explorer.view.namePlaceholder')}
                 .value=${this._viewName}
                 @input=${(e: Event) => (this._viewName = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => {
@@ -2045,21 +2064,21 @@ export class ModuxExplorer extends LitElement {
                   if (e.key === 'Escape') this._viewNaming = false;
                 }}
               />
-              <button @click=${() => this.createViewFromVisible()}>Crear</button>
+              <button @click=${() => this.createViewFromVisible()}>${t('explorer.view.create')}</button>
               <button @click=${() => (this._viewNaming = false)}>✕</button>
             `
           : html`<button
-              title="Crea una vista modux con los elementos desplegados ahora mismo"
+              title=${t('explorer.view.newTooltip')}
               @click=${() => (this._viewNaming = true)}
             >
-              ⊞ Vista…
+              ⊞ ${t('explorer.view.new')}
             </button>`}
       </div>
       <div class="hud">
-        click: seleccionar y expandir / plegar · alt+click: aislar lo relacionado · doble click: abrir<br />
-        shift+arrastrar desde un nodo: trazar una relación · arrastrar en el fondo: selección<br />
-        espacio+arrastrar: mover el lienzo · rueda: zoom · Supr borra · F2 renombra · Ctrl+Z deshace<br />
-        buscar: expande el camino y vuela hasta el nodo · arrastrar nodo: tirar del subárbol
+        ${t('explorer.help.line1')}<br />
+        ${t('explorer.help.line2')}<br />
+        ${t('explorer.help.line3')}<br />
+        ${t('explorer.help.line4')}
       </div>
     `;
   }
