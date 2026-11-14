@@ -46,8 +46,9 @@ mvn -f plugin/pom.xml install
 ## The IntelliJ plugin
 
 The plugin (`Modux`) hosts the [graphical editor](/manual/graphical-editor-guide/) inside
-IntelliJ IDEA 2025.1 or later, over the model files of the open repository. Its zip is
-attached to each [GitHub release](https://github.com/miguelperezcolom/modux/releases):
+IntelliJ IDEA 2025.1 or later, over the model files of the open repository. Install it from
+the JetBrains Marketplace (*Settings → Plugins*, search «Modux»), or take the zip attached to
+each [GitHub release](https://github.com/miguelperezcolom/modux/releases) and use
 *Settings → Plugins → ⚙ → Install Plugin from Disk…*. To build it yourself:
 `cd intellij-plugin && ./gradlew buildPlugin` (the zip lands in `build/distributions/`).
 
