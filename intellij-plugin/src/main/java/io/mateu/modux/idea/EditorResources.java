@@ -1,5 +1,6 @@
 package io.mateu.modux.idea;
 
+import com.intellij.DynamicBundle;
 import com.intellij.openapi.Disposable;
 import com.intellij.ui.jcef.utils.JBCefStreamResourceHandler;
 import org.cef.browser.CefBrowser;
@@ -42,6 +43,16 @@ final class EditorResources extends CefRequestHandlerAdapter {
     static final String ORIGIN = "http://modux-editor.localhost";
 
     static final String INDEX = ORIGIN + "/index.html";
+
+    /**
+     * The IDE's UI language as a BCP 47 tag, for the page's {@code <html lang>}: the editor picks
+     * its own language from it (Spanish for {@code es*}, English otherwise).
+     */
+    static String uiLanguage() {
+        String tag = DynamicBundle.getLocale().toLanguageTag();
+        // a language tag is letters, digits and dashes; anything else would break the markup
+        return tag.matches("[A-Za-z0-9-]+") ? tag : "en";
+    }
 
     private final String page;
     private final Disposable parent;

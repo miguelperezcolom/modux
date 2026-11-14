@@ -1,6 +1,7 @@
 import type { ModuxModel, UiAppRef, UiMenuEntryRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 import { CONTAINER_INSET } from '../scene.js';
+import { t } from '../i18n/index.js';
 
 /**
  * UI view: the model of the user interface, Mateu-shaped. Apps (UiAdapter) are
@@ -93,30 +94,30 @@ export function uiScene(
       collapsed: entries.length > 0 && !appExpanded,
       badge:
         appType === 'ORCHESTRATOR'
-          ? 'ORQUESTADOR'
+          ? t('views.ui.orchestratorBadge')
           : appType === 'MASTER_DETAIL'
-            ? 'MAESTRO·DETALLE'
+            ? t('views.ui.masterDetailBadge')
             : appType === 'VIEW_EDITOR'
-              ? 'VISTA·EDITOR'
+              ? t('views.ui.viewEditorBadge')
               : 'APP',
       // only a plain APP has a home; MD is header+tabs, the orchestrator only child pages
       extraHandles:
         appType === 'MASTER_DETAIL'
-          ? [{ kind: 'header', title: 'Cabecera: arrastra hasta la página que hace de cabecera', color: '#0ea5e9' }]
+          ? [{ kind: 'header', title: t('views.ui.headerHandle'), color: '#0ea5e9' }]
           : appType === 'VIEW_EDITOR'
             ? [
-                { kind: 'view', title: 'Vista: arrastra hasta la página de detalle (solo lectura)', color: '#0891b2' },
-                { kind: 'edit', title: 'Edición: arrastra hasta la página de edición', color: '#e11d48' },
+                { kind: 'view', title: t('views.ui.viewHandle'), color: '#0891b2' },
+                { kind: 'edit', title: t('views.ui.editHandle'), color: '#e11d48' },
               ]
             : appType === 'ORCHESTRATOR'
               ? undefined
-              : [{ kind: 'home', title: 'Home: arrastra hasta la página (o la app) con la que abre', color: '#16a34a' }],
+              : [{ kind: 'home', title: t('views.ui.homeHandle'), color: '#16a34a' }],
       tooltip:
         appType === 'ORCHESTRATOR'
-          ? `${app.name} — orquesta y mantiene estado; solo enseña páginas hijas`
+          ? t('views.ui.orchestratorTooltip', { name: app.name })
           : appType === 'MASTER_DETAIL'
-            ? `${app.name} — cabecera + pestañas (ambas son páginas)`
-            : `App: ${app.name}`,
+            ? t('views.ui.masterDetailTooltip', { name: app.name })
+            : t('views.ui.appTooltip', { name: app.name }),
     });
     if (app.modelId) {
       chipMeta.set(app.modelId, {
@@ -130,16 +131,16 @@ export function uiScene(
         sourceId: app.id,
         targetId: app.modelId,
         kind: 'app-model',
-        label: 'estado',
+        label: t('views.ui.stateEdge'),
         color: '#8b5cf6',
         dashed: true,
         arrow: true,
-        tooltip: 'el viewmodel de la app: el estado que mantiene y comparte con sus páginas',
+        tooltip: t('views.ui.stateEdgeTooltip'),
       });
     }
     for (const [pid, kindName, label, color, tip] of [
-      [app.viewPageId, 'app-view', 'vista', '#0891b2', 'el detalle solo lectura'],
-      [app.editPageId, 'app-edit', 'edición', '#e11d48', 'la vista de edición'],
+      [app.viewPageId, 'app-view', t('views.ui.viewEdge'), '#0891b2', t('views.ui.viewEdgeTooltip')],
+      [app.editPageId, 'app-edit', t('views.ui.editEdge'), '#e11d48', t('views.ui.editEdgeTooltip')],
     ] as const) {
       if (!pid) continue;
       edges.push({
@@ -165,8 +166,8 @@ export function uiScene(
         markerStart: 'ball',
         markerEnd: 'arrow',
         tooltip: app.homeAppId
-          ? 'la app con la que abre (assignment)'
-          : 'la página con la que abre la app (assignment)',
+          ? t('views.ui.homeAppTooltip')
+          : t('views.ui.homePageTooltip'),
       });
     }
     if (appType === 'MASTER_DETAIL' && app.headerPageId) {
@@ -176,9 +177,9 @@ export function uiScene(
         targetId: app.headerPageId,
         kind: 'app-header',
         color: '#0ea5e9',
-        label: 'cabecera',
+        label: t('views.ui.headerEdge'),
         arrow: true,
-        tooltip: 'la página que hace de cabecera; las demás son pestañas',
+        tooltip: t('views.ui.headerEdgeTooltip'),
       });
     }
     let entryY = pos.y + h / 2 + CONTAINER_INSET + ENTRY_H / 2;
@@ -199,18 +200,18 @@ export function uiScene(
         stroke: '#7dd3fc',
         ownerId: app.id,
         tooltip: entry.children?.length
-          ? 'Agrupador (con submenú): no puede abrir nada'
+          ? t('views.ui.menuGroupTooltip')
           : entry.pageId
-            ? `Abre ${entry.pageId}`
+            ? t('views.ui.menuOpensPage', { target: entry.pageId })
             : entry.uiAdapterId
-              ? `Abre la app ${entry.uiAdapterId}`
+              ? t('views.ui.menuOpensApp', { target: entry.uiAdapterId })
               : entry.useCaseId
-                ? `Lanza ${entry.useCaseId}`
+                ? t('views.ui.menuLaunches', { target: entry.useCaseId })
                 : entry.aggregateId
-                  ? `CRUD inferido sobre ${entry.aggregateId}`
+                  ? t('views.ui.menuCrud', { target: entry.aggregateId })
                   : entry.queryOperationId
-                    ? `Listado con filtros de ${entry.queryOperationId}`
-                    : 'Entrada de menú sin destino',
+                    ? t('views.ui.menuListing', { target: entry.queryOperationId })
+                    : t('views.ui.menuNoTarget'),
       });
       entryY += ENTRY_H + ENTRY_GAP;
       if (entry.uiAdapterId && apps.some((a) => a.id === entry.uiAdapterId)) {
@@ -274,7 +275,7 @@ export function uiScene(
             sourceId: id,
             targetId: op.id,
             kind: 'menu-query-operation',
-            label: 'listado',
+            label: t('views.ui.listingEdge'),
             color: '#0284c7',
             dashed: true,
             arrow: true,
@@ -290,7 +291,7 @@ export function uiScene(
           color: '#64748b',
           markerStart: 'ball',
           markerEnd: 'arrow',
-          tooltip: 'la página que abre la opción (assignment)',
+          tooltip: t('views.ui.menuPageEdge'),
         });
       }
     }
@@ -320,11 +321,11 @@ export function uiScene(
       collapsible: wizSteps.length > 0,
       collapsed: wizSteps.length > 0 && !pageExpanded,
       extraHandles: [
-        { kind: 'viewmodel', title: 'Viewmodel: arrastra hasta el modelo de datos de la página', color: '#8b5cf6' },
+        { kind: 'viewmodel', title: t('views.ui.viewmodelHandle'), color: '#8b5cf6' },
         ...(page.type === 'CRUD'
           ? [
-              { kind: 'crud-detail', title: 'Detalle: arrastra hasta la página o app que abre una fila', color: '#ea580c' },
-              { kind: 'crud-create', title: 'Alta: arrastra hasta la página o app del nuevo registro', color: '#0d9488' },
+              { kind: 'crud-detail', title: t('views.ui.crudDetailHandle'), color: '#ea580c' },
+              { kind: 'crud-create', title: t('views.ui.crudCreateHandle'), color: '#0d9488' },
             ]
           : []),
       ],
@@ -337,7 +338,7 @@ export function uiScene(
       const key = step.id ?? step.pageId ?? String(i);
       nodes.push({
         id: `wizrow:${page.id}:${key}`,
-        label: `${i + 1}. ${step.label ?? (step.pageId ? pageNameOf(step.pageId) : 'Paso')}${step.pageId ? '' : ' ⌁'}`,
+        label: `${i + 1}. ${step.label ?? (step.pageId ? pageNameOf(step.pageId) : t('views.ui.wizardStepFallback'))}${step.pageId ? '' : ' ⌁'}`,
         x: pos.x,
         y: stepY,
         w: PAGE_W - CONTAINER_INSET * 2,
@@ -348,14 +349,14 @@ export function uiScene(
         stroke: '#c4b5fd',
         ownerId: page.id,
         tooltip: step.pageId
-          ? `Paso ${i + 1}: ${pageNameOf(step.pageId)} — arrastra el asa hasta otra página para re-mapearlo`
-          : `Paso ${i + 1}, sin página — arrastra el asa hasta la página que lo implementa`,
+          ? t('views.ui.wizardStepTooltip', { n: i + 1, page: pageNameOf(step.pageId) })
+          : t('views.ui.wizardStepUnmapped', { n: i + 1 }),
       });
       stepY += ENTRY_H + ENTRY_GAP;
     });
     for (const [target, kindName, label, color] of [
-      [page.crudDetailPageId ?? page.crudDetailAppId, 'crud-detail', 'detalle', '#ea580c'],
-      [page.crudCreatePageId ?? page.crudCreateAppId, 'crud-create', 'nuevo', '#0d9488'],
+      [page.crudDetailPageId ?? page.crudDetailAppId, 'crud-detail', t('views.ui.crudDetailEdge'), '#ea580c'],
+      [page.crudCreatePageId ?? page.crudCreateAppId, 'crud-create', t('views.ui.crudCreateEdge'), '#0d9488'],
     ] as const) {
       if (!target) continue;
       edges.push({
@@ -367,7 +368,7 @@ export function uiScene(
         label,
         dashed: true,
         arrow: true,
-        tooltip: kindName === 'crud-detail' ? 'lo que abre una fila del CRUD' : 'el formulario de nuevo registro',
+        tooltip: kindName === 'crud-detail' ? t('views.ui.crudDetailEdgeTooltip') : t('views.ui.crudCreateEdgeTooltip'),
       });
     }
     for (let i = 0; i < (page.wizardSteps ?? []).length; i++) {
@@ -383,7 +384,7 @@ export function uiScene(
         color: '#7c3aed',
         dashed: true,
         arrow: true,
-        tooltip: `la página que implementa el paso ${i + 1} — Supr desmapea`,
+        tooltip: t('views.ui.wizardStepEdge', { n: i + 1 }),
       });
     }
     if (page.modelId) {
@@ -422,8 +423,8 @@ export function uiScene(
         dashed: true,
         arrow: true,
         tooltip: button.mappingId
-          ? `Botón «${button.label}» — mapping ${button.mappingId}`
-          : `Botón «${button.label}» — el viewmodel viaja tal cual (sin mapping)`,
+          ? t('views.ui.buttonMapping', { label: button.label, mapping: button.mappingId })
+          : t('views.ui.buttonNoMapping', { label: button.label }),
       });
     }
     if (page.listingQueryServiceId) {
@@ -438,7 +439,7 @@ export function uiScene(
         sourceId: page.id,
         targetId: page.listingQueryServiceId,
         kind: 'page-listing',
-        label: 'listado',
+        label: t('views.ui.listingEdge'),
         color: '#0284c7',
         dashed: true,
         arrow: true,
@@ -468,16 +469,16 @@ export function uiScene(
       h,
       kind: 'button-group',
       symbol: 'usecase',
-      badge: 'BOTONES',
+      badge: t('views.ui.buttonGroupBadge'),
       collapsible: rows > 0,
       collapsed: rows > 0 && !grpExpanded,
       fill: '#ffffff',
       stroke: '#0e7490',
       extraHandles: [
-        { kind: 'toolbar', title: 'Toolbar: arrastra hasta una página para engancharlo arriba', color: '#0284c7' },
-        { kind: 'bottom', title: 'Botonera: arrastra hasta una página para engancharlo abajo', color: '#7c3aed' },
+        { kind: 'toolbar', title: t('views.ui.toolbarHandle'), color: '#0284c7' },
+        { kind: 'bottom', title: t('views.ui.bottomBarHandle'), color: '#7c3aed' },
       ],
-      tooltip: `${g.name} — grupo de botones: la paleta añade botones dentro; sus asas lo enganchan al toolbar o la botonera de una página`,
+      tooltip: t('views.ui.buttonGroupTooltip', { name: g.name }),
     });
     let rowY = pos.y + h / 2 + CONTAINER_INSET + ENTRY_H / 2;
     for (const bt of grpExpanded ? buttons : []) {
@@ -494,7 +495,7 @@ export function uiScene(
         stroke: '#0e7490',
         dashed: !bt.useCaseId && !bt.apiOperationId,
         ownerId: g.id,
-        tooltip: `${bt.label ?? bt.id} — arrastra su asa hasta un caso de uso o policy para fijar qué dispara; Supr lo quita del grupo`,
+        tooltip: t('views.ui.groupButtonTooltip', { name: bt.label ?? bt.id }),
       });
       rowY += ENTRY_H + ENTRY_GAP;
     }
@@ -511,7 +512,7 @@ export function uiScene(
         fill: '#f0fdfa',
         stroke: '#0e7490',
         ownerId: g.id,
-        tooltip: `Subgrupo ${groupName(sub)} — Supr lo desanida (el grupo sigue existiendo)`,
+        tooltip: t('views.ui.subgroupTooltip', { name: groupName(sub) }),
       });
       rowY += ENTRY_H + ENTRY_GAP;
     }
@@ -534,7 +535,7 @@ export function uiScene(
         kind: 'gbtn-target',
         color: '#06b6d4',
         arrow: true,
-        tooltip: `«${bt.label ?? bt.id}» dispara este caso de uso — Supr lo desconecta`,
+        tooltip: t('views.ui.groupButtonEdge', { name: bt.label ?? bt.id }),
       });
     }
   }
@@ -552,10 +553,10 @@ export function uiScene(
           targetId: page.id,
           kind: 'bar-group',
           color: bar === 'toolbar' ? '#0284c7' : '#7c3aed',
-          label: bar,
+          label: bar === 'toolbar' ? t('views.ui.toolbarEdge') : t('views.ui.bottomBarEdge'),
           dashed: true,
           arrow: true,
-          tooltip: `Grupo enganchado a la ${bar} de ${page.name} — Supr lo desengancha`,
+          tooltip: t(bar === 'toolbar' ? 'views.ui.toolbarGroupEdge' : 'views.ui.bottomBarGroupEdge', { page: page.name }),
         });
       }
     }
@@ -603,7 +604,7 @@ export function uiScene(
       stroke: '#ca8a04',
       dashed: !!idp.publishedByExternalSystemId,
       badge: idp.type ?? 'IDP',
-      tooltip: `${idp.name} — arrastra una app hasta él: sus usuarios autenticarán aquí`,
+      tooltip: t('views.ui.idpTooltip', { name: idp.name }),
     });
   }
   for (const app of apps) {
@@ -615,10 +616,10 @@ export function uiScene(
       targetId: app.identityProviderId,
       kind: 'idp-auth',
       color: '#ca8a04',
-      label: 'autentica con',
+      label: t('views.ui.authenticatesWith'),
       dashed: true,
       arrow: true,
-      tooltip: 'los usuarios de esta app se autentican contra este IdP — Supr lo desconecta',
+      tooltip: t('views.ui.authEdgeTooltip'),
     });
   }
 
@@ -672,7 +673,7 @@ export function uiScene(
       stroke: '#0f172a',
       badge: 'CODE',
       dashed: true,
-      tooltip: `${cc.name} — código a mano: arrastra una página hasta él para hacerla custom, y su asa hasta cualquier elemento que use`,
+      tooltip: t('views.ui.customCodeTooltip', { name: cc.name }),
     });
   });
   const uiNodeIds = new Set(nodes.map((n) => n.id));
@@ -686,7 +687,7 @@ export function uiScene(
         color: '#0f172a',
         dashed: true,
         arrow: true,
-        tooltip: `La página ${page.name} es CUSTOM: delega en este código — Supr lo desconecta`,
+        tooltip: t('views.ui.customPageEdge', { name: page.name }),
       });
     }
   }
@@ -701,7 +702,7 @@ export function uiScene(
         color: '#64748b',
         dashed: true,
         arrow: true,
-        tooltip: `${cc.name} usa este elemento — Supr lo desconecta`,
+        tooltip: t('views.ui.customCodeUses', { name: cc.name }),
       });
     }
   }
@@ -721,7 +722,7 @@ export function uiScene(
       fill: '#f0f9ff',
       stroke: '#0ea5e9',
       badge: 'UI',
-      tooltip: `${u.name} — interfaz declarada: traza una línea hasta la app o la página asignada`,
+      tooltip: t('views.ui.uiTooltip', { name: u.name }),
     });
     for (const target of [...(u.appIds ?? []), ...(u.pageIds ?? [])]) {
       if (!nodes.some((n) => n.id === target)) continue;
@@ -733,7 +734,7 @@ export function uiScene(
         color: '#0ea5e9',
         markerStart: 'ball',
         markerEnd: 'arrow',
-        tooltip: 'asignada a la UI (assignment) — Supr la desconecta',
+        tooltip: t('views.ui.uiAssignmentEdge'),
       });
     }
     for (const actor of u.actorIds ?? []) {
@@ -745,7 +746,7 @@ export function uiScene(
         kind: 'ui-serving',
         color: '#0ea5e9',
         markerEnd: 'open-arrow',
-        tooltip: 'la UI sirve a este actor (serving) — Supr la desconecta',
+        tooltip: t('views.ui.uiServingEdge'),
       });
     }
   });

@@ -17,6 +17,7 @@ import { ideFileSystem, hostBridge, readView, writeView, type IdeFileSystem } fr
 import { ModelStore } from '../store/store.js';
 import { toMx, fromMx, type StratModel } from './bridge.js';
 import { stratFromStore, applyStratToStore, geometryFrom, type ViewDocLike } from './adapter.js';
+import { t } from '../i18n/index.js';
 
 // The bridge's file ops are already relative to the catalog (`.modux/`), so the tree root is empty
 // — bucket names sit directly under it (`systems/`, `boundedContexts/`), not `.modux/systems/`.
@@ -37,7 +38,7 @@ class DrawioHost {
   async start(): Promise<void> {
     const bridge = hostBridge();
     if (!bridge) {
-      this.fail('Sin puente con el IDE (window.moduxBridge ausente).');
+      this.fail(t('hosts.drawio.noBridge'));
       return;
     }
     try {
@@ -45,7 +46,7 @@ class DrawioHost {
       this.doc = (parse(await readView(bridge)) as ViewDocLike) ?? {};
       this.store = await loadTree(this.fs, ROOT);
     } catch (e) {
-      this.fail(`No se pudo abrir el modelo: ${msg(e)}`);
+      this.fail(t('hosts.drawio.openModelFailed', { message: msg(e) }));
       return;
     }
 

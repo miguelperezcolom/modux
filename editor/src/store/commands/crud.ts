@@ -13,12 +13,13 @@ import {
   crudApi, crudApiId, crudUseCaseIds, crudUseCases, lifecycleEvents, listingQuery, listingQueryId,
 } from '../scaffold.js';
 import { CommandError, type Handler } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 export const CRUD_COMMANDS: Record<string, Handler> = {
   /** An actor may run the aggregate's CRUD. */
   'add-actor-crud': (store, command) => {
     const actor = store.get('roles', String(command.sourceId));
-    if (!actor) throw new CommandError(`Actor desconocido: ${command.sourceId}`);
+    if (!actor) throw new CommandError(t('store.unknown.actor', { id: command.sourceId }));
     const aggregate = requireAggregate(store, command.targetId);
     ensureCrudCore(store, aggregate);
     for (const id of crudUseCaseIds(aggregate.id)) {
@@ -53,7 +54,7 @@ export const CRUD_COMMANDS: Record<string, Handler> = {
   /** Another bounded context integrates with the aggregate: it needs the contract, not the trio. */
   'add-context-crud': (store, command) => {
     if (!store.has('boundedContexts', String(command.sourceId))) {
-      throw new CommandError(`Bounded context desconocido: ${command.sourceId}`);
+      throw new CommandError(t('store.unknown.boundedContext', { id: command.sourceId }));
     }
     ensureCrudApi(store, requireAggregate(store, command.targetId));
   },
@@ -67,7 +68,7 @@ export const CRUD_COMMANDS: Record<string, Handler> = {
    */
   'add-external-crud': (store, command) => {
     const external = store.get('externalSystems', String(command.sourceId));
-    if (!external) throw new CommandError(`Sistema externo desconocido: ${command.sourceId}`);
+    if (!external) throw new CommandError(t('store.unknown.externalSystem', { id: command.sourceId }));
     const aggregate = requireAggregate(store, command.targetId);
     const apiId = ensureCrudApi(store, aggregate);
     const context = ensureCrudCore(store, aggregate);
@@ -89,7 +90,7 @@ function ensureCrudCore(store: ModelStore, aggregate: Element): Element {
   const context = store.findByListMember('boundedContexts', 'aggregateIds', aggregate.id);
   if (!context) {
     throw new CommandError(
-      `El agregado ${aggregate.id} no pertenece a ningún bounded context`);
+      t('store.crud.aggregateWithoutContext', { id: aggregate.id }));
   }
   for (const useCase of crudUseCases(aggregate)) {
     if (!store.has('useCases', useCase.id)) store.put('useCases', useCase);
@@ -144,7 +145,7 @@ function wireInboundAcl(
 
 function requireAggregate(store: ModelStore, id: unknown): Element {
   const aggregate = store.get('aggregates', String(id));
-  if (!aggregate) throw new CommandError(`Agregado desconocido: ${id}`);
+  if (!aggregate) throw new CommandError(t('store.unknown.aggregate', { id: String(id) }));
   return aggregate;
 }
 

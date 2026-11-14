@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { setLanguage } from '../../i18n/index.js';
 import { workflowsScene } from '../workflows.js';
 import { baseModel } from './fixtures.js';
+
+// The scenes below are built while the suite is collected (before any hook runs), so the
+// language is set at import time.
+setLanguage('es');
 
 const wfModel = () =>
   baseModel({

@@ -9,6 +9,7 @@
 
 import { nested, type Element, type ModelStore } from '../store.js';
 import { CommandError, type Handler } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 /** A type whose element carries the name directly. `field` is what actually holds it. */
 interface TopLevel {
@@ -96,7 +97,7 @@ export const RENAME_COMMANDS: Record<string, Handler> = {
    */
   'rename-element': (store, command) => {
     const kind = String(command.type ?? '');
-    if (!kind) throw new CommandError('rename-element: falta el tipo de elemento');
+    if (!kind) throw new CommandError(t('store.rename.missingType'));
     const id = String(command.id);
 
     // A not-yet-adopted (loose) element lives in the looseElements bucket, whatever its kind — rename
@@ -124,7 +125,7 @@ export const RENAME_COMMANDS: Record<string, Handler> = {
 
     const nestedSpec = NESTED[kind];
     if (!nestedSpec) {
-      throw new CommandError(`rename-element no soportado para: ${kind}`);
+      throw new CommandError(t('store.rename.unsupported', { type: kind }));
     }
     renameNested(store, nestedSpec, id, command.name);
   },
@@ -143,7 +144,7 @@ export const DESCRIBE_COMMANDS: Record<string, Handler> = {
     const top = TOP_LEVEL[kind];
     if (top) { if (store.has(top.type, id)) store.patch(top.type, id, { description: text }); return; }
     const spec = NESTED[kind];
-    if (!spec) throw new CommandError(`set-element-description no soportado para: ${kind}`);
+    if (!spec) throw new CommandError(t('store.rename.describeUnsupported', { type: kind }));
     const found = store.findOwner(spec.owners, spec.list, id);
     if (!found) return;
     store.patch(found.type, found.element.id, {

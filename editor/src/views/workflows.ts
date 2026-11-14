@@ -1,5 +1,6 @@
 import type { ModuxModel, WorkflowRef, WorkflowStepRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Workflows view: each workflow as a dependency DAG — trigger source →(event,
@@ -118,7 +119,10 @@ export function workflowsScene(
       badge: 'WORKFLOW',
       collapsible: workflow.steps.length > 0,
       collapsed: workflow.steps.length > 0 && !wfExpanded,
-      tooltip: `${workflow.name}${workflow.triggerEvent ? ` — arranca con ${workflow.triggerEvent}` : ''}${workflow.onCompletionEventName ? ` · emite ${workflow.onCompletionEventName} al completar` : ''}`,
+      tooltip:
+        workflow.name +
+        (workflow.triggerEvent ? t('views.workflows.startsOn', { event: workflow.triggerEvent }) : '') +
+        (workflow.onCompletionEventName ? t('views.workflows.emitsOnCompletion', { event: workflow.onCompletionEventName }) : ''),
     });
     if (source) {
       edges.push({
@@ -130,7 +134,7 @@ export function workflowsScene(
         color: '#94a3b8',
         dashed: true,
         arrow: true,
-        tooltip: workflow.triggerEvent ? `Evento: ${workflow.triggerEvent}` : undefined,
+        tooltip: workflow.triggerEvent ? t('views.flows.triggerEvent', { event: workflow.triggerEvent }) : undefined,
       });
     }
 
@@ -165,12 +169,21 @@ export function workflowsScene(
         badge: step.type === 'JOIN' ? '⨝ JOIN'
           : step.type === 'SPLIT' ? '⑃ SPLIT'
           : step.roleId ? `👤 ${step.roleId}${step.formPageId ? ' · 📋' : ''}${step.deadline ? ` · ${step.deadline}` : ''}`
-          : target ? `→ ${target}` : '∅ sin use case',
+          : target ? `→ ${target}` : `∅ ${t('views.workflows.noUseCase')}`,
         tooltip: step.type === 'JOIN'
-          ? `${step.name} — espera a TODAS sus dependencias antes de seguir`
+          ? t('views.workflows.joinStepTooltip', { name: step.name })
           : step.type === 'SPLIT'
-            ? `${step.name} — abre ramas paralelas: los pasos que dependan de él arrancan a la vez`
-            : `${step.name}${step.roleId ? ` · tarea HUMANA de ${step.roleId}${step.deadline ? ` (plazo ${step.deadline})` : ''}` : ''}${step.emittedEventName ? ` · emite ${step.emittedEventName}` : ''}${target ? ` · lanza ${target}` : ''}${step.completionEventName ? ` · espera ${step.completionEventName}` : ''}${step.compensationUseCaseId ? ' · ⎌ compensable' : ''}`,
+            ? t('views.workflows.splitStepTooltip', { name: step.name })
+            : step.name +
+              (step.roleId
+                ? step.deadline
+                  ? t('views.workflows.humanTaskWithDeadline', { role: step.roleId, deadline: step.deadline })
+                  : t('views.workflows.humanTask', { role: step.roleId })
+                : '') +
+              (step.emittedEventName ? t('views.workflows.stepEmits', { event: step.emittedEventName }) : '') +
+              (target ? t('views.workflows.stepLaunches', { useCase: target }) : '') +
+              (step.completionEventName ? t('views.workflows.stepAwaits', { event: step.completionEventName }) : '') +
+              (step.compensationUseCaseId ? t('views.workflows.stepCompensable') : ''),
       });
       const deps = (step.dependsOnStepIds ?? []).filter((id) => byId.has(id));
       if (deps.length === 0) {
@@ -193,7 +206,7 @@ export function workflowsScene(
           label: step.emittedEventName,
           color: '#6d28d9',
           arrow: true,
-          tooltip: `${step.name} espera a ${byId.get(dep)?.name ?? dep}`,
+          tooltip: t('views.workflows.dependencyTooltip', { name: step.name, dependency: byId.get(dep)?.name ?? dep }),
         });
       }
     }
@@ -212,7 +225,7 @@ export function workflowsScene(
         symbol: 'event',
         fill: '#dcfce7',
         stroke: '#16a34a',
-        badge: 'EVENTO FINAL',
+        badge: t('views.processes.completionBadge'),
       });
       // The workflow completes when its sinks (steps nobody depends on) do.
       const depended = new Set(workflow.steps.flatMap((s) => s.dependsOnStepIds ?? []));
@@ -259,11 +272,11 @@ export function workflowsScene(
       stroke: '#6d28d9',
       dashed: true,
       badge: g.type === 'SPLIT'
-        ? (g.semantics === 'EXCLUSIVE' ? '⑃ EXCLUSIVO' : '⑃ PARALELO')
-        : (g.semantics === 'ANY' ? '⨝ CUALQUIERA' : '⨝ TODAS'),
+        ? (g.semantics === 'EXCLUSIVE' ? `⑃ ${t('views.workflows.gatewayExclusive')}` : `⑃ ${t('views.workflows.gatewayParallel')}`)
+        : (g.semantics === 'ANY' ? `⨝ ${t('views.workflows.gatewayAny')}` : `⨝ ${t('views.workflows.gatewayAll')}`),
       tooltip: g.type === 'SPLIT'
-        ? `${g.name} — split ${g.semantics === 'EXCLUSIVE' ? 'exclusivo: elige UNA rama' : 'paralelo: abre TODAS las ramas'}; doble click cambia la semántica`
-        : `${g.name} — join que ${g.semantics === 'ANY' ? 'arranca con CUALQUIER entrada' : 'espera a TODAS sus entradas'}; doble click cambia la semántica`,
+        ? t(g.semantics === 'EXCLUSIVE' ? 'views.workflows.splitExclusiveTooltip' : 'views.workflows.splitParallelTooltip', { name: g.name })
+        : t(g.semantics === 'ANY' ? 'views.workflows.joinAnyTooltip' : 'views.workflows.joinAllTooltip', { name: g.name }),
     });
     nodeIds.add(g.id);
   });
@@ -277,7 +290,7 @@ export function workflowsScene(
         kind: 'wf-link',
         color: '#6d28d9',
         arrow: true,
-        tooltip: 'fluye al gateway — Supr lo desconecta',
+        tooltip: t('views.workflows.flowsToGateway'),
       });
     }
     const exclusive = g.type === 'SPLIT' && g.semantics === 'EXCLUSIVE';
@@ -294,10 +307,12 @@ export function workflowsScene(
         color: '#6d28d9',
         dashed: exclusive && !condition,
         arrow: true,
-        label: condition ?? (exclusive ? '¿condición?' : undefined),
+        label: condition ?? (exclusive ? t('views.placeholder.condition') : undefined),
         tooltip: exclusive
-          ? `${condition ? `Rama si: ${condition}` : 'Rama sin condición aún'} — doble click la edita; Supr desconecta`
-          : 'el gateway fluye aquí — Supr lo desconecta',
+          ? condition
+            ? t('views.workflows.branchIf', { condition })
+            : t('views.workflows.branchNoCondition')
+          : t('views.workflows.gatewayFlowsHere'),
       });
     }
   }
@@ -325,8 +340,8 @@ export function workflowsScene(
           symbol: 'person',
           fill: '#fef9c3',
           stroke: '#ca8a04',
-          badge: 'ROL',
-          tooltip: `${actor?.name ?? actorId} — su lista de tareas recibe los pasos humanos conectados`,
+          badge: t('views.workflows.roleBadge'),
+          tooltip: t('views.workflows.roleTooltip', { name: actor?.name ?? actorId }),
         });
         nodeIds.add(actorId);
       }
@@ -338,7 +353,7 @@ export function workflowsScene(
         color: '#ca8a04',
         dashed: true,
         arrow: true,
-        tooltip: 'la tarea cae en la lista de este rol — Supr la vuelve automática',
+        tooltip: t('views.workflows.roleEdge'),
       });
     });
   }
@@ -366,8 +381,8 @@ export function workflowsScene(
           symbol: 'page',
           fill: '#fff7ed',
           stroke: '#ca8a04',
-          badge: '📋 FORMULARIO',
-          tooltip: `${page.name} — el forms engine la presenta como formulario de la tarea`,
+          badge: `📋 ${t('views.workflows.formBadge')}`,
+          tooltip: t('views.workflows.formTooltip', { name: page.name }),
         });
         nodeIds.add(page.id);
       }
@@ -379,7 +394,7 @@ export function workflowsScene(
         color: '#ca8a04',
         dashed: true,
         arrow: true,
-        tooltip: 'la tarea humana se presenta con esta página — Supr lo desconecta',
+        tooltip: t('views.workflows.formEdge'),
       });
     });
   }
@@ -395,7 +410,7 @@ export function workflowsScene(
         color: '#0e7490',
         dashed: true,
         arrow: true,
-        tooltip: 'el paso entrega a OTRO workflow — Supr lo desconecta',
+        tooltip: t('views.workflows.handoffEdge'),
       });
     }
   }
@@ -429,7 +444,7 @@ export function workflowsScene(
       ...e,
       sourceId: sRep,
       targetId: tRep,
-      tooltip: `${e.tooltip ?? e.kind} — de un paso plegado dentro`,
+      tooltip: t('views.workflows.rolledUpEdge', { tooltip: e.tooltip ?? e.kind }),
     });
   }
   return { nodes, edges: rolled };

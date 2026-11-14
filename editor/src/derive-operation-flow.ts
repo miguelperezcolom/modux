@@ -13,6 +13,8 @@
  * same body always derives the same graph (no randomness — the editor forbids it).
  */
 
+import { t } from './i18n/index.js';
+
 /** One modeled step of an operation body (mirrors the backend `OperationStepEntity`). */
 export interface OperationStep {
   id?: string;
@@ -79,9 +81,9 @@ function labelOf(step: OperationStep): string {
     case 'SetField':
       return `set ${step.fieldName ?? name}${step.value ? ` = ${step.value}` : ''}`;
     case 'If':
-      return `if (${step.condition ?? '¿condición?'})`;
+      return `if (${step.condition ?? t('views.placeholder.condition')})`;
     case 'ForEach':
-      return `for (${step.itemVar ?? 'item'} : ${step.collection ?? '¿colección?'})`;
+      return `for (${step.itemVar ?? 'item'} : ${step.collection ?? t('views.placeholder.collection')})`;
     case 'PublishDomainEvent':
     case 'PublishApplicationEvent':
       return `emit ${name}`;

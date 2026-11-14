@@ -1,5 +1,6 @@
 import type { ModuxModel } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Aggregates view: aggregates as nodes coloured by their boundedContext's subdomain,
@@ -81,7 +82,10 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       fill: SUBDOMAIN_FILL[subdomain],
       stroke: '#64748b',
       badge: `${boundedContext ? `${boundedContext.name.toUpperCase()} · ` : ''}AGGREGATE${chips}`,
-      tooltip: `Agregado ${a.name}${boundedContext ? ` — contexto ${boundedContext.name} (${subdomain})` : ''}${voCount || entCount ? ` · ${entCount} entidad(es), ${voCount} value object(s)` : ''}`,
+      tooltip:
+        t('views.aggregates.aggregateTooltip', { name: a.name }) +
+        (boundedContext ? t('views.aggregates.aggregateTooltipContext', { context: boundedContext.name, subdomain }) : '') +
+        (voCount || entCount ? t('views.aggregates.aggregateTooltipContents', { entities: entCount, valueObjects: voCount }) : ''),
     };
   });
 
@@ -110,7 +114,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       fill: '#ffffff',
       stroke: '#94a3b8',
       badge: 'ENTITY',
-      tooltip: `Entidad ${e.name} (dentro del agregado)`,
+      tooltip: t('views.aggregates.entityTooltip', { name: e.name }),
     };
   });
 
@@ -147,16 +151,16 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     kind: 'containment',
     color: '#a855f7',
     dashed: true,
-    tooltip: 'Value object dentro del agregado',
+    tooltip: t('views.aggregates.valueObjectInAggregate'),
   }));
 
   // The rules an owner protects, orbiting it — declared from the palette. Owners are
   // aggregates AND, now, value objects and entities (each can carry invariants).
   const aggIds = new Set((model.aggregates ?? []).map((a) => a.id));
   const invariantHosts: { id: string; ownerKind: string; invariants?: { id: string; name: string }[] }[] = [
-    ...(model.aggregates ?? []).map((a) => ({ id: a.id, ownerKind: 'agregado', invariants: a.invariants })),
-    ...(model.valueObjects ?? []).map((v) => ({ id: v.id, ownerKind: 'value object', invariants: v.invariants })),
-    ...(model.entities ?? []).map((e) => ({ id: e.id, ownerKind: 'entidad', invariants: e.invariants })),
+    ...(model.aggregates ?? []).map((a) => ({ id: a.id, ownerKind: t('views.aggregates.ownerAggregate'), invariants: a.invariants })),
+    ...(model.valueObjects ?? []).map((v) => ({ id: v.id, ownerKind: t('views.aggregates.ownerValueObject'), invariants: v.invariants })),
+    ...(model.entities ?? []).map((e) => ({ id: e.id, ownerKind: t('views.aggregates.ownerEntity'), invariants: e.invariants })),
   ];
   const invariantNodes: SceneNode[] = invariantHosts.flatMap((owner) =>
     (owner.invariants ?? []).map((inv, i) => {
@@ -178,8 +182,8 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
         symbol: 'shield',
         fill: '#f0fdfa',
         stroke: '#0f766e',
-        badge: '⚖ INVARIANTE',
-        tooltip: `${inv.name} — regla que el ${owner.ownerKind} protege; doble click abre su ficha (las condiciones se detallan allí)`,
+        badge: `⚖ ${t('views.aggregates.invariantBadge')}`,
+        tooltip: t('views.aggregates.invariantTooltip', { name: inv.name, owner: owner.ownerKind }),
       } as SceneNode;
     }),
   );
@@ -192,7 +196,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       kind: 'invariant-containment',
       color: '#0f766e',
       dashed: true,
-      tooltip: 'Protege esta regla — Supr la retira',
+      tooltip: t('views.aggregates.protectsEdge'),
     })),
   );
 
@@ -203,7 +207,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     kind: 'containment',
     color: '#94a3b8',
     dashed: true,
-    tooltip: 'Entidad dentro del agregado',
+    tooltip: t('views.aggregates.entityInAggregate'),
   }));
 
   const referenceEdges: SceneEdge[] = (model.aggregateReferences ?? []).map((r, i) => ({
@@ -214,7 +218,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
     label: r.label,
     color: '#475569',
     arrow: true,
-    tooltip: r.label ? `Referencia: ${r.label}` : 'Referencia entre agregados',
+    tooltip: r.label ? t('views.aggregates.referenceLabelled', { label: r.label }) : t('views.aggregates.reference'),
   }));
 
   // Fields (attributes) of aggregates and entities, orbiting their owner. Their type
@@ -232,7 +236,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       const base = pos(owner.id);
       const p = layout[f.id] ?? { x: base.x + 175, y: base.y - 20 + i * 44 };
       const base2 =
-        f.typeKind === 'primitive' ? f.typeRef || 'texto' : nameById.get(f.typeRef) ?? '¿tipo?';
+        f.typeKind === 'primitive' ? f.typeRef || t('views.aggregates.defaultPrimitive') : nameById.get(f.typeRef) ?? t('views.placeholder.type');
       const typeLabel = f.collection ? `[${base2}]` : base2;
       return {
         id: f.id,
@@ -245,8 +249,12 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
         symbol: 'field',
         fill: '#f8fafc',
         stroke: '#64748b',
-        badge: `CAMPO · ${typeLabel}`,
-        tooltip: `Campo ${f.name}${f.required ? ' (obligatorio)' : ''}${f.collection ? ' (colección)' : ''} : ${typeLabel}`,
+        badge: `${t('views.aggregates.fieldBadge')} · ${typeLabel}`,
+        tooltip:
+          t('views.aggregates.fieldTooltip', { name: f.name }) +
+          (f.required ? t('views.aggregates.fieldRequired') : '') +
+          (f.collection ? t('views.aggregates.fieldCollection') : '') +
+          ` : ${typeLabel}`,
       } as SceneNode;
     }),
   );
@@ -258,7 +266,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       kind: 'containment',
       color: '#94a3b8',
       dashed: true,
-      tooltip: 'Campo de este elemento',
+      tooltip: t('views.aggregates.fieldEdge'),
     })),
   );
 
@@ -282,7 +290,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
         fill: '#f5f3ff',
         stroke: '#7c3aed',
         badge: `OP · ${inN}${outN ? ` → ${outN}` : ''}`,
-        tooltip: `Operación ${o.name}(${inN})${outN ? ` : ${outN}` : ''}`,
+        tooltip: `${t('views.aggregates.operationTooltip', { name: o.name })}(${inN})${outN ? ` : ${outN}` : ''}`,
       } as SceneNode;
     }),
   );
@@ -294,7 +302,7 @@ export function aggregatesScene(model: ModuxModel, layout: DiagramLayout): Scene
       kind: 'containment',
       color: '#a78bfa',
       dashed: true,
-      tooltip: 'Operación del agregado',
+      tooltip: t('views.aggregates.operationEdge'),
     })),
   );
 

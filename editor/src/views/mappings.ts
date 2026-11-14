@@ -1,5 +1,6 @@
 import type { ModuxModel } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { t as i18n } from '../i18n/index.js';
 
 /**
  * Mapeados view: every data model as a container with its FIELDS stacked inside,
@@ -52,7 +53,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       stroke: '#8b5cf6',
       badge: 'MODEL',
       container: true,
-      tooltip: `${m.name} — arrastra el asa hasta otro modelo para crear un mapeado; la paleta añade campos`,
+      tooltip: i18n('views.mappings.modelTooltip', { name: m.name }),
     });
     fields.forEach((f, j) => {
       nodes.push({
@@ -67,7 +68,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         stroke: '#a78bfa',
         badge: f.type ?? undefined,
         parentId: m.id,
-        tooltip: `${f.name}${f.type ? ` (${f.type})` : ''} — arrastra su asa hasta un campo de otro modelo para mapearlos, o hasta otro modelo para moverlo; Supr lo elimina`,
+        tooltip: `${f.name}${f.type ? ` (${f.type})` : ''}${i18n('views.mappings.fieldTooltip')}`,
       });
     });
   });
@@ -88,7 +89,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       stroke: '#ea580c',
       badge: 'TRANSFORM',
       dashed: !t.output,
-      tooltip: `${t.name} — transformación: arrastra modelos o campos hasta ella (entradas) y su asa hasta un modelo o campo (salida)${t.output ? '' : ' · aún sin salida'}`,
+      tooltip: `${i18n('views.mappings.transformationTooltip', { name: t.name })}${t.output ? '' : i18n('views.mappings.transformationNoOutput')}`,
     });
   });
   // Custom code: hand-written pieces mappings, transformations and Custom steps
@@ -108,7 +109,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       stroke: '#0f172a',
       badge: 'CODE',
       dashed: true,
-      tooltip: `${cc.name} — código a mano: arrastra su asa hasta una transformación, o hasta un modelo mapeado, para delegar en él`,
+      tooltip: i18n('views.mappings.customCodeTooltip', { name: cc.name }),
     });
   });
   const nodeIds = new Set(nodes.map((n) => n.id));
@@ -125,7 +126,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         color: '#0f172a',
         dashed: true,
         arrow: true,
-        tooltip: `${t.name} delega en código a mano — Supr lo desconecta`,
+        tooltip: i18n('views.mappings.transformationDelegates', { name: t.name }),
       });
     }
   }
@@ -140,7 +141,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         dashed: true,
         arrow: true,
         label: mm.name,
-        tooltip: `El mapeado ${mm.name} delega en código a mano — Supr lo desconecta`,
+        tooltip: i18n('views.mappings.mappingDelegates', { name: mm.name }),
       });
     }
   }
@@ -157,7 +158,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         color: '#ea580c',
         dashed: true,
         arrow: true,
-        tooltip: `entrada de ${t.name} — Supr la desconecta`,
+        tooltip: i18n('views.mappings.inputEdge', { name: t.name }),
       });
     }
     if (t.output && nodeIds.has(refNodeId(t.output))) {
@@ -168,7 +169,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         kind: 'transform-output',
         color: '#ea580c',
         arrow: true,
-        tooltip: `salida de ${t.name} — Supr la desconecta`,
+        tooltip: i18n('views.mappings.outputEdge', { name: t.name }),
       });
     }
   }
@@ -184,7 +185,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       color: '#7c3aed',
       label: mm.name,
       arrow: true,
-      tooltip: `${mm.name} — las reglas campo a campo son las líneas finas entre campos; Supr lo elimina`,
+      tooltip: i18n('views.mappings.mappingTooltip', { name: mm.name }),
     });
     // Every rule joins two concrete fields: a thin violet thread chip to chip.
     for (const r of mm.rules ?? []) {
@@ -199,7 +200,7 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         color: '#a78bfa',
         dashed: true,
         arrow: true,
-        tooltip: `Regla de ${mm.name} — Supr la elimina`,
+        tooltip: i18n('views.mappings.ruleTooltip', { name: mm.name }),
       });
     }
   }
@@ -231,10 +232,13 @@ export function mappingsScene(model: ModuxModel, layout: DiagramLayout): Scene {
         targetId: uc.inputModelId,
         kind: 'mapping-gap',
         color: '#d97706',
-        label: 'falta mapear',
+        label: i18n('views.mappings.gapLabel'),
         dashed: true,
         arrow: true,
-        tooltip: `«${b.label}» (página ${page.name}) llama a ${uc.name}: falta mapear ${nameOf(page.modelId)} → ${nameOf(uc.inputModelId)} — traza la línea para crearlo`,
+        tooltip: i18n('views.mappings.gapTooltip', {
+          button: b.label, page: page.name, useCase: uc.name,
+          source: nameOf(page.modelId), target: nameOf(uc.inputModelId),
+        }),
       });
     }
   }

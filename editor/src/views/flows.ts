@@ -1,5 +1,6 @@
 import type { ModuxModel, FlowRef } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { t } from '../i18n/index.js';
 
 /**
  * Flows view: each flow as a pipeline — trigger aggregate → flow (coloured by
@@ -109,7 +110,7 @@ export function flowsScene(model: ModuxModel, layout: DiagramLayout): Scene {
       color: '#94a3b8',
       dashed: true,
       arrow: true,
-      tooltip: flow.triggerEvent ? `Evento: ${flow.triggerEvent}` : undefined,
+      tooltip: flow.triggerEvent ? t('views.flows.triggerEvent', { event: flow.triggerEvent }) : undefined,
     });
     edges.push({
       id: `fe:${flow.id}:out`,

@@ -9,6 +9,7 @@
 
 import { type Element, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler, remove } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 /** What a UI can be assigned: an app or a page, each in its own list. */
 const ASSIGNABLE: { type: string; list: string }[] = [
@@ -29,7 +30,7 @@ export const UI_COMMANDS: Record<string, Handler> = {
     const ui = requireUi(store, command.id);
     const target = String(command.targetId);
     const kind = ASSIGNABLE.find((a) => store.has(a.type, target));
-    if (!kind) throw new CommandError(`La UI se asigna a una app o una página: ${target}`);
+    if (!kind) throw new CommandError(t('store.ui.assignTarget', { target }));
     store.addToList('uis', ui.id, kind.list, target);
   },
 
@@ -44,7 +45,7 @@ export const UI_COMMANDS: Record<string, Handler> = {
   'add-ui-serving': (store, command) => {
     const ui = requireUi(store, command.id);
     const actor = String(command.targetId);
-    if (!store.has('roles', actor)) throw new CommandError(`Actor desconocido: ${actor}`);
+    if (!store.has('roles', actor)) throw new CommandError(t('store.unknown.actor', { id: actor }));
     store.addToList('uis', ui.id, 'actorIds', actor);
   },
 
@@ -57,7 +58,7 @@ export const UI_COMMANDS: Record<string, Handler> = {
     const ui = requireUi(store, command.id);
     const context = command.boundedContextId as string | undefined;
     if (context && !store.has('boundedContexts', context)) {
-      throw new CommandError(`Contexto desconocido: ${context}`);
+      throw new CommandError(t('store.unknown.context', { id: context }));
     }
     store.patch('uis', ui.id, { boundedContextId: context ?? null });
   },
@@ -73,7 +74,7 @@ export const UI_COMMANDS: Record<string, Handler> = {
   'add-ui-crud': (store, command) => {
     const app = requireApp(store, command.sourceId);
     const aggregate = store.get('aggregates', String(command.targetId));
-    if (!aggregate) throw new CommandError(`Agregado desconocido: ${command.targetId}`);
+    if (!aggregate) throw new CommandError(t('store.unknown.aggregate', { id: command.targetId }));
     if (opensCrud(menuOf(app), `pg-crud-${aggregate.id}`, aggregate.id)) return;
     store.patch('uiAdapters', app.id, {
       menuItems: [...menuOf(app), {
@@ -100,7 +101,7 @@ export const UI_COMMANDS: Record<string, Handler> = {
   /** Link (or unlink, with a null page) a mockup to the page it stands for. */
   'set-mockup-page': (store, command) => {
     const mockup = store.get('mockups', String(command.id));
-    if (!mockup) throw new CommandError(`Mockup desconocido: ${command.id}`);
+    if (!mockup) throw new CommandError(t('store.unknown.mockup', { id: command.id }));
     store.patch('mockups', mockup.id, { pageId: command.pageId ? String(command.pageId) : null });
   },
 };
@@ -127,13 +128,13 @@ const childrenOf = (item: Element) =>
 
 function requireUi(store: ModelStore, id: unknown): Element {
   const ui = store.get('uis', String(id));
-  if (!ui) throw new CommandError(`UI desconocida: ${id}`);
+  if (!ui) throw new CommandError(t('store.unknown.ui', { id: String(id) }));
   return ui;
 }
 
 function requireApp(store: ModelStore, id: unknown): Element {
   const app = store.get('uiAdapters', String(id));
-  if (!app) throw new CommandError(`App de UI desconocida: ${id}`);
+  if (!app) throw new CommandError(t('store.unknown.uiApp', { id: String(id) }));
   return app;
 }
 

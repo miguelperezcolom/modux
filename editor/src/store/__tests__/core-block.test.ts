@@ -7,11 +7,14 @@
  * lists, reference scrubbing — is `spec.ts`'s and is covered in `apply.test.ts`.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/index.js';
 import { apply, applyAll, CommandError, supports } from '../apply.js';
 import { crudApiId, crudUseCaseIds, lifecycleEvents, listingQueryId } from '../scaffold.js';
 import { ModelStore, type Element } from '../store.js';
 import { project } from '../project.js';
+
+beforeAll(() => setLanguage('es'));
 
 /** A model with one context, one aggregate in it, and one service. */
 function model(extra: Record<string, Element[]> = {}): ModelStore {

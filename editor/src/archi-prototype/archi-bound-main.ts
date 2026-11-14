@@ -12,6 +12,7 @@ import type { ArchiShell } from './archi-shell.js';
 import type { ModuxModel } from '../model.js';
 import type { ModuxCommand } from '../commands.js';
 import { demoModel } from '../demo/demo-model.js';
+import { onLanguageChange, t } from '../i18n/index.js';
 
 type View = { members: { id: string; x: number; y: number; w: number; h: number }[] };
 const MK = 'archi-bound-model', VK = 'archi-bound-view';
@@ -98,7 +99,15 @@ shell.addEventListener('view-changed', (e) => {
 
 const bar = document.createElement('div');
 bar.style.cssText = 'position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:999;background:#0f172a;color:#cbd5e1;font:12px ui-sans-serif;padding:4px 10px;border-radius:8px;display:flex;gap:10px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.2)';
-bar.innerHTML = '<b style="color:#38bdf8">SPIKE</b> modelo real · vista LIBRE (tú decides qué incluye) · persiste en localStorage';
+const tag = document.createElement('b');
+tag.style.color = '#38bdf8';
+tag.textContent = 'SPIKE';
+const banner = document.createElement('span');
+// the banner follows the editor language, which is only known once the shell is connected
+const renderBanner = () => { banner.textContent = t('archi.spike.banner'); };
+renderBanner();
+onLanguageChange(renderBanner);
+bar.append(tag, banner);
 const reset = document.createElement('button');
 reset.textContent = 'Reset';
 reset.style.cssText = 'font:11px ui-sans-serif;border:1px solid #334155;background:#1e293b;color:#cbd5e1;border-radius:5px;padding:2px 8px;cursor:pointer';

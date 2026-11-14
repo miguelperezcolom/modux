@@ -22,6 +22,7 @@ import {
   setField,
   setNested,
 } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 /** A bounded context is born with its main module; the module is what a service deploys. */
 const mainModuleId = (boundedContextId: string) => `${boundedContextId}-main`;
@@ -93,7 +94,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     const context = store.get('boundedContexts', id);
     if (!context) return;
     if (asList(context.aggregateIds).length > 0) {
-      throw new CommandError(`El bounded context ${id} tiene agregados; bórralos primero`);
+      throw new CommandError(t('store.core.removeContextHasAggregates', { id }));
     }
     // The strategic relations that mention it go with it.
     for (const relation of store.all('contextMapRelations')) {
@@ -122,11 +123,11 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     guards: [
       {
         type: 'boundedContexts', field: 'parentSystemId',
-        message: (id) => `El sistema ${id} agrupa contextos; sácalos primero`,
+        message: (id) => t('store.core.removeSystemHasContexts', { id }),
       },
       {
         type: 'systems', field: 'parentSystemId',
-        message: (id) => `El sistema ${id} contiene subsistemas; sácalos primero`,
+        message: (id) => t('store.core.removeSystemHasSubsystems', { id }),
       },
     ],
   }),
@@ -138,7 +139,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     from: 'parentSystemId',
     map: (value, _command, store) => {
       if (value && !store.has('systems', value)) {
-        throw new CommandError(`Sistema desconocido: ${value}`);
+        throw new CommandError(t('store.unknown.system', { id: value }));
       }
       return value ?? null;
     },
@@ -153,8 +154,8 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     field: 'parentSystemId',
     from: 'parentSystemId',
     map: (value, command, store) => {
-      if (value && value === command.id) throw new CommandError('Un sistema no puede contenerse a sí mismo');
-      if (value && !store.has('systems', value)) throw new CommandError(`Sistema desconocido: ${value}`);
+      if (value && value === command.id) throw new CommandError(t('store.core.systemContainsSelf'));
+      if (value && !store.has('systems', value)) throw new CommandError(t('store.unknown.system', { id: value }));
       return value ?? null;
     },
   }),
@@ -184,7 +185,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     guards: [{
       type: 'entities',
       field: 'parentAggregateId',
-      message: (id) => `El agregado ${id} tiene entidades; bórralas primero`,
+      message: (id) => t('store.core.removeAggregateHasEntities', { id }),
     }],
     parent: { type: 'boundedContexts', from: 'boundedContextId', list: 'aggregateIds' },
   }),
@@ -192,10 +193,10 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   /** Tie a (possibly free-standing) aggregate to a bounded context, or detach it (no target). */
   'set-aggregate-context': (store, command) => {
     const id = String(command.id);
-    if (!store.has('aggregates', id)) throw new CommandError(`Agregado desconocido: ${id}`);
+    if (!store.has('aggregates', id)) throw new CommandError(t('store.unknown.aggregate', { id: id }));
     const target = command.boundedContextId as string | undefined;
     if (target && !store.has('boundedContexts', target)) {
-      throw new CommandError(`Contexto desconocido: ${target}`);
+      throw new CommandError(t('store.unknown.context', { id: target }));
     }
     store.removeFromAllLists('boundedContexts', 'aggregateIds', id);
     if (target) store.addToList('boundedContexts', target, 'aggregateIds', id);
@@ -217,7 +218,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
     from: 'aggregateId',
     map: (value, _command, store) => {
       if (!store.has('aggregates', value)) {
-        throw new CommandError(`Agregado desconocido: ${value}`);
+        throw new CommandError(t('store.unknown.aggregate', { id: value }));
       }
       return value;
     },
@@ -242,10 +243,10 @@ export const CORE_COMMANDS: Record<string, Handler> = {
 
   'set-value-object-aggregate': (store, command) => {
     const id = String(command.id);
-    if (!store.has('valueObjects', id)) throw new CommandError(`Value object desconocido: ${id}`);
+    if (!store.has('valueObjects', id)) throw new CommandError(t('store.unknown.valueObject', { id: id }));
     const target = command.aggregateId as string | undefined;
     if (target && !store.has('aggregates', target)) {
-      throw new CommandError(`Agregado desconocido: ${target}`);
+      throw new CommandError(t('store.unknown.aggregate', { id: target }));
     }
     store.removeFromAllLists('aggregates', 'valueObjectIds', id);
     if (target) store.addToList('aggregates', target, 'valueObjectIds', id);
@@ -311,10 +312,10 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   /** Tie a free-standing use case to a context, or detach it (no target). */
   'set-use-case-context': (store, command) => {
     const id = String(command.id);
-    if (!store.has('useCases', id)) throw new CommandError(`Caso de uso desconocido: ${id}`);
+    if (!store.has('useCases', id)) throw new CommandError(t('store.unknown.useCase', { id: id }));
     const target = command.boundedContextId as string | undefined;
     if (target && !store.has('boundedContexts', target)) {
-      throw new CommandError(`Contexto desconocido: ${target}`);
+      throw new CommandError(t('store.unknown.context', { id: target }));
     }
     store.removeFromAllLists('boundedContexts', 'useCaseIds', id);
     if (target) store.addToList('boundedContexts', target, 'useCaseIds', id);
@@ -332,12 +333,12 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   'set-element-context': (store, command) => {
     const type = String(command.type ?? '');
     const spec = CONTEXT_MEMBERSHIP[type];
-    if (!spec) throw new CommandError(`set-element-context no soportado para: ${type}`);
+    if (!spec) throw new CommandError(t('store.core.setContextUnsupported', { type }));
     const id = String(command.id);
     const element = store.get(type, id);
-    if (!element) throw new CommandError(`Elemento desconocido: ${type}/${id}`);
+    if (!element) throw new CommandError(t('store.unknown.element', { id: `${type}/${id}` }));
     const target = (command.boundedContextId as string | undefined) || undefined;
-    if (target && !store.has('boundedContexts', target)) throw new CommandError(`Contexto desconocido: ${target}`);
+    if (target && !store.has('boundedContexts', target)) throw new CommandError(t('store.unknown.context', { id: target }));
     if (spec.list) {
       store.removeFromAllLists('boundedContexts', spec.list, id);
       if (target) store.addToList('boundedContexts', target, spec.list, id);
@@ -408,7 +409,7 @@ export const CORE_COMMANDS: Record<string, Handler> = {
    */
   'note-attach': (store, command) => {
     const note = store.get('notes', String(command.id));
-    if (!note) throw new CommandError(`Nota desconocida: ${command.id}`);
+    if (!note) throw new CommandError(t('store.unknown.note', { id: command.id }));
     const target = String(command.targetId);
     store.addToList('notes', note.id, listForTarget(target), target);
   },
@@ -454,18 +455,18 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   /** The port a service listens on: unique, since `up.sh` starts them all on the same host. */
   'set-service-port': (store, command) => {
     const id = String(command.id);
-    if (!store.has('services', id)) throw new CommandError(`Servicio desconocido: ${id}`);
+    if (!store.has('services', id)) throw new CommandError(t('store.unknown.service', { id: id }));
     const raw = String(command.port ?? '').trim();
     if (!raw) { store.patch('services', id, { port: null }); return; }
     const port = Number(raw);
-    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new CommandError(`«${raw}» no es un puerto válido`);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new CommandError(t('store.core.invalidPort', { value: raw }));
     const taken = store.all('services').find((s) => s.id !== id && s.port === port);
-    if (taken) throw new CommandError(`El puerto ${port} ya lo usa el servicio «${taken.name ?? taken.id}»`);
+    if (taken) throw new CommandError(t('store.core.portTaken', { port, service: String(taken.name ?? taken.id) }));
     store.patch('services', id, { port });
   },
   'add-service-module': (store, command) => {
     const service = String(command.id);
-    if (!store.has('services', service)) throw new CommandError(`Servicio desconocido: ${service}`);
+    if (!store.has('services', service)) throw new CommandError(t('store.unknown.service', { id: service }));
     // A module is deployed by exactly one service.
     store.removeFromAllLists('services', 'moduleIds', String(command.targetId));
     store.addToList('services', service, 'moduleIds', String(command.targetId));

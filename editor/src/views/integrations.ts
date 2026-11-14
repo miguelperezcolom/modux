@@ -1,5 +1,6 @@
 import type { ModuxModel } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { t as i18n } from '../i18n/index.js';
 
 /**
  * Integraciones view: every ETL integrator as a container with its pipeline
@@ -62,7 +63,9 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
       container: true,
       fill: '#ffffff',
       stroke: '#0f766e',
-      tooltip: `${f.name} — integrador${f.ownerBoundedContextId ? ` de ${boundedContextName.get(f.ownerBoundedContextId) ?? f.ownerBoundedContextId}` : ''}: fuentes → transformación → escrituras; la paleta añade transformaciones`,
+      tooltip: f.ownerBoundedContextId
+        ? i18n('views.integrations.flowTooltipOwned', { name: f.name, context: boundedContextName.get(f.ownerBoundedContextId) ?? f.ownerBoundedContextId })
+        : i18n('views.integrations.flowTooltip', { name: f.name }),
     });
     byPhase.forEach((column, phase) => {
       const colX = pos.x - FLOW_W / 2 + FLOW_PAD + STEP_W / 2 + (phase * (FLOW_W - 2 * FLOW_PAD - STEP_W)) / 2;
@@ -81,9 +84,9 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
           stroke: style.stroke,
           badge: s.type === 'SOURCE_PULL' ? 'PULL' : s.type === 'SOURCE_CONSUMER' ? 'CONSUME'
             : s.type === 'TRANSFORM' ? 'TRANSFORM'
-            : s.type === 'WRITE_API' ? '→ API' : s.type === 'WRITE_DB' ? '→ BD' : '→ EVENTO',
+            : s.type === 'WRITE_API' ? '→ API' : s.type === 'WRITE_DB' ? `→ ${i18n('views.integrations.dbBadge')}` : `→ ${i18n('views.integrations.eventBadge')}`,
           parentId: f.id,
-          tooltip: `${s.name ?? s.id} (${s.type})${s.mappingId ? ' · aplica un mapeado' : ''} — Supr lo quita del integrador`,
+          tooltip: `${s.name ?? s.id} (${s.type})${s.mappingId ? i18n('views.integrations.stepAppliesMapping') : ''}${i18n('views.integrations.stepRemove')}`,
         });
         // the pipeline inside: source → its transforms → its writes (visual order)
         if (phase > 0) {
@@ -97,7 +100,7 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
               kind: 'etl-pipe',
               color: '#0f766e',
               arrow: true,
-              tooltip: 'el dato fluye por el pipeline',
+              tooltip: i18n('views.integrations.pipeEdge'),
             });
           }
         }
@@ -132,7 +135,7 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
       fill: '#ffffff',
       stroke: '#64748b',
       dashed: true,
-      tooltip: `${x.name} — sistema externo: sus tablas legacy alimentan (o reciben) integradores`,
+      tooltip: i18n('views.integrations.externalSystemTooltip', { name: x.name }),
     });
     nodeIds.add(x.id);
     tables.forEach((t, i) => {
@@ -148,7 +151,7 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
         fill: '#fefce8',
         stroke: '#a16207',
         parentId: x.id,
-        tooltip: `${t.name} — tabla legacy de ${x.name}`,
+        tooltip: i18n('views.integrations.tableTooltip', { name: t.name, system: x.name }),
       });
       nodeIds.add(t.id);
     });
@@ -162,7 +165,7 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
       id: a.id, label: a.name, x: pos.x, y: pos.y, w: SAT_W, h: SAT_H,
       kind: 'api', symbol: 'interface', badge: 'API',
       fill: '#eef2ff', stroke: '#4f46e5',
-      tooltip: `${a.name} — API que un integrador consume o llama`,
+      tooltip: i18n('views.integrations.apiTooltip', { name: a.name }),
     });
     nodeIds.add(a.id);
   }
@@ -173,9 +176,9 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
     evY = pos.y + SAT_H + 70;
     nodes.push({
       id, label: eventName.get(id) ?? id, x: pos.x, y: pos.y, w: SAT_W, h: SAT_H,
-      kind: 'domain-event', symbol: 'event', badge: 'EVENTO',
+      kind: 'domain-event', symbol: 'event', badge: i18n('views.integrations.eventBadge'),
       fill: '#fff7ed', stroke: '#f59e0b',
-      tooltip: 'evento que un integrador consume o publica',
+      tooltip: i18n('views.integrations.eventTooltip'),
     });
     nodeIds.add(id);
   }
@@ -193,10 +196,10 @@ export function integrationsScene(model: ModuxModel, layout: DiagramLayout): Sce
         kind: source ? 'etl-source' : 'etl-write',
         color: '#0f766e',
         label: s.type === 'SOURCE_PULL' ? 'pull' : s.type === 'SOURCE_CONSUMER' ? 'consume'
-          : s.type === 'WRITE_API' ? 'api' : s.type === 'WRITE_DB' ? 'bd' : 'evento',
+          : s.type === 'WRITE_API' ? 'api' : s.type === 'WRITE_DB' ? i18n('views.integrations.dbEdge') : i18n('views.integrations.eventEdge'),
         dashed: true,
         arrow: true,
-        tooltip: source ? `${f.name} lee de aquí — Supr quita el paso` : `${f.name} escribe aquí — Supr quita el paso`,
+        tooltip: source ? i18n('views.integrations.readsHere', { name: f.name }) : i18n('views.integrations.writesHere', { name: f.name }),
       });
     }
   }

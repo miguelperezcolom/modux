@@ -1,6 +1,7 @@
 import { LitElement, html, css, svg } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import type { Scene, SceneEdge, SceneNode } from './scene.js';
+import { LanguageController, t } from './i18n/index.js';
 
 /**
  * The Firefox-Tilt view of a diagram: the SAME Scene every view adapter already
@@ -22,6 +23,7 @@ const HANDLE_KINDS = new Set([
 
 @customElement('modux-tilt')
 export class ModuxTilt extends LitElement {
+  readonly _i18n = new LanguageController(this);
   @property({ attribute: false }) scene: Scene = { nodes: [], edges: [] };
   /** Selection, owned by the shell (same contract as <modux-canvas>). */
   @property({ attribute: false }) selectedId: string | null = null;
@@ -626,7 +628,7 @@ export class ModuxTilt extends LitElement {
   render() {
     const nodes = this.scene.nodes;
     if (!nodes.length) {
-      return html`<div class="hud">Nada que inclinar — el diagrama está vacío</div>`;
+      return html`<div class="hud">${t('canvas.tilt.empty')}</div>`;
     }
     const depth = this.depths();
     const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -751,8 +753,8 @@ export class ModuxTilt extends LitElement {
                       class="chev3"
                       data-node-id=${n.id}
                       title=${n.collapsed
-                        ? 'Expandir: muestra los hijos del nodo'
-                        : 'Contraer: oculta los hijos'}
+                        ? t('canvas.node.expand')
+                        : t('canvas.node.collapse')}
                       >${n.collapsed ? '▸' : '▾'}</span>`
                   : ''}
               </div>
@@ -773,7 +775,7 @@ export class ModuxTilt extends LitElement {
               ([hx, hy]) => html`<div
                 class="h3"
                 data-source-id=${sel.id}
-                title="Arrastra hasta otro nodo para conectar"
+                title=${t('canvas.tilt.connectHandle')}
                 style="left: ${hx}px; top: ${hy}px; transform: translateZ(${z}px)"
               ></div>`,
             );
@@ -837,11 +839,7 @@ export class ModuxTilt extends LitElement {
             />`;
           })()
         : ''}
-      <div class="hud">
-        click selecciona · ▸ despliega el nodo · arrastra el fondo: selección múltiple · alt+arrastra orbita ·
-        doble click abre · arrastra una placa para moverla · shift, espacio o botón central+arrastra panea ·
-        rueda para zoom · Supr borra · F2 renombra · doble click en el fondo resetea
-      </div>
+      <div class="hud">${t('canvas.tilt.help')}</div>
     `;
   }
 }

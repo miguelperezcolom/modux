@@ -7,10 +7,13 @@
  * host resolves and reads, the applier copies in what it was handed.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/index.js';
 import { apply } from '../apply.js';
 import { referenceIdFor, snapshotOf } from '../project-snapshot.js';
 import { ModelStore, type Element } from '../store.js';
+
+beforeAll(() => setLanguage('es'));
 
 /** Another project's store, as the host would have read it. */
 const otherProject = () => ModelStore.from({

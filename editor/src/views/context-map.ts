@@ -4,25 +4,26 @@ import type {
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
 import { menuNodeId, flattenMenu } from './ui.js';
 import { fieldNodeId } from './mappings.js';
+import { t, type MessageKey } from '../i18n/index.js';
 
 /**
  * How a referenced project's whereabouts read in a tooltip. A migrated model may know none —
  * the reference still holds its snapshot; what it cannot do is refresh itself.
  */
 function whereItLives(ref: ReferencedProject): string {
-  if (ref.gitUrl) return `en ${ref.gitUrl}${ref.branch ? ` (${ref.branch})` : ''}`;
-  if (ref.path) return `en ${ref.path}`;
-  return 'sin coordenada: no dice dónde está';
+  if (ref.gitUrl) return t('views.contextMap.livesAt', { where: `${ref.gitUrl}${ref.branch ? ` (${ref.branch})` : ''}` });
+  if (ref.path) return t('views.contextMap.livesAt', { where: ref.path });
+  return t('views.contextMap.livesNowhere');
 }
 
 /** A field child, labelled «nombre ∗ : tipo» (∗ = required, [tipo] = collection). */
 function fieldChildDesc(model: ModuxModel, f: FieldRef): { id: string; name: string; kind: 'field' } {
   const base =
     f.typeKind === 'primitive'
-      ? f.typeRef || 'texto'
+      ? f.typeRef || t('views.aggregates.defaultPrimitive')
       : [...(model.valueObjects ?? []), ...(model.entities ?? []), ...(model.aggregates ?? [])].find(
           (x) => x.id === f.typeRef,
-        )?.name ?? '¿tipo?';
+        )?.name ?? t('views.placeholder.type');
   const typeLabel = f.collection ? `[${base}]` : base;
   return { id: f.id, name: `${f.name}${f.required ? ' ∗' : ''} : ${typeLabel}`, kind: 'field' };
 }
@@ -373,45 +374,46 @@ const CHILD_STYLE: Record<ChildDesc['kind'], { symbol: string; fill: string; str
   module: { symbol: 'component', fill: '#ffffff', stroke: '#334155' },
 };
 
-const CHILD_TOOLTIP: Record<ChildDesc['kind'], string> = {
-  aggregate: 'Agregado',
-  entity: 'Entidad — dentro del agregado',
-  'value-object': 'Value object — dentro del agregado',
-  field: 'Campo — nombre, obligatoriedad y tipo',
-  invariant: 'Invariante — una regla que este elemento protege',
-  operation: 'Operación — modelo de entrada → modelo de salida',
-  'use-case': 'Caso de uso',
-  'domain-event': 'Evento de dominio',
-  'application-event': 'Evento de aplicación',
-  'integration-event': 'Evento de integración',
-  'read-model': 'Read model',
-  'domain-service': 'Servicio de dominio',
-  'query-service': 'Query service',
-  'external-use-case': 'Caso de uso externo',
-  'external-system': 'Subsistema',
-  system: 'Sistema — agrupa bounded contexts',
-  boundedContext: 'Bounded context — dentro del sistema',
-  'external-table': 'Tabla (legacy)',
-  'mcp-server': 'Servidor MCP',
-  'api-operation': 'Operación de API',
-  'api-op-occurrence': 'Operación de la API, en este sitio',
-  api: 'API publicada por este sistema',
-  'api-impl': 'La misma API, implementada también en este contexto',
-  'proxy-api': 'Proxy/cache de una API, alojado en este sistema',
-  'scheduled-trigger': 'Trigger programado (cron) — dispara un caso de uso',
-  'etl-flow': 'Integrador ETL — fuentes (pull/consumidor) → transformación → escrituras',
-  notification: 'Notificación — un evento la dispara y avisa a unos roles por un canal',
-  document: 'Documento/informe — plantilla rellenada por un modelo, o dataset de una consulta',
-  'ui-app': 'App — la UI de este bounded context (sus páginas se detallan en la vista UI)',
-  ui: 'UI — la interfaz humana que expone el contexto (como la API es la programática); se asigna a apps y páginas',
-  'workflow-step': 'Paso de workflow — corre cuando sus dependencias completan',
-  'process-step': 'Paso de proceso — eslabón de la cadena (HUMAN o AUTOMÁTICO)',
-  'menu-group': 'Agrupador de menú — contiene un submenú, no abre nada',
-  'menu-item': 'Entrada de menú — abre una página, app, caso de uso o CRUD',
-  'etl-step': 'Paso ETL — fuente (pull/consumer) → transformación → escritura',
-  'model-field': 'Campo de modelo — arrastra su asa hasta el campo de otro modelo para mapearlos',
-  component: 'Componente del mockup — una pieza Mateu (layout, campo, botón…)',
-  module: 'Módulo — unidad de distribución; arrastra el asa de un elemento hasta él para empaquetarlo',
+/** The tooltip noun of each child kind (message keys: translated where rendered). */
+const CHILD_TOOLTIP: Record<ChildDesc['kind'], MessageKey> = {
+  aggregate: 'views.contextMap.child.aggregate',
+  entity: 'views.contextMap.child.entity',
+  'value-object': 'views.contextMap.child.valueObject',
+  field: 'views.contextMap.child.field',
+  invariant: 'views.contextMap.child.invariant',
+  operation: 'views.contextMap.child.operation',
+  'use-case': 'views.contextMap.child.useCase',
+  'domain-event': 'views.contextMap.child.domainEvent',
+  'application-event': 'views.contextMap.child.applicationEvent',
+  'integration-event': 'views.contextMap.child.integrationEvent',
+  'read-model': 'views.contextMap.child.readModel',
+  'domain-service': 'views.contextMap.child.domainService',
+  'query-service': 'views.contextMap.child.queryService',
+  'external-use-case': 'views.contextMap.child.externalUseCase',
+  'external-system': 'views.contextMap.child.externalSystem',
+  system: 'views.contextMap.child.system',
+  boundedContext: 'views.contextMap.child.boundedContext',
+  'external-table': 'views.contextMap.child.externalTable',
+  'mcp-server': 'views.contextMap.child.mcpServer',
+  'api-operation': 'views.contextMap.child.apiOperation',
+  'api-op-occurrence': 'views.contextMap.child.apiOpOccurrence',
+  api: 'views.contextMap.child.api',
+  'api-impl': 'views.contextMap.child.apiImpl',
+  'proxy-api': 'views.contextMap.child.proxyApi',
+  'scheduled-trigger': 'views.contextMap.child.scheduledTrigger',
+  'etl-flow': 'views.contextMap.child.etlFlow',
+  notification: 'views.contextMap.child.notification',
+  document: 'views.contextMap.child.document',
+  'ui-app': 'views.contextMap.child.uiApp',
+  ui: 'views.contextMap.child.ui',
+  'workflow-step': 'views.contextMap.child.workflowStep',
+  'process-step': 'views.contextMap.child.processStep',
+  'menu-group': 'views.contextMap.child.menuGroup',
+  'menu-item': 'views.contextMap.child.menuItem',
+  'etl-step': 'views.contextMap.child.etlStep',
+  'model-field': 'views.contextMap.child.modelField',
+  component: 'views.contextMap.child.component',
+  module: 'views.contextMap.child.module',
 };
 
 /** `cmp:<hostId>:<componentId>` — the scene id of a mockup component chip. */
@@ -440,14 +442,14 @@ function findComponentById(
 /** A Mateu component's canvas glyph + badge, by its kind (a button looks like a button…). */
 function componentGlyph(kind: string): { symbol: string; badge: string } {
   const k = kind.toLowerCase();
-  if (k.includes('button')) return { symbol: 'usecase', badge: 'BOTÓN' };
-  if (k.includes('field')) return { symbol: 'field', badge: 'CAMPO' };
-  if (k === 'tab') return { symbol: 'component', badge: 'PESTAÑA' };
-  if (k.includes('tab')) return { symbol: 'component', badge: 'PESTAÑAS' };
+  if (k.includes('button')) return { symbol: 'usecase', badge: t('views.contextMap.component.button') };
+  if (k.includes('field')) return { symbol: 'field', badge: t('views.aggregates.fieldBadge') };
+  if (k === 'tab') return { symbol: 'component', badge: t('views.contextMap.component.tab') };
+  if (k.includes('tab')) return { symbol: 'component', badge: t('views.contextMap.component.tabs') };
   if (k.includes('grid') || k.includes('table') || k.includes('list') || k.includes('crud')) {
-    return { symbol: 'readmodel', badge: 'LISTADO' };
+    return { symbol: 'readmodel', badge: t('views.contextMap.component.listing') };
   }
-  if (k.includes('text') || k === 'label' || k.includes('html')) return { symbol: 'note', badge: 'TEXTO' };
+  if (k.includes('text') || k === 'label' || k.includes('html')) return { symbol: 'note', badge: t('views.contextMap.component.text') };
   if (k.includes('layout') || k.includes('section') || k.includes('card') || k.includes('panel')) {
     return { symbol: 'component', badge: 'LAYOUT' };
   }
@@ -555,13 +557,30 @@ export const ARCHIMATE_NOTATION: Record<string, Partial<SceneEdge>> = {
   flow: { markerEnd: 'arrow', dashArray: '6 4' },
 };
 
-/** Human names for the picker and tooltips. */
-export const ARCHIMATE_LABEL: Record<string, string> = {
-  association: 'Asociación', composition: 'Composición', aggregation: 'Agregación',
-  assignment: 'Asignación', realization: 'Realización', specialization: 'Especialización',
-  serving: 'Servicio (serving)', access: 'Acceso', influence: 'Influencia',
-  triggering: 'Disparo (triggering)', flow: 'Flujo',
+const ARCHIMATE_LABEL_KEY: Record<string, MessageKey> = {
+  association: 'views.archimate.association',
+  composition: 'views.archimate.composition',
+  aggregation: 'views.archimate.aggregation',
+  assignment: 'views.archimate.assignment',
+  realization: 'views.archimate.realization',
+  specialization: 'views.archimate.specialization',
+  serving: 'views.archimate.serving',
+  access: 'views.archimate.access',
+  influence: 'views.archimate.influence',
+  triggering: 'views.archimate.triggering',
+  flow: 'views.archimate.flow',
 };
+
+/**
+ * Human names for the picker and tooltips. Each entry is a getter, so it reads in the language
+ * current at access time (never at import).
+ */
+export const ARCHIMATE_LABEL: Record<string, string> = Object.defineProperties(
+  {} as Record<string, string>,
+  Object.fromEntries(
+    Object.entries(ARCHIMATE_LABEL_KEY).map(([type, key]) => [type, { get: () => t(key), enumerable: true }]),
+  ),
+);
 
 export function contextMapScene(
   model: ModuxModel,
@@ -892,7 +911,9 @@ function buildScene(
         ownerId,
         collapsible: grand.length > 0,
         collapsed: grand.length > 0 && !expanded,
-        tooltip: `${k.policy ? 'Policy' : CHILD_TOOLTIP[k.kind]} ${k.name} — parte de ${ownerName}`,
+        tooltip: t('views.contextMap.childTooltip', {
+          kind: k.policy ? 'Policy' : t(CHILD_TOOLTIP[k.kind]), name: k.name, owner: ownerName,
+        }),
       });
       containsEdges.push({
         id: `contains:${ownerId}->${k.id}`,
@@ -900,7 +921,7 @@ function buildScene(
         targetId: k.id,
         kind: 'contains',
         color: '#94a3b8',
-        tooltip: `${ownerName} contiene ${k.name}`,
+        tooltip: t('views.contextMap.containsEdge', { owner: ownerName, name: k.name }),
       });
       if (expanded) emitChildren(k.id, k.kind, k.name, pos);
     });
@@ -1009,7 +1030,7 @@ function buildScene(
         fill: '#ecfeff',
         stroke: '#0891b2',
         badge: 'CDC',
-        tooltip: `${c.name} — Change Data Capture: arrastra una relación desde la fuente y otra hacia el destino`,
+        tooltip: t('views.contextMap.cdcTooltip', { name: c.name }),
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -1029,7 +1050,7 @@ function buildScene(
         stroke: '#ca8a04',
         dashed: federated,
         badge: idp.type ?? 'IDP',
-        tooltip: `${idp.name} — emite las identidades que el sistema confía${federated ? ' (federado)' : ''}; arrastra un contexto, app o flujo ETL hasta él`,
+        tooltip: t(federated ? 'views.contextMap.idpTooltipFederated' : 'views.contextMap.idpTooltip', { name: idp.name }),
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -1050,7 +1071,7 @@ function buildScene(
         stroke: '#0f766e',
         dashed: true,
         badge: 'ETL',
-        tooltip: `${f.name} — integrador: fuentes (pull/consumidor) → transformación → escrituras (API/BD/evento)`,
+        tooltip: t('views.contextMap.etlTooltip', { name: f.name }),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         x: pos.x,
@@ -1074,7 +1095,7 @@ function buildScene(
         stroke: '#6d28d9',
         dashed: true,
         badge: 'WORKFLOW',
-        tooltip: `${w.name} — workflow${w.triggerEvent ? ` · arranca con ${w.triggerEvent}` : ''}`,
+        tooltip: t('views.contextMap.workflowTooltip', { name: w.name }) + (w.triggerEvent ? t('views.contextMap.startsOn', { event: w.triggerEvent }) : ''),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         x: pos.x,
@@ -1097,7 +1118,7 @@ function buildScene(
         fill: '#f5f3ff',
         stroke: '#7c3aed',
         badge: `PROCESS${p.sla ? ` · SLA ${p.sla}` : ''}`,
-        tooltip: `${p.name} — proceso${p.triggerEvent ? ` · arranca con ${p.triggerEvent}` : ''}`,
+        tooltip: t('views.contextMap.processTooltip', { name: p.name }) + (p.triggerEvent ? t('views.contextMap.startsOn', { event: p.triggerEvent }) : ''),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         x: pos.x,
@@ -1120,7 +1141,7 @@ function buildScene(
         fill: '#ffffff',
         stroke: '#8b5cf6',
         badge: 'MODEL',
-        tooltip: `${dm.name} — modelo de datos; arrastra el asa hasta otro modelo para mapearlo`,
+        tooltip: t('views.contextMap.dataModelTooltip', { name: dm.name }),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         x: pos.x,
@@ -1140,8 +1161,8 @@ function buildScene(
         symbol: 'page',
         fill: '#f0f9ff',
         stroke: '#0ea5e9',
-        badge: pg.type ? `PÁGINA · ${pg.type}` : 'PÁGINA',
-        tooltip: `${pg.name} — página${pg.route ? ` · ${pg.route}` : ''}${pg.type ? ` (${pg.type})` : ''}`,
+        badge: pg.type ? `${t('views.contextMap.pageBadge')} · ${pg.type}` : t('views.contextMap.pageBadge'),
+        tooltip: `${t('views.contextMap.pageTooltip', { name: pg.name })}${pg.route ? ` · ${pg.route}` : ''}${pg.type ? ` (${pg.type})` : ''}`,
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -1162,7 +1183,7 @@ function buildScene(
         stroke: '#0ea5e9',
         dashed: true,
         badge: 'MOCKUP',
-        tooltip: `${mk.name} — mockup${mk.pageId ? ' de una página' : ' (arrastra su asa hasta una página)'}; suéltale componentes de la paleta`,
+        tooltip: t(mk.pageId ? 'views.contextMap.mockupTooltip' : 'views.contextMap.mockupTooltipLoose', { name: mk.name }),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         x: pos.x,
@@ -1185,7 +1206,7 @@ function buildScene(
         fill: '#ecfeff',
         stroke: '#0e7490',
         badge: 'PROXY API',
-        tooltip: `${px.name} — proxy/cache de una API, consumible como ella`,
+        tooltip: t('views.contextMap.proxyTooltip', { name: px.name }),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         x: pos.x,
@@ -1208,7 +1229,7 @@ function buildScene(
         fill: '#eef2ff',
         stroke: '#4f46e5',
         badge: 'API',
-        tooltip: `${a.name} — API publicada (sus operaciones apuntan a quien las implementa)`,
+        tooltip: t('views.contextMap.apiTooltip', { name: a.name }),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         x: pos.x,
@@ -1232,10 +1253,10 @@ function buildScene(
         fill: '#ffffff',
         stroke: '#64748b',
         dashed: true,
-        badge: x.referencedProject ? 'PROYECTO' : 'EXTERNAL',
+        badge: x.referencedProject ? t('views.contextMap.projectBadge') : 'EXTERNAL',
         tooltip: x.referencedProject
-          ? `${x.name} — otro proyecto modux, ${whereItLives(x.referencedProject)}`
-          : `${x.name} (sistema externo)`,
+          ? t('views.contextMap.projectTooltip', { name: x.name, where: whereItLives(x.referencedProject) })
+          : t('views.contextMap.externalSystemTooltip', { name: x.name }),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         resizable: true,
@@ -1259,8 +1280,8 @@ function buildScene(
         symbol: 'component',
         fill: '#f8fafc',
         stroke: '#475569',
-        badge: 'SISTEMA',
-        tooltip: `${s.name} — sistema; agrupa bounded contexts`,
+        badge: t('views.contextMap.systemBadge'),
+        tooltip: t('views.contextMap.systemTooltip', { name: s.name }),
         collapsible: kids.length > 0,
         collapsed: kids.length > 0 && !expanded,
         resizable: true,
@@ -1286,8 +1307,8 @@ function buildScene(
       stroke: '#94a3b8',
       badge: subdomain,
       tooltip: distributionLevel && kids.length === 0
-        ? `${m.name} — un solo módulo (el principal): el servicio lo despliega entero. Añade un módulo desde la paleta para repartir sus elementos`
-        : `${m.name} — subdominio ${subdomain}`,
+        ? t('views.contextMap.singleModuleTooltip', { name: m.name })
+        : t('views.contextMap.contextTooltip', { name: m.name, subdomain }),
       collapsible: kids.length > 0,
       collapsed: kids.length > 0 && !expanded,
       resizable: true,
@@ -1303,10 +1324,10 @@ function buildScene(
   // Aggregate (no context), entity and value object (no aggregate) share this treatment.
   if (!distributionLevel) {
     const looseGroups: { items: { id: string; name: string; policy?: boolean }[]; kind: ChildDesc['kind']; noun: string }[] = [
-      { items: (model.aggregates ?? []).filter((a) => !a.boundedContextId), kind: 'aggregate', noun: 'agregado' },
-      { items: (model.entities ?? []).filter((e) => !e.aggregateId), kind: 'entity', noun: 'entidad' },
-      { items: (model.valueObjects ?? []).filter((v) => !v.aggregateId), kind: 'value-object', noun: 'value object' },
-      { items: model.looseUseCases ?? [], kind: 'use-case', noun: 'caso de uso' },
+      { items: (model.aggregates ?? []).filter((a) => !a.boundedContextId), kind: 'aggregate', noun: t('views.aggregates.ownerAggregate') },
+      { items: (model.entities ?? []).filter((e) => !e.aggregateId), kind: 'entity', noun: t('views.aggregates.ownerEntity') },
+      { items: (model.valueObjects ?? []).filter((v) => !v.aggregateId), kind: 'value-object', noun: t('views.aggregates.ownerValueObject') },
+      { items: model.looseUseCases ?? [], kind: 'use-case', noun: t('views.contextMap.loose.useCase') },
     ];
     let looseIdx = 0;
     for (const group of looseGroups) {
@@ -1324,12 +1345,12 @@ function buildScene(
           symbol: style.symbol,
           fill: style.fill,
           stroke: style.stroke,
-          badge: 'sin asociar',
+          badge: t('views.contextMap.looseBadge'),
           dashed: true,
           resizable: true,
           collapsible: grand.length > 0,
           collapsed: grand.length > 0 && !expanded,
-          tooltip: `${el.name} — ${group.noun} sin asociar; arrastra una composición desde su contenedor`,
+          tooltip: t('views.contextMap.looseTooltip', { name: el.name, noun: group.noun }),
           x: pos.x,
           y: pos.y,
           w: eSize?.w ?? NODE_W,
@@ -1344,9 +1365,11 @@ function buildScene(
       operation: 'operation', invariant: 'invariant', field: 'field', 'use-case-step': 'operation',
       'read-model': 'read-model', 'external-table': 'external-table', 'integration-event': 'integration-event',
     };
-    const looseNounOf: Record<string, string> = {
-      operation: 'operación', invariant: 'invariante', field: 'campo', 'use-case-step': 'paso',
-      'read-model': 'read model', 'external-table': 'tabla', 'integration-event': 'evento de integración',
+    const looseNounOf: Record<string, MessageKey> = {
+      operation: 'views.contextMap.loose.operation', invariant: 'views.contextMap.loose.invariant',
+      field: 'views.contextMap.loose.field', 'use-case-step': 'views.contextMap.loose.step',
+      'read-model': 'views.contextMap.loose.readModel', 'external-table': 'views.contextMap.loose.table',
+      'integration-event': 'views.contextMap.loose.integrationEvent',
     };
     for (const el of model.looseElements ?? []) {
       const kind = looseKindOf[el.elementType] ?? 'operation';
@@ -1360,9 +1383,11 @@ function buildScene(
         symbol: style.symbol,
         fill: style.fill,
         stroke: style.stroke,
-        badge: 'sin asociar',
+        badge: t('views.contextMap.looseBadge'),
         dashed: true,
-        tooltip: `${el.name} — ${looseNounOf[el.elementType] ?? 'elemento'} sin asociar; arrastra una composición desde su contenedor`,
+        tooltip: t('views.contextMap.looseTooltip', {
+          name: el.name, noun: t(looseNounOf[el.elementType] ?? 'views.contextMap.loose.element'),
+        }),
         x: pos.x,
         y: pos.y,
         w: sizes[el.id]?.w ?? childBoxWidth(el.name),
@@ -1419,10 +1444,10 @@ function buildScene(
       fill: a.external ? '#ffffff' : '#faf5ff',
       stroke: '#9333ea',
       dashed: !!a.external,
-      badge: a.external ? 'AGENTE IA EXT.' : 'AGENTE IA',
+      badge: a.external ? t('views.contextMap.externalAiAgentBadge') : t('views.eventstorming.aiAgentBadge'),
       tooltip: a.external
-        ? `${a.name} (agente de IA externo — entra por un gateway MCP)`
-        : `${a.name} (agente de IA — consume por MCP)`,
+        ? t('views.contextMap.externalAiAgentTooltip', { name: a.name })
+        : t('views.contextMap.aiAgentTooltip', { name: a.name }),
     });
   });
   actorsAndAgents.mcpGateways.forEach((g, i) => {
@@ -1447,8 +1472,8 @@ function buildScene(
       symbol: 'plug',
       fill: '#f5f3ff',
       stroke: '#7c3aed',
-      badge: 'GATEWAY MCP',
-      tooltip: `${g.name} — agrega MCPs y expone APIs, operaciones, casos de uso y RAGs como MCP`,
+      badge: t('views.contextMap.mcpGatewayBadge'),
+      tooltip: t('views.contextMap.mcpGatewayTooltip', { name: g.name }),
     });
   });
   const ragContentEdges: SceneEdge[] = [];
@@ -1471,7 +1496,7 @@ function buildScene(
       fill: '#ecfeff',
       stroke: '#0e7490',
       badge: 'RAG',
-      tooltip: `${r.name} (base de conocimiento — retrieval para agentes)`,
+      tooltip: t('views.contextMap.ragTooltip', { name: r.name }),
     });
     // External content sources hang as small satellites (repo, web, ftp…).
     (r.contentSources ?? []).forEach((s, si) => {
@@ -1499,7 +1524,7 @@ function buildScene(
         color: '#0e7490',
         dashed: true,
         arrow: true,
-        tooltip: 'alimenta el índice',
+        tooltip: t('views.eventstorming.feedsIndex'),
       });
     });
   });
@@ -1516,8 +1541,8 @@ function buildScene(
         symbol: 'gear',
         fill: '#f8fafc',
         stroke: '#334155',
-        badge: 'SERVICIO',
-        tooltip: `${svc.name} — deployable: arrastra su asa hasta un módulo para desplegarlo aquí`,
+        badge: t('views.contextMap.serviceBadge'),
+        tooltip: t('views.contextMap.serviceTooltip', { name: svc.name }),
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -1536,7 +1561,7 @@ function buildScene(
         fill: '#f8fafc',
         stroke: '#0e7490',
         badge: 'URL',
-        tooltip: `${u.url ?? u.name} — traza una línea desde un servicio para servirla aquí`,
+        tooltip: t('views.contextMap.urlTooltip', { name: u.url ?? u.name }),
         x: pos.x,
         y: pos.y,
         w: NODE_W,
@@ -1545,19 +1570,19 @@ function buildScene(
     });
     const infra: { id: string; label: string; badge: string; symbol: string; tooltip: string }[] = [];
     [...new Set(services.filter((sv) => sv.database).map((sv) => sv.database as string))].forEach((db) =>
-      infra.push({ id: `infra-db:${db}`, label: db, badge: 'BD', symbol: 'readmodel',
-        tooltip: `Base de datos ${db} — la usan los servicios que declaran database=${db}` }));
+      infra.push({ id: `infra-db:${db}`, label: db, badge: t('views.integrations.dbBadge'), symbol: 'readmodel',
+        tooltip: t('views.contextMap.databaseTooltip', { db }) }));
     if (services.some((sv) => sv.outboxEnabled)) {
-      infra.push({ id: 'infra-broker', label: 'Broker de eventos', badge: 'BROKER', symbol: 'event',
-        tooltip: 'Broker (Kafka/…) — lo alimentan los servicios con outbox' });
+      infra.push({ id: 'infra-broker', label: t('views.contextMap.brokerLabel'), badge: 'BROKER', symbol: 'event',
+        tooltip: t('views.contextMap.brokerTooltip') });
     }
     if ((model.workflows ?? []).length) {
       infra.push({ id: 'infra-workflow-engine', label: 'Workflow engine', badge: 'ENGINE', symbol: 'process',
-        tooltip: 'Motor de workflows — ejecuta los workflows del modelo' });
+        tooltip: t('views.contextMap.workflowEngineTooltip') });
     }
     if ((model.pages ?? []).length) {
       infra.push({ id: 'infra-forms-engine', label: 'Forms engine', badge: 'ENGINE', symbol: 'interface',
-        tooltip: 'Motor de formularios (Mateu) — sirve las páginas declaradas' });
+        tooltip: t('views.contextMap.formsEngineTooltip') });
     }
     infra.forEach((inf, i) => {
       const pos = layout[inf.id] ?? defaultPosition(allNodes.length + services.length + urls.length + i,
@@ -1599,8 +1624,8 @@ function buildScene(
     tooltip: r.type
       ? `${r.type} (${r.sourceId} upstream → ${r.targetId} downstream)${r.reasons ? ` — ${r.reasons}` : ''}`
       : r.inferredType
-        ? `≈ ${r.inferredType} INFERIDO de las dependencias — doble click para declararlo (o corregirlo)${r.reasons ? ` — ${r.reasons}` : ''}`
-        : `Relación derivada — doble click para elegir el patrón${r.reasons ? ` — ${r.reasons}` : ''}`,
+        ? `${t('views.contextMap.relationInferred', { type: r.inferredType })}${r.reasons ? ` — ${r.reasons}` : ''}`
+        : `${t('views.contextMap.relationDerived')}${r.reasons ? ` — ${r.reasons}` : ''}`,
   }));
 
   const flowEdges: SceneEdge[] = model.flows.map((f) => {
@@ -1663,7 +1688,7 @@ function buildScene(
         fill: '#f0f9ff',
         stroke: '#0ea5e9',
         badge: 'UI',
-        tooltip: `${u.name} — interfaz humana suelta; trázala a un contexto para declarar quién la expone`,
+        tooltip: t('views.contextMap.looseUiTooltip', { name: u.name }),
       });
     });
 
@@ -1709,20 +1734,20 @@ function buildScene(
         continue;
       }
       const s = representative(e.sourceId);
-      const t = representative(e.targetId);
-      if (!s || !t || s === t) continue;
-      if (s === e.sourceId && t === e.targetId) {
+      const tg = representative(e.targetId);
+      if (!s || !tg || s === tg) continue;
+      if (s === e.sourceId && tg === e.targetId) {
         out.push(e);
         continue;
       }
-      const key = `${e.kind}|${s}|${t}`;
+      const key = `${e.kind}|${s}|${tg}`;
       if (seen.has(key)) continue;
       seen.add(key);
       out.push({
         ...e,
         sourceId: s,
-        targetId: t,
-        tooltip: `${e.tooltip ?? e.kind} — de un elemento plegado dentro`,
+        targetId: tg,
+        tooltip: t('views.contextMap.rolledUpEdge', { tooltip: e.tooltip ?? e.kind }),
       });
     }
     return out;
@@ -1749,7 +1774,7 @@ function buildScene(
                 color: '#334155',
                 dashed: true,
                 arrow: true,
-                tooltip: `desplegado en ${svc.name} — Supr lo desconecta`,
+                tooltip: t('views.contextMap.edge.deployedIn', { name: svc.name }),
               };
             })
             .filter((e): e is SceneEdge => e !== null),
@@ -1764,7 +1789,7 @@ function buildScene(
               kind: 'service-url',
               color: '#0e7490',
               arrow: true,
-              tooltip: `${svc.name} responde en esta URL — Supr lo desconecta`,
+              tooltip: t('views.contextMap.edge.answersAtUrl', { name: svc.name }),
             })),
         ),
         ...(model.services ?? []).flatMap((svc): SceneEdge[] => {
@@ -1778,7 +1803,7 @@ function buildScene(
               color: '#92400e',
               dashed: true,
               arrow: true,
-              tooltip: `${svc.name} persiste en ${svc.database}`,
+              tooltip: t('views.contextMap.edge.persistsIn', { name: svc.name, db: svc.database }),
             });
           }
           if (svc.outboxEnabled && nodeIds.has('infra-broker') && nodeIds.has(svc.id)) {
@@ -1790,7 +1815,7 @@ function buildScene(
               color: '#92400e',
               dashed: true,
               arrow: true,
-              tooltip: `${svc.name} publica eventos por el outbox`,
+              tooltip: t('views.contextMap.edge.publishesViaOutbox', { name: svc.name }),
             });
           }
           return out;
@@ -1808,7 +1833,7 @@ function buildScene(
           color: '#f59e0b',
           dashed: true,
           arrow: true,
-          tooltip: 'emite',
+          tooltip: t('views.eventstorming.emits'),
         }))
     : [];
 
@@ -1831,8 +1856,8 @@ function buildScene(
           dashed: true,
           arrow: true,
           tooltip: p.sourceAggregateId
-            ? `Proyección ${p.name}: el estado del agregado se materializa en ${p.readModelName ?? p.readModelId}`
-            : `Proyección ${p.name}: polling hacia ${p.readModelName ?? p.readModelId}`,
+            ? t('views.contextMap.edge.projectionState', { name: p.name, readModel: p.readModelName ?? p.readModelId })
+            : t('views.contextMap.edge.projectionPolling', { name: p.name, readModel: p.readModelName ?? p.readModelId }),
         }))
     : [];
 
@@ -1869,8 +1894,8 @@ function buildScene(
           arrow: true,
           tooltip:
             target === queryTarget
-              ? `${op.name} lee de ${target}`
-              : `${op.name} la implementa ${target}`,
+              ? t('views.contextMap.edge.readsFrom', { name: op.name, target })
+              : t('views.contextMap.edge.implementedBy', { name: op.name, target }),
         },
       ];
     }),
@@ -1888,7 +1913,7 @@ function buildScene(
           color: '#0891b2',
           dashed: true,
           arrow: true,
-          tooltip: 'invoca',
+          tooltip: t('views.contextMap.edge.invokes'),
         }))
     : [];
 
@@ -1902,10 +1927,10 @@ function buildScene(
         targetId: mo.identityProviderId!,
         kind: 'idp-trust',
         color: '#ca8a04',
-        label: 'valida tokens de',
+        label: t('views.contextMap.edge.validatesTokensOf'),
         dashed: true,
         arrow: true,
-        tooltip: `${mo.name} valida los tokens emitidos por este IdP — Supr lo desconfía`,
+        tooltip: t('views.contextMap.edge.validatesTokens', { name: mo.name }),
       })),
     ...(model.etlFlows ?? [])
       .filter((f) => f.identityProviderId && nodeIds.has(f.identityProviderId))
@@ -1918,10 +1943,10 @@ function buildScene(
           targetId: f.identityProviderId!,
           kind: 'idp-service',
           color: '#ca8a04',
-          label: 'identidad de servicio',
+          label: t('views.contextMap.edge.serviceIdentity'),
           dashed: true,
           arrow: true,
-          tooltip: `${f.name} corre con una identidad de servicio de este IdP`,
+          tooltip: t('views.contextMap.edge.runsWithServiceIdentity', { name: f.name }),
         }];
       }),
     ...(model.identityProviders ?? [])
@@ -1932,10 +1957,10 @@ function buildScene(
         targetId: idp.id,
         kind: 'idp-federation',
         color: '#ca8a04',
-        label: 'publica',
+        label: t('views.contextMap.edge.publishes'),
         dashed: true,
         arrow: true,
-        tooltip: 'IdP federado: lo publica este sistema externo — Supr lo vuelve propio',
+        tooltip: t('views.contextMap.edge.federatedIdp'),
       })),
   ];
 
@@ -1943,17 +1968,17 @@ function buildScene(
   const triggerFireEdges: SceneEdge[] = detailed
     ? model.boundedContexts
         .flatMap((mo) => mo.scheduledTriggers ?? [])
-        .filter((t) => t.useCaseId && nodeIds.has(t.id) && nodeIds.has(t.useCaseId))
-        .map((t) => ({
-          id: `stfire:${t.id}->${t.useCaseId}`,
-          sourceId: t.id,
-          targetId: t.useCaseId!,
+        .filter((st) => st.useCaseId && nodeIds.has(st.id) && nodeIds.has(st.useCaseId))
+        .map((st) => ({
+          id: `stfire:${st.id}->${st.useCaseId}`,
+          sourceId: st.id,
+          targetId: st.useCaseId!,
           kind: 'st-fire',
           color: '#d97706',
-          label: t.cronExpression ?? 'cron',
+          label: st.cronExpression ?? 'cron',
           dashed: true,
           arrow: true,
-          tooltip: `dispara según ${t.cronExpression ?? 'cron'}`,
+          tooltip: t('views.contextMap.firesOn', { cron: st.cronExpression ?? 'cron' }),
         }))
     : [];
 
@@ -1969,7 +1994,7 @@ function buildScene(
           color: '#b45309',
           dashed: true,
           arrow: true,
-          tooltip: 'opera sobre el agregado',
+          tooltip: t('views.contextMap.edge.operatesOnAggregate'),
         }))
     : [];
 
@@ -1985,7 +2010,7 @@ function buildScene(
           color: '#0d9488',
           dashed: true,
           arrow: true,
-          tooltip: 'consulta',
+          tooltip: t('views.contextMap.edge.queries'),
         }))
     : [];
   const actorUseEdges: SceneEdge[] = detailed
@@ -1998,7 +2023,7 @@ function buildScene(
           kind: 'actor-use',
           color: '#6366f1',
           arrow: true,
-          tooltip: 'usa (deriva una UI)',
+          tooltip: t('views.contextMap.edge.usesDerivesUi'),
         }))
     : [];
 
@@ -2012,7 +2037,7 @@ function buildScene(
       color: '#64748b',
       dashed: true,
       arrow: true,
-      tooltip: 'depende de',
+      tooltip: t('views.contextMap.edge.dependsOn'),
     }));
 
   // A dependency on a nested API/proxy that is hidden at this detail level rolls
@@ -2048,7 +2073,7 @@ function buildScene(
             label: d.cqrs ? 'CQRS' : 'dep',
             dashed: true,
             arrow: true,
-            tooltip: d.cqrs ? 'CQRS — consulta sobre sus datos' : 'depende de',
+            tooltip: d.cqrs ? t('views.contextMap.edge.cqrs') : t('views.contextMap.edge.dependsOn'),
           },
         ]),
     ).values(),
@@ -2087,7 +2112,7 @@ function buildScene(
             color: '#7c3aed',
             dashed: true,
             arrow: true,
-            tooltip: 'orquesta',
+            tooltip: t('views.contextMap.edge.orchestrates'),
           },
         ]),
     ).values(),
@@ -2113,7 +2138,7 @@ function buildScene(
             label: d.label,
             dashed: true,
             arrow: true,
-            tooltip: 'dispara el workflow',
+            tooltip: t('views.contextMap.edge.triggersWorkflow'),
           },
         ]),
     ).values(),
@@ -2139,10 +2164,10 @@ function buildScene(
           targetId: el,
           kind: 'notification-trigger',
           color: '#db2777',
-          label: 'dispara',
+          label: t('views.contextMap.edge.triggers'),
           dashed: true,
           arrow: true,
-          tooltip: `${n.name}: este evento la dispara — Supr lo desapunta`,
+          tooltip: t('views.contextMap.edge.notificationTrigger', { name: n.name }),
         });
       }
     }
@@ -2154,10 +2179,10 @@ function buildScene(
         targetId: roleId,
         kind: 'notification-recipient',
         color: '#db2777',
-        label: (n.channels ?? [])[0]?.toLowerCase() ?? 'avisa',
+        label: (n.channels ?? [])[0]?.toLowerCase() ?? t('views.contextMap.edge.notifies'),
         dashed: true,
         arrow: true,
-        tooltip: `${n.name} avisa a este rol — Supr lo quita`,
+        tooltip: t('views.contextMap.edge.notifiesRole', { name: n.name }),
       });
     }
     return out;
@@ -2175,10 +2200,10 @@ function buildScene(
       targetId: el,
       kind: 'document-query',
       color: '#475569',
-      label: 'alimenta',
+      label: t('views.contextMap.edge.feeds'),
       dashed: true,
       arrow: true,
-      tooltip: `${d.name}: esta consulta alimenta el informe — Supr lo desapunta`,
+      tooltip: t('views.contextMap.edge.queryFeedsReport', { name: d.name }),
     }];
   });
 
@@ -2207,12 +2232,12 @@ function buildScene(
         kind: source ? 'etl-source' : 'etl-write',
         color: '#0f766e',
         label: s.type === 'SOURCE_PULL' ? 'pull' : s.type === 'SOURCE_CONSUMER' ? 'consume'
-          : s.type === 'WRITE_API' ? 'api' : s.type === 'WRITE_DB' ? 'bd' : 'evento',
+          : s.type === 'WRITE_API' ? 'api' : s.type === 'WRITE_DB' ? t('views.integrations.dbEdge') : t('views.integrations.eventEdge'),
         dashed: true,
         arrow: true,
         tooltip: source
-          ? `${f.name} lee de aquí (${s.type === 'SOURCE_PULL' ? 'pull' : 'consumidor'})`
-          : `${f.name} escribe aquí — Supr quita el paso`,
+          ? t(s.type === 'SOURCE_PULL' ? 'views.contextMap.edge.readsHerePull' : 'views.contextMap.edge.readsHereConsumer', { name: f.name })
+          : t('views.integrations.writesHere', { name: f.name }),
       }];
     }),
   );
@@ -2239,7 +2264,7 @@ function buildScene(
             color: '#0e7490',
             dashed: true,
             arrow: true,
-            tooltip: `${d.name} indexa esta tabla`,
+            tooltip: t('views.contextMap.edge.indexesTable', { name: d.name }),
           },
         ]),
     ).values(),
@@ -2265,7 +2290,7 @@ function buildScene(
             color: '#0e7490',
             dashed: true,
             arrow: true,
-            tooltip: `${d.name} indexa el contenido de esta API`,
+            tooltip: t('views.contextMap.edge.indexesApi', { name: d.name }),
           },
         ]),
     ).values(),
@@ -2290,7 +2315,7 @@ function buildScene(
             color: '#0e7490',
             dashed: true,
             arrow: true,
-            tooltip: `${d.name} indexa su contenido`,
+            tooltip: t('views.contextMap.edge.indexesContent', { name: d.name }),
           },
         ]),
     ).values(),
@@ -2312,7 +2337,7 @@ function buildScene(
             color: '#9333ea',
             dashed: true,
             arrow: true,
-            tooltip: 'consume la API entera como herramienta',
+            tooltip: t('views.contextMap.edge.consumesWholeApi'),
           },
         ]),
     ).values(),
@@ -2336,7 +2361,7 @@ function buildScene(
             label: b.triggerEvent!,
             dashed: true,
             arrow: true,
-            tooltip: 'su evento final dispara este workflow',
+            tooltip: t('views.contextMap.edge.completionTriggersWorkflow'),
           })),
   );
 
@@ -2355,7 +2380,7 @@ function buildScene(
           kind: 'workflow-dependency',
           color: '#6d28d9',
           arrow: true,
-          tooltip: `${step.name} espera a ${nameOf.get(dep) ?? dep}`,
+          tooltip: t('views.workflows.dependencyTooltip', { name: step.name, dependency: nameOf.get(dep) ?? dep }),
         })),
     );
   });
@@ -2370,7 +2395,7 @@ function buildScene(
       kind: 'process-seq',
       color: '#64748b',
       arrow: true,
-      tooltip: `${step.name} sigue a ${p.steps[i].name}`,
+      tooltip: t('views.contextMap.edge.follows', { name: step.name, previous: p.steps[i].name }),
     })),
   );
 
@@ -2385,7 +2410,7 @@ function buildScene(
       color: '#0ea5e9',
       dashed: true,
       arrow: true,
-      tooltip: 'el mockup de esta página',
+      tooltip: t('views.contextMap.edge.pageMockup'),
     }));
 
   // A menu entry → what it drives (page, use case, aggregate CRUD, query listing, another app).
@@ -2395,23 +2420,23 @@ function buildScene(
       const out: SceneEdge[] = [];
       if (entry.pageId && (model.pages ?? []).some((p) => p.id === entry.pageId)) {
         out.push({ id: `menupage:${src}->${entry.pageId}`, sourceId: src, targetId: entry.pageId,
-          kind: 'menu-page', color: '#64748b', markerStart: 'ball', markerEnd: 'arrow', tooltip: 'la página que abre' });
+          kind: 'menu-page', color: '#64748b', markerStart: 'ball', markerEnd: 'arrow', tooltip: t('views.contextMap.edge.opensPage') });
       }
       if (entry.uiAdapterId && (model.uiApps ?? []).some((a) => a.id === entry.uiAdapterId)) {
         out.push({ id: `menuapp:${src}->${entry.uiAdapterId}`, sourceId: src, targetId: entry.uiAdapterId,
-          kind: 'menu-app', color: '#64748b', arrow: true, tooltip: 'abre esta app' });
+          kind: 'menu-app', color: '#64748b', arrow: true, tooltip: t('views.contextMap.edge.opensApp') });
       }
       if (entry.useCaseId) {
         out.push({ id: `menuuc:${src}->${entry.useCaseId}`, sourceId: src, targetId: entry.useCaseId,
-          kind: 'menu-use-case', color: '#06b6d4', dashed: true, arrow: true, tooltip: 'lanza este caso de uso' });
+          kind: 'menu-use-case', color: '#06b6d4', dashed: true, arrow: true, tooltip: t('views.contextMap.edge.launchesUseCase') });
       }
       if (entry.aggregateId) {
         out.push({ id: `menuagg:${src}->${entry.aggregateId}`, sourceId: src, targetId: entry.aggregateId,
-          kind: 'menu-aggregate', label: 'CRUD', color: '#8b5cf6', dashed: true, arrow: true, tooltip: 'CRUD sobre este agregado' });
+          kind: 'menu-aggregate', label: 'CRUD', color: '#8b5cf6', dashed: true, arrow: true, tooltip: t('views.contextMap.edge.crudOverAggregate') });
       }
       if (entry.queryOperationId) {
         out.push({ id: `menuqop:${src}->${entry.queryOperationId}`, sourceId: src, targetId: entry.queryOperationId,
-          kind: 'menu-query-operation', label: 'listado', color: '#0284c7', dashed: true, arrow: true, tooltip: 'listado de esta consulta' });
+          kind: 'menu-query-operation', label: t('views.ui.listingEdge'), color: '#0284c7', dashed: true, arrow: true, tooltip: t('views.contextMap.edge.queryListing') });
       }
       return out;
     }),
@@ -2438,7 +2463,7 @@ function buildScene(
             kind: 'etl-pipe',
             color: '#0f766e',
             arrow: true,
-            tooltip: 'el dato fluye por el pipeline',
+            tooltip: t('views.integrations.pipeEdge'),
           });
         }
       });
@@ -2458,7 +2483,7 @@ function buildScene(
       color: '#7c3aed',
       label: mm.name,
       arrow: true,
-      tooltip: `${mm.name} — las reglas campo a campo son las líneas finas entre campos`,
+      tooltip: t('views.contextMap.edge.mappingRules', { name: mm.name }),
     }];
     for (const r of mm.rules ?? []) {
       if (!r.sourceFieldId || !r.targetFieldId) continue;
@@ -2470,7 +2495,7 @@ function buildScene(
         color: '#a78bfa',
         dashed: true,
         arrow: true,
-        tooltip: `Regla de ${mm.name}`,
+        tooltip: t('views.contextMap.edge.mappingRule', { name: mm.name }),
       });
     }
     return out;
@@ -2495,7 +2520,7 @@ function buildScene(
             color: '#0e7490',
             dashed: true,
             arrow: true,
-            tooltip: 'proxy/cache de',
+            tooltip: t('views.contextMap.edge.proxyOf'),
           },
         ]),
     ).values(),
@@ -2522,7 +2547,7 @@ function buildScene(
           dashArray: '2 5',
           arrow: false,
           faint: true,
-          tooltip: 'el proxy enruta a esta implementación (ruta derivada, no una relación)',
+          tooltip: t('views.contextMap.edge.proxyRoutes'),
         });
       }
     }
@@ -2548,7 +2573,7 @@ function buildScene(
       kind: 'op-route',
       color: '#0e7490',
       arrow: true,
-      tooltip: 'enruta esta operación a',
+      tooltip: t('views.contextMap.edge.routesOperationTo'),
     }];
   });
 
@@ -2593,7 +2618,7 @@ function buildScene(
             label: 'op',
             dashed: true,
             arrow: true,
-            tooltip: 'llama a esta operación',
+            tooltip: t('views.contextMap.edge.callsOperation'),
           },
         ]),
     ).values(),
@@ -2622,7 +2647,7 @@ function buildScene(
           color: '#4f46e5',
           dashed: true,
           arrow: true,
-          tooltip: 'implementada aquí por',
+          tooltip: t('views.contextMap.edge.implementedHereBy'),
         }];
       })
     : [];
@@ -2638,7 +2663,7 @@ function buildScene(
           color: '#9333ea',
           dashed: true,
           arrow: true,
-          tooltip: 'consume por MCP (exposedAsMcp)',
+          tooltip: t('views.contextMap.edge.consumesViaMcpExposed'),
         }))
     : [];
   // Agent → knowledge base, and knowledge base → the read models it indexes.
@@ -2654,7 +2679,7 @@ function buildScene(
       color: '#0e7490',
       dashed: true,
       arrow: true,
-      tooltip: 'consulta la base de conocimiento (retrieval)',
+      tooltip: t('views.contextMap.edge.queriesKnowledgeBase'),
     }));
   const ragSourceEdges: SceneEdge[] = detailed
     ? (model.rags ?? [])
@@ -2670,7 +2695,7 @@ function buildScene(
               color: '#0e7490',
               dashed: true,
               arrow: true,
-              tooltip: `${r.name} indexa este read model`,
+              tooltip: t('views.contextMap.edge.indexesReadModel', { name: r.name }),
             })),
         )
     : [];
@@ -2685,7 +2710,7 @@ function buildScene(
           color: '#9333ea',
           dashed: true,
           arrow: true,
-          tooltip: 'llama a la operación del sistema externo',
+          tooltip: t('views.contextMap.edge.callsExternalOperation'),
         }))
     : [];
   const agentMcpEdges: SceneEdge[] = detailed
@@ -2699,7 +2724,7 @@ function buildScene(
           color: '#9333ea',
           dashed: true,
           arrow: true,
-          tooltip: 'consume las herramientas del servidor MCP',
+          tooltip: t('views.contextMap.edge.consumesMcpServerTools'),
         }))
     : [];
   // Gateway exposures: whatever the gateway aggregates/exposes, when visible.
@@ -2720,7 +2745,7 @@ function buildScene(
         color: '#7c3aed',
         dashed: true,
         arrow: true,
-        tooltip: 'lo agrega/expone como herramienta MCP',
+        tooltip: t('views.contextMap.edge.aggregatesAsMcpTool'),
       })),
   );
   const agentGatewayEdges: SceneEdge[] = (model.agentGatewayUses ?? [])
@@ -2733,7 +2758,7 @@ function buildScene(
       color: '#9333ea',
       dashed: true,
       arrow: true,
-      tooltip: 'consume la superficie de herramientas del gateway MCP',
+      tooltip: t('views.contextMap.edge.consumesMcpGatewayTools'),
     }));
   const agentApiOpEdges: SceneEdge[] = detailed
     ? (model.agentApiOpUses ?? [])
@@ -2746,7 +2771,7 @@ function buildScene(
           color: '#9333ea',
           dashed: true,
           arrow: true,
-          tooltip: 'llama a la operación de API como herramienta',
+          tooltip: t('views.contextMap.edge.callsApiOperationAsTool'),
         }))
     : [];
   const agentQueryEdges: SceneEdge[] = detailed
@@ -2760,7 +2785,7 @@ function buildScene(
           color: '#0d9488',
           dashed: true,
           arrow: true,
-          tooltip: 'consulta el query service (herramienta de lectura)',
+          tooltip: t('views.contextMap.edge.queriesQueryService'),
         }))
     : [];
   const agentDelegationEdges: SceneEdge[] = (model.agentDelegations ?? [])
@@ -2772,7 +2797,7 @@ function buildScene(
       kind: 'agent-delegate',
       color: '#9333ea',
       arrow: true,
-      tooltip: 'delega trabajo en el otro agente',
+      tooltip: t('views.contextMap.edge.delegatesToAgent'),
     }));
   const actorAgentEdges: SceneEdge[] = (model.actorAgentUses ?? [])
     .filter((u) => nodeIds.has(u.actorId) && nodeIds.has(u.agentId))
@@ -2783,7 +2808,7 @@ function buildScene(
       kind: 'actor-agent',
       color: '#6366f1',
       arrow: true,
-      tooltip: 'habla con el agente (deriva una UI de chat/supervisión)',
+      tooltip: t('views.contextMap.edge.talksToAgent'),
     }));
   const agentTriggerEdges: SceneEdge[] = detailed
     ? (model.agentTriggers ?? [])
@@ -2796,7 +2821,7 @@ function buildScene(
           color: '#f59e0b',
           dashed: true,
           arrow: true,
-          tooltip: 'el evento dispara una ejecución del agente (agente reactivo)',
+          tooltip: t('views.contextMap.edge.eventTriggersAgent'),
         }))
     : [];
   const externalCallEdges: SceneEdge[] = detailed
@@ -2809,7 +2834,7 @@ function buildScene(
           kind: 'external-call',
           color: '#7c3aed',
           arrow: true,
-          tooltip: 'llama (entra por un ACL)',
+          tooltip: t('views.contextMap.edge.callsViaAcl'),
         }))
     : [];
   const externalUcCallEdges: SceneEdge[] = detailed
@@ -2823,7 +2848,7 @@ function buildScene(
           color: '#64748b',
           dashed: true,
           arrow: true,
-          tooltip: 'llama (derivará gateway/API)',
+          tooltip: t('views.contextMap.edge.callsDerivesGateway'),
         }))
     : [];
 
@@ -2837,7 +2862,7 @@ function buildScene(
       color: '#0ea5e9',
       markerStart: 'ball',
       markerEnd: 'arrow',
-      tooltip: 'asignada a la UI (assignment) — Supr la desconecta',
+      tooltip: t('views.ui.uiAssignmentEdge'),
     })),
     // serving: la interfaz SIRVE al actor (flecha abierta hacia la persona)
     ...(u.actorIds ?? []).map((actor): SceneEdge => ({
@@ -2847,7 +2872,7 @@ function buildScene(
       kind: 'ui-serving',
       color: '#0ea5e9',
       markerEnd: 'open-arrow',
-      tooltip: 'la UI sirve a este actor (serving) — Supr la desconecta',
+      tooltip: t('views.ui.uiServingEdge'),
     })),
   ]);
 
@@ -2877,7 +2902,7 @@ function buildScene(
     label: r.label || undefined,
     nature: relationNature(r),
     ...(ARCHIMATE_NOTATION[r.type] ?? {}),
-    tooltip: `${ARCHIMATE_LABEL[r.type] ?? r.type} (ArchiMate)${r.label ? ` · ${r.label}` : ''} — doble click retipa o invierte el sentido · Supr la borra`,
+    tooltip: `${ARCHIMATE_LABEL[r.type] ?? r.type} (ArchiMate)${r.label ? ` · ${r.label}` : ''}${t('views.contextMap.edge.archimateHint')}`,
   }));
 
   const reanchored = reanchorEdges([
@@ -2952,7 +2977,7 @@ function buildScene(
       dashArray: '6 4',
       color: '#94a3b8',
       faint: true,
-      tooltip: `Propuesta (boceto sin respaldo)${e.label ? ` · ${e.label}` : ''} — se confirmará cuando algún hecho de abajo la realice`,
+      tooltip: `${t('views.contextMap.edge.sketch')}${e.label ? ` · ${e.label}` : ''}${t('views.contextMap.edge.sketchHint')}`,
     }];
   });
 

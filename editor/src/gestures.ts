@@ -6,6 +6,7 @@ import { parseMenuNodeId } from './views/ui.js';
 import { ARCHIMATE_LABEL } from './views/context-map.js';
 import { parseFieldNodeId } from './views/mappings.js';
 import { slug } from './ids.js';
+import { t } from './i18n/index.js';
 
 /**
  * The whole gesture vocabulary — what a drawn line MEANS and what Supr
@@ -51,34 +52,36 @@ export interface GestureHost {
 }
 
 /** The relation palette (Archi style): pick a type, trace, done. */
-/** The typed relation vocabulary the traced line offers when several fit. */
-const RELATION_TYPES: { id: string; label: string; hint: string }[] = [
-  { id: 'uc-call', label: 'Invocación', hint: 'Caso de uso → caso de uso: lo invoca como un paso' },
-  { id: 'query-call', label: 'Consulta', hint: 'Caso de uso → query service: lo consulta' },
-  { id: 'aggregate-call', label: 'Opera sobre', hint: 'Caso de uso → agregado: opera sobre él' },
-  { id: 'emission', label: 'Emisión', hint: 'Agregado/servicio → evento de dominio · caso de uso → evento (lo publica como paso)' },
-  { id: 'flow-triggers', label: 'Flow · dispara', hint: 'Evento → caso de uso de otro contexto (TRIGGERS)' },
-  { id: 'flow-materializes', label: 'Flow · materializa', hint: 'Evento → contexto o read model (MATERIALIZES)' },
-  { id: 'actor-use', label: 'Uso (actor)', hint: 'Actor → caso de uso, query service, agregado (CRUD) o agente' },
-  { id: 'ext-dep', label: 'Dependencia', hint: 'Sistema externo/actor → sistema, API o proxy' },
-  { id: 'api-implementation', label: 'Implementación', hint: 'API → contexto: el contexto la implementa (la sirve él mismo)' },
-  { id: 'api-consumption', label: 'Consumo (servidumbre)', hint: 'API → contexto: el contexto la consume (relación serving)' },
-  { id: 'external-call', label: 'Llamada ACL', hint: 'Sistema externo → caso de uso nuestro (entra por ACL)' },
-  { id: 'external-crud', label: 'CRUD (API)', hint: 'Sistema externo → agregado: crea la API CRUD y lo cablea como consumidor' },
-  { id: 'context-crud', label: 'CRUD (API)', hint: 'Otro contexto → agregado: crea la API CRUD que consumirá' },
-  { id: 'ui-crud', label: 'CRUD (UI)', hint: 'App UI → agregado: lo gestiona con páginas CRUD desde su menú' },
-  { id: 'external-uc-call', label: 'Llamada saliente', hint: 'Caso de uso nuestro → operación de un sistema externo' },
-  { id: 'agent-tool', label: 'Herramienta IA', hint: 'Agente → caso de uso, operación, MCP, gateway, API o query service' },
-  { id: 'agent-delegate', label: 'Delegación IA', hint: 'Agente → agente: le delega trabajo' },
-  { id: 'agent-rag', label: 'Conocimiento', hint: 'Agente → RAG que fundamenta sus respuestas' },
-  { id: 'idp-trust', label: 'Identidad', hint: 'Contexto, app o flujo ETL → IdP cuyos tokens valida' },
-  { id: 'ui-assignment', label: 'Asignación a la UI', hint: 'App o página ⇆ UI declarada: se le asigna (assignment)' },
-  { id: 'ui-composition', label: 'Composición (expone la UI)', hint: 'Contexto ⇆ UI: el contexto la posee — la única relación posible entre ambos' },
-  { id: 'ui-serving', label: 'Servidumbre (sirve al actor)', hint: 'UI ⇆ actor: la interfaz le sirve — la única relación posible entre ambos' },
-  { id: 'aggregate-composition', label: 'Composición (lo contiene)', hint: 'Contexto ⇆ agregado suelto: el contexto pasa a contenerlo' },
-  { id: 'system-composition', label: 'Composición (lo contiene)', hint: 'Sistema ⇆ contexto/subsistema: el sistema pasa a contenerlo' },
-  { id: 'projection', label: 'Proyección', hint: 'Tabla externa ⇆ read model: el read model se proyecta de la tabla — la única relación posible entre ambos' },
-];
+/** The typed relation vocabulary the traced line offers when several fit (read at call time: translated). */
+function relationTypes(): { id: string; label: string; hint: string }[] {
+  return [
+    { id: 'uc-call', label: t('gestures.relation.ucCall.label'), hint: t('gestures.relation.ucCall.hint') },
+    { id: 'query-call', label: t('gestures.relation.queryCall.label'), hint: t('gestures.relation.queryCall.hint') },
+    { id: 'aggregate-call', label: t('gestures.relation.aggregateCall.label'), hint: t('gestures.relation.aggregateCall.hint') },
+    { id: 'emission', label: t('gestures.relation.emission.label'), hint: t('gestures.relation.emission.hint') },
+    { id: 'flow-triggers', label: t('gestures.relation.flowTriggers.label'), hint: t('gestures.relation.flowTriggers.hint') },
+    { id: 'flow-materializes', label: t('gestures.relation.flowMaterializes.label'), hint: t('gestures.relation.flowMaterializes.hint') },
+    { id: 'actor-use', label: t('gestures.relation.actorUse.label'), hint: t('gestures.relation.actorUse.hint') },
+    { id: 'ext-dep', label: t('gestures.relation.extDep.label'), hint: t('gestures.relation.extDep.hint') },
+    { id: 'api-implementation', label: t('gestures.relation.apiImplementation.label'), hint: t('gestures.relation.apiImplementation.hint') },
+    { id: 'api-consumption', label: t('gestures.relation.apiConsumption.label'), hint: t('gestures.relation.apiConsumption.hint') },
+    { id: 'external-call', label: t('gestures.relation.externalCall.label'), hint: t('gestures.relation.externalCall.hint') },
+    { id: 'external-crud', label: t('gestures.relation.externalCrud.label'), hint: t('gestures.relation.externalCrud.hint') },
+    { id: 'context-crud', label: t('gestures.relation.contextCrud.label'), hint: t('gestures.relation.contextCrud.hint') },
+    { id: 'ui-crud', label: t('gestures.relation.uiCrud.label'), hint: t('gestures.relation.uiCrud.hint') },
+    { id: 'external-uc-call', label: t('gestures.relation.externalUcCall.label'), hint: t('gestures.relation.externalUcCall.hint') },
+    { id: 'agent-tool', label: t('gestures.relation.agentTool.label'), hint: t('gestures.relation.agentTool.hint') },
+    { id: 'agent-delegate', label: t('gestures.relation.agentDelegate.label'), hint: t('gestures.relation.agentDelegate.hint') },
+    { id: 'agent-rag', label: t('gestures.relation.agentRag.label'), hint: t('gestures.relation.agentRag.hint') },
+    { id: 'idp-trust', label: t('gestures.relation.idpTrust.label'), hint: t('gestures.relation.idpTrust.hint') },
+    { id: 'ui-assignment', label: t('gestures.relation.uiAssignment.label'), hint: t('gestures.relation.uiAssignment.hint') },
+    { id: 'ui-composition', label: t('gestures.relation.uiComposition.label'), hint: t('gestures.relation.uiComposition.hint') },
+    { id: 'ui-serving', label: t('gestures.relation.uiServing.label'), hint: t('gestures.relation.uiServing.hint') },
+    { id: 'aggregate-composition', label: t('gestures.relation.aggregateComposition.label'), hint: t('gestures.relation.aggregateComposition.hint') },
+    { id: 'system-composition', label: t('gestures.relation.systemComposition.label'), hint: t('gestures.relation.systemComposition.hint') },
+    { id: 'projection', label: t('gestures.relation.projection.label'), hint: t('gestures.relation.projection.hint') },
+  ];
+}
 
 /** A readable name for a node id, scanning the strategic/domain collections. */
 function nodeName(host: GestureHost, id: string): string {
@@ -110,7 +113,7 @@ export function archimateOptions(
   return Object.entries(ARCHIMATE_LABEL).map(([type, label]) => ({
     id: `archimate:${type}`,
     label: `${label} — ${src} → ${tgt}`,
-    hint: `Relación ArchiMate «${label}»: ${src} → ${tgt}`,
+    hint: t('gestures.archimate.hint', { label, source: src, target: tgt }),
     apply() {
       host.command({ kind: 'add-archimate-relation', id: `ar-${sourceId}-${targetId}-${type}`, sourceId, targetId, type });
     },
@@ -310,7 +313,7 @@ export function connectionOptions(
     const tblId = isTable(sourceId) ? sourceId : isTable(targetId) ? targetId : null;
     if (rmId && tblId && !(m.projections ?? []).some((p) => p.readModelId === rmId)) {
       offer('projection', () => host.command({
-        kind: 'add-projection', id: `proj-${tblId}-${rmId}`, name: 'Proyección',
+        kind: 'add-projection', id: `proj-${tblId}-${rmId}`, name: t('gestures.default.projection'),
         externalTableId: tblId, targetId: rmId,
       }));
     }
@@ -391,10 +394,11 @@ export function connectionOptions(
 
   // dedupe by type id (e.g. ext-dep offered by two guards) and dress with metadata
   const seen = new Set<string>();
+  const types = relationTypes();
   return out
     .filter((o) => (seen.has(o.id) ? false : (seen.add(o.id), true)))
     .map((o) => {
-      const meta = RELATION_TYPES.find((r) => r.id === o.id)!;
+      const meta = types.find((r) => r.id === o.id)!;
       return { ...o, label: meta.label, hint: meta.hint };
     });
 }
@@ -719,7 +723,7 @@ export function applyConnectionGesture(
         if (isUseCase) {
           host.command({ kind: 'set-group-button-target', id: gbtn[1], itemId: gbtn[2], useCaseId: targetId });
         } else {
-          host.emit('modux-notice', { message: 'El botón se cablea a un caso de uso o una policy' });
+          host.emit('modux-notice', { message: t('gestures.notice.buttonWiresToUseCase') });
         }
         return;
       }
@@ -755,7 +759,7 @@ export function applyConnectionGesture(
         if ((host.model.models ?? []).some((mo) => mo.id === targetId)) {
           host.command({ kind: 'set-page-model', pageId: sourceId, modelId: targetId });
         } else {
-          host.emit('modux-notice', { message: 'El viewmodel se traza hasta un MODELO de datos' });
+          host.emit('modux-notice', { message: t('gestures.notice.viewmodelToModel') });
         }
         return;
       }
@@ -795,7 +799,7 @@ export function applyConnectionGesture(
         if (app.type === 'MASTER_DETAIL' && !app.headerPageId) {
           host.command({ kind: 'set-app-header-page', appId: targetId, pageId: sourceId });
           host.emit('modux-notice', {
-            message: `${page.name} es la cabecera de ${app.name} — las siguientes páginas serán pestañas`,
+            message: t('gestures.notice.pageIsHeader', { page: page.name, app: app.name }),
           });
           return;
         }
@@ -817,7 +821,7 @@ export function applyConnectionGesture(
         if (isApp(other)) {
           host.command({ kind: 'set-identity-provider', id: other, targetId: idpId });
         } else {
-          host.emit('modux-notice', { message: 'En la vista UI, el IdP se relaciona con las APPS (quién autentica dónde)' });
+          host.emit('modux-notice', { message: t('gestures.notice.idpInUiView') });
         }
         return;
       }
@@ -896,7 +900,7 @@ export function applyConnectionGesture(
         const menuNodeIdStr = parseMenuNodeId(sourceId) ? sourceId : targetId;
         const other = parseMenuNodeId(sourceId) ? targetId : sourceId;
         if (host.sceneFor('ui').nodes.find((n) => n.id === menuNodeIdStr)?.kind === 'menu-group') {
-          host.emit('modux-notice', { message: 'Un agrupador (con submenú) no puede abrir nada' });
+          host.emit('modux-notice', { message: t('gestures.notice.menuGroupOpensNothing') });
           return;
         }
         const isUseCase = host.model.boundedContexts.some((mod) =>
@@ -992,8 +996,8 @@ export function applyConnectionGesture(
           } else {
             host.emit('modux-notice', {
               message: involved.length
-                ? 'El modelo participa en varios mapeados: elige el mapeado desde su ficha'
-                : 'Ese modelo no tiene mapeados donde delegar el código',
+                ? t('gestures.notice.modelInSeveralMappings')
+                : t('gestures.notice.modelHasNoMappings'),
             });
           }
           return;
@@ -1024,7 +1028,7 @@ export function applyConnectionGesture(
       // creando el mapeado en el mismo gesto si aún no existe.
       if (srcField && tgtField) {
         if (srcField.modelId === tgtField.modelId) {
-          host.emit('modux-notice', { message: 'Las reglas mapean campos de modelos DISTINTOS' });
+          host.emit('modux-notice', { message: t('gestures.notice.rulesNeedDistinctModels') });
           return;
         }
         let mapping = (host.model.modelMappings ?? []).find(
@@ -1551,7 +1555,7 @@ export function applyConnectionGesture(
         return;
       }
       host.emit('modux-notice', {
-        message: 'Una notificación se dispara con un EVENTO y avisa a ACTORES (roles)',
+        message: t('gestures.notice.notificationWiring'),
       });
       return;
     }
@@ -1580,7 +1584,7 @@ export function applyConnectionGesture(
         return;
       }
       host.emit('modux-notice', {
-        message: 'Un informe se alimenta de una CONSULTA (aquí); la plantilla de documento se rellena con un MODELO (suéltalo del Catálogo sobre el documento)',
+        message: t('gestures.notice.documentWiring'),
       });
       return;
     }
@@ -1605,7 +1609,7 @@ export function applyConnectionGesture(
         return;
       }
       host.emit('modux-notice', {
-        message: 'Un IdP se relaciona con contextos y flujos ETL (aquí) o con apps (vista UI); hacia un sistema externo lo federa',
+        message: t('gestures.notice.idpWiring'),
       });
       return;
     }
@@ -1646,7 +1650,7 @@ export function applyConnectionGesture(
       }
       if (!stepType) {
         host.emit('modux-notice', {
-          message: 'Un flujo ETL lee de tablas, APIs y eventos, y escribe en APIs, tablas y eventos',
+          message: t('gestures.notice.etlWiring'),
         });
         return;
       }
@@ -1862,8 +1866,8 @@ export function applyConnectionGesture(
       if (!emitter) {
         host.emit('modux-notice', {
           message: isApplicationEvent
-            ? `Declara primero qué caso de uso publica ${event.name} (arrastra desde el caso de uso hasta el evento) — el flow necesita su disparador`
-            : `Declara primero quién emite ${event.name} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador`,
+            ? t('gestures.notice.declarePublisherFirst', { event: event.name })
+            : t('gestures.notice.declareEmitterFirst', { event: event.name }),
           kind: 'info',
         });
         return;

@@ -179,7 +179,7 @@ editor.addEventListener('layout-changed', (e) => {
   const { layout: next } = (e as CustomEvent).detail;
   layout = next;
   localStorage.setItem(LAYOUT_KEY, JSON.stringify(next));
-  log('layout-changed', Object.keys(next['context-map'] ?? {}).length + ' nodos posicionados');
+  log('layout-changed', Object.keys(next['context-map'] ?? {}).length + ' nodes positioned');
 });
 
 editor.addEventListener('modux-select', (e) => {

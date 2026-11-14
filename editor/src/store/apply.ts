@@ -27,6 +27,7 @@ import { UI_COMMANDS } from './commands/ui-wiring.js';
 import { WORKFLOW_COMMANDS } from './commands/workflows.js';
 import type { Changes, ModelStore } from './store.js';
 import { CommandError, type Command, type Handler } from './spec.js';
+import { t } from '../i18n/index.js';
 
 /** Every command kind the applier knows, by block. */
 export const HANDLERS: Record<string, Handler> = {
@@ -73,7 +74,7 @@ export function unsupported(kinds: string[]): string[] {
  */
 export function apply(store: ModelStore, command: ModuxCommand | Command): Changes {
   const handler = HANDLERS[command.kind];
-  if (!handler) throw new CommandError(`Comando no soportado: ${command.kind}`);
+  if (!handler) throw new CommandError(t('store.apply.unsupportedCommand', { kind: command.kind }));
   store.clearChanges();
   handler(store, command as Command);
   return store.changes();
@@ -89,7 +90,7 @@ export function applyAll(store: ModelStore, commands: (ModuxCommand | Command)[]
   try {
     for (const command of commands) {
       const handler = HANDLERS[command.kind];
-      if (!handler) throw new CommandError(`Comando no soportado: ${command.kind}`);
+      if (!handler) throw new CommandError(t('store.apply.unsupportedCommand', { kind: command.kind }));
       handler(store, command as Command);
     }
   } catch (error) {

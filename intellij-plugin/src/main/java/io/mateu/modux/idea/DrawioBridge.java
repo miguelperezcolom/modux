@@ -185,7 +185,7 @@ public final class DrawioBridge implements Disposable {
     private String page() {
         return """
                 <!doctype html>
-                <html>
+                <html lang="%s">
                   <head>
                     <meta charset="utf-8">
                     <style> html, body { margin: 0; height: 100%%; overflow: hidden; } </style>
@@ -205,6 +205,7 @@ public final class DrawioBridge implements Disposable {
                   </body>
                 </html>
                 """.formatted(
+                EditorResources.uiLanguage(),
                 query.inject("JSON.stringify(request)",
                         "function(r){ var p = JSON.parse(r); p.ok ? resolve(p.value) : reject(new Error(p.error)); }",
                         "function(code, message){ reject(new Error(message)); }"));

@@ -7,9 +7,12 @@
  * already covers.
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/index.js';
 import { apply, CommandError, supports } from '../apply.js';
 import { ModelStore, type Element } from '../store.js';
+
+beforeAll(() => setLanguage('es'));
 
 function model(extra: Record<string, Element[]> = {}): ModelStore {
   return ModelStore.from({

@@ -23,6 +23,7 @@ import {
 } from './ide-fs.js';
 import '../archi-prototype/archi-shell.js';
 import type { ArchiShell } from '../archi-prototype/archi-shell.js';
+import { LanguageController, t } from '../i18n/index.js';
 
 /** One member of a free-form view: an element id and where it sits on the canvas. */
 type ViewMember = { id: string; x: number; y: number; w: number; h: number; fill?: string };
@@ -58,6 +59,8 @@ export class ModuxArchiIde extends LitElement {
     archi-shell { height: 100%; }
   `;
 
+  readonly _i18n = new LanguageController(this, { root: true });
+
   @state() private model: ModuxModel | null = null;
   @state() private members: ViewMember[] = [];
   @state() private error: string | null = null;
@@ -77,7 +80,7 @@ export class ModuxArchiIde extends LitElement {
   private async load(): Promise<void> {
     const bridge = hostBridge();
     if (!bridge) {
-      this.error = 'Sin puente con el IDE: este componente solo funciona dentro del plugin.';
+      this.error = t('hosts.ide.noBridge');
       return;
     }
     this.fs = ideFileSystem(bridge);
@@ -108,7 +111,7 @@ export class ModuxArchiIde extends LitElement {
       this.refresh();
       console.info(`modux archi: vista abierta — corte=${this.doc.viewId ?? '(todo)'} — ${summary(this.store)}`);
     } catch (e) {
-      this.error = `No se pudo abrir la vista: ${message(e)}`;
+      this.error = t('hosts.ide.openViewFailed', { message: message(e) });
       console.error(`modux archi: no se pudo abrir la vista: ${message(e)}`);
     }
   }
@@ -193,7 +196,7 @@ export class ModuxArchiIde extends LitElement {
       this.refresh();
       this.markDirty();
     } catch (e) {
-      this.error = e instanceof CommandError ? e.message : `No se pudo aplicar: ${message(e)}`;
+      this.error = e instanceof CommandError ? e.message : t('hosts.ide.applyFailed', { message: message(e) });
     }
   }
 
@@ -227,7 +230,7 @@ export class ModuxArchiIde extends LitElement {
       this.dirty = false;
       void bridge({ op: 'setModified', modified: false });
     } catch (e) {
-      this.error = `No se pudo guardar: ${message(e)}`;
+      this.error = t('hosts.ide.saveFailed', { message: message(e) });
     }
   }
 
@@ -278,7 +281,7 @@ export class ModuxArchiIde extends LitElement {
 
   override render() {
     if (!this.model) {
-      return html`<div class="banner">${this.error ?? 'Cargando el modelo…'}</div>`;
+      return html`<div class="banner">${this.error ?? t('hosts.loadingModel')}</div>`;
     }
     return html`
       ${this.error ? html`<div class="banner" role="alert">${this.error}</div>` : nothing}

@@ -511,7 +511,7 @@ public final class EditorBridge implements Disposable {
     private String page() {
         return """
                 <!doctype html>
-                <html>
+                <html lang="%s">
                   <head>
                     <meta charset="utf-8">
                     <style>
@@ -535,6 +535,7 @@ public final class EditorBridge implements Disposable {
                   </body>
                 </html>
                 """.formatted(
+                EditorResources.uiLanguage(),
                 query.inject("JSON.stringify(request)",
                         "function(r){ var p = JSON.parse(r); p.ok ? resolve(p.value) : reject(new Error(p.error)); }",
                         "function(code, message){ reject(new Error(message)); }"));

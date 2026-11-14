@@ -10,6 +10,7 @@
 
 import { nested, type Element, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler } from '../spec.js';
+import { t, type MessageKey } from '../../i18n/index.js';
 
 /** How a field says what it is. Exactly one of these references is kept; the rest are cleared. */
 const TYPE_REFS: Record<string, string> = {
@@ -42,7 +43,7 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
   },
 
   'add-model-field': (store, command) => {
-    const model = mustGet(store, 'models', command.modelId, 'Modelo');
+    const model = mustGet(store, 'models', command.modelId, 'store.kind.model');
     const fields = nested(model.fields);
     const fieldId = String(command.fieldId);
     if (fields.some((f) => f.id === fieldId)) return;
@@ -59,7 +60,7 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
 
   /** The field goes, and so do the mapping rules that mapped it — they no longer apply. */
   'remove-model-field': (store, command) => {
-    const model = mustGet(store, 'models', command.modelId, 'Modelo');
+    const model = mustGet(store, 'models', command.modelId, 'store.kind.model');
     const fieldId = String(command.fieldId);
     store.patch('models', model.id, {
       fields: nested(model.fields).filter((f) => f.id !== fieldId),
@@ -128,13 +129,13 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
 
   /** Moves a field to another model; the rules that mapped it there no longer apply and drop. */
   'move-model-field': (store, command) => {
-    const source = mustGet(store, 'models', command.modelId, 'Modelo');
-    const target = mustGet(store, 'models', command.targetId, 'Modelo');
+    const source = mustGet(store, 'models', command.modelId, 'store.kind.model');
+    const target = mustGet(store, 'models', command.targetId, 'store.kind.model');
     const fieldId = String(command.fieldId);
     const moving = nested(source.fields).find((f) => f.id === fieldId);
-    if (!moving) throw new CommandError(`Campo desconocido: ${fieldId}`);
+    if (!moving) throw new CommandError(t('store.unknown.field', { id: fieldId }));
     if (nested(target.fields).some((f) => f.id === fieldId)) {
-      throw new CommandError(`El modelo destino ya tiene un campo con id ${fieldId}`);
+      throw new CommandError(t('store.model.targetHasField', { id: fieldId }));
     }
     store.patch('models', source.id, {
       fields: nested(source.fields).filter((f) => f.id !== fieldId),
@@ -150,8 +151,8 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
   'add-model-mapping': (store, command) => {
     const id = String(command.id);
     if (store.has('modelMappings', id)) return;
-    mustGet(store, 'models', command.sourceId, 'Modelo');
-    mustGet(store, 'models', command.targetId, 'Modelo');
+    mustGet(store, 'models', command.sourceId, 'store.kind.model');
+    mustGet(store, 'models', command.targetId, 'store.kind.model');
     store.put('modelMappings', {
       id,
       name: command.name,
@@ -166,7 +167,7 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
   },
 
   'add-model-mapping-rule': (store, command) => {
-    const mapping = mustGet(store, 'modelMappings', command.id, 'Mapeo');
+    const mapping = mustGet(store, 'modelMappings', command.id, 'store.kind.mapping');
     const rules = nested(mapping.rules);
     const already = rules.some((r) =>
       r.sourceFieldId === command.sourceId && r.targetFieldId === command.targetId);
@@ -181,7 +182,7 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
   },
 
   'remove-model-mapping-rule': (store, command) => {
-    const mapping = mustGet(store, 'modelMappings', command.id, 'Mapeo');
+    const mapping = mustGet(store, 'modelMappings', command.id, 'store.kind.mapping');
     store.patch('modelMappings', mapping.id, {
       rules: nested(mapping.rules).filter((r) => r.id !== command.itemId),
     });
@@ -196,7 +197,7 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
   },
 
   'add-transformation-input': (store, command) => {
-    const transformation = mustGet(store, 'transformations', command.id, 'Transformación');
+    const transformation = mustGet(store, 'transformations', command.id, 'store.kind.transformation');
     const ref = modelRef(store, command);
     const inputs = nested(transformation.inputs);
     if (inputs.some((i) => sameRef(i, ref))) return;
@@ -204,7 +205,7 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
   },
 
   'remove-transformation-input': (store, command) => {
-    const transformation = mustGet(store, 'transformations', command.id, 'Transformación');
+    const transformation = mustGet(store, 'transformations', command.id, 'store.kind.transformation');
     const fieldId = blank(command.fieldId) ? null : command.fieldId;
     store.patch('transformations', transformation.id, {
       inputs: nested(transformation.inputs).filter((i) =>
@@ -214,7 +215,7 @@ export const MODEL_COMMANDS: Record<string, Handler> = {
 
   /** What the transformation produces — a model, or one field of it. No model just unwires. */
   'set-transformation-output': (store, command) => {
-    const transformation = mustGet(store, 'transformations', command.id, 'Transformación');
+    const transformation = mustGet(store, 'transformations', command.id, 'store.kind.transformation');
     store.patch('transformations', transformation.id, {
       output: blank(command.modelId) ? null : modelRef(store, command),
     });
@@ -227,7 +228,7 @@ function patchField(
   command: Record<string, any>,
   patch: (field: Element) => Record<string, unknown>,
 ): void {
-  const model = mustGet(store, 'models', command.modelId, 'Modelo');
+  const model = mustGet(store, 'models', command.modelId, 'store.kind.model');
   const fieldId = String(command.fieldId);
   store.patch('models', model.id, {
     fields: nested(model.fields).map((f) =>
@@ -237,7 +238,7 @@ function patchField(
 
 /** A reference to a model, or to one of its fields. The model has to exist; the field is free. */
 function modelRef(store: ModelStore, command: Record<string, any>): Element {
-  mustGet(store, 'models', command.modelId, 'Modelo');
+  mustGet(store, 'models', command.modelId, 'store.kind.model');
   return {
     id: String(command.modelId),
     modelId: command.modelId,
@@ -288,10 +289,10 @@ export function clearComponentField(
 }
 
 export function mustGet(
-  store: ModelStore, type: string, id: unknown, label: string,
+  store: ModelStore, type: string, id: unknown, label: MessageKey,
 ): Element {
   const element = store.get(type, String(id));
-  if (!element) throw new CommandError(`${label} desconocido: ${id}`);
+  if (!element) throw new CommandError(t('store.error.unknownKind', { kind: t(label), id: String(id) }));
   return element;
 }
 

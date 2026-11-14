@@ -13,6 +13,7 @@
 import { asList, nested, type Element, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler } from '../spec.js';
 import { mustGet } from './models.js';
+import { t, type MessageKey } from '../../i18n/index.js';
 
 /**
  * Where a gateway exposure lands, by what the target is. Order matters: an API operation lives
@@ -72,12 +73,11 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
    * model works out what it meant.
    */
   'add-gateway-exposure': (store, command) => {
-    const gateway = mustGet(store, 'mcpGateways', command.sourceId, 'Gateway MCP');
+    const gateway = mustGet(store, 'mcpGateways', command.sourceId, 'store.kind.mcpGateway');
     const target = String(command.targetId);
     const slot = EXPOSURE_SLOTS.find((s) => s.matches(store, target));
     if (!slot) {
-      throw new CommandError('Un gateway MCP expone servidores MCP, APIs, operaciones, casos de'
-        + ` uso o RAGs; destino desconocido: ${target}`);
+      throw new CommandError(t('store.agent.invalidExposureTarget', { target }));
     }
     store.addToList('mcpGateways', gateway.id, slot.list, target);
   },
@@ -93,13 +93,13 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 
   // ---- what an agent may reach --------------------------------------------
 
-  'add-agent-gateway': agentLink('mcpGatewayIds', 'mcpGateways', 'Gateway MCP'),
+  'add-agent-gateway': agentLink('mcpGatewayIds', 'mcpGateways', 'store.kind.mcpGateway'),
   'remove-agent-gateway': agentUnlink('mcpGatewayIds'),
 
-  'add-agent-query': agentLink('allowedQueryServiceIds', 'queryServices', 'Query service'),
+  'add-agent-query': agentLink('allowedQueryServiceIds', 'queryServices', 'store.kind.queryService'),
   'remove-agent-query': agentUnlink('allowedQueryServiceIds'),
 
-  'add-agent-rag': agentLink('ragIds', 'rags', 'RAG'),
+  'add-agent-rag': agentLink('ragIds', 'rags', 'store.kind.rag'),
   'remove-agent-rag': agentUnlink('ragIds'),
 
   /** The whole API as a tool: every operation of it, present and future. */
@@ -107,7 +107,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
     const agent = requireAgent(store, command.sourceId);
     const target = String(command.targetId);
     if (!store.has('apis', target) && !store.has('proxyApis', target)) {
-      throw new CommandError(`API desconocida: ${target}`);
+      throw new CommandError(t('store.unknown.api', { id: target }));
     }
     store.addToList('aiAgents', agent.id, 'allowedApiIds', target);
   },
@@ -118,7 +118,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
     const agent = requireAgent(store, command.sourceId);
     const target = String(command.targetId);
     if (!nestedHas(store, 'apis', 'operations', target)) {
-      throw new CommandError(`Operación de API desconocida: ${target}`);
+      throw new CommandError(t('store.unknown.apiOperation', { id: target }));
     }
     store.addToList('aiAgents', agent.id, 'allowedApiOperationIds', target);
   },
@@ -129,7 +129,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
     const agent = requireAgent(store, command.sourceId);
     const target = String(command.targetId);
     if (!nestedHas(store, 'externalSystems', 'useCases', target)) {
-      throw new CommandError(`Caso de uso externo desconocido: ${target}`);
+      throw new CommandError(t('store.unknown.externalUseCase', { id: target }));
     }
     store.addToList('aiAgents', agent.id, 'allowedExternalUseCaseIds', target);
   },
@@ -140,7 +140,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
     const agent = requireAgent(store, command.sourceId);
     const target = String(command.targetId);
     if (!nestedHas(store, 'externalSystems', 'mcpServers', target)) {
-      throw new CommandError(`Servidor MCP desconocido: ${target}`);
+      throw new CommandError(t('store.unknown.mcpServer', { id: target }));
     }
     store.addToList('aiAgents', agent.id, 'allowedMcpServerIds', target);
   },
@@ -153,7 +153,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
    */
   'add-agent-use': (store, command) => {
     const agent = requireAgent(store, command.sourceId);
-    const useCase = mustGet(store, 'useCases', command.targetId, 'Caso de uso');
+    const useCase = mustGet(store, 'useCases', command.targetId, 'store.kind.useCase');
     store.addToList('aiAgents', agent.id, 'allowedUseCaseIds', useCase.id);
     if (useCase.exposedAsMcp !== true) {
       store.patch('useCases', useCase.id, { exposedAsMcp: true });
@@ -170,8 +170,8 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
   'add-agent-delegate': (store, command) => {
     const agent = requireAgent(store, command.sourceId);
     const target = String(command.targetId);
-    mustGet(store, 'aiAgents', target, 'Agente');
-    if (agent.id === target) throw new CommandError('Un agente no puede delegar en sí mismo');
+    mustGet(store, 'aiAgents', target, 'store.kind.agent');
+    if (agent.id === target) throw new CommandError(t('store.agent.delegateToSelf'));
     store.addToList('aiAgents', agent.id, 'delegateAgentIds', target);
   },
 
@@ -179,8 +179,8 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 
   /** Actor → agent: the person talks to it, and a chat/supervision UI derives from that. */
   'add-actor-agent': (store, command) => {
-    const actor = mustGet(store, 'roles', command.sourceId, 'Actor');
-    mustGet(store, 'aiAgents', command.targetId, 'Agente');
+    const actor = mustGet(store, 'roles', command.sourceId, 'store.kind.actor');
+    mustGet(store, 'aiAgents', command.targetId, 'store.kind.agent');
     store.addToList('roles', actor.id, 'aiAgentIds', String(command.targetId));
   },
 
@@ -193,7 +193,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
     const agent = requireAgent(store, command.targetId);
     const event = String(command.sourceId);
     if (!store.has('domainEvents', event) && !store.has('applicationEvents', event)) {
-      throw new CommandError(`Evento de dominio o de aplicación desconocido: ${event}`);
+      throw new CommandError(t('store.unknown.domainOrApplicationEvent', { id: event }));
     }
     store.addToList('aiAgents', agent.id, 'reactsToEventIds', event);
   },
@@ -216,12 +216,11 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
   },
 
   'add-rag-source': (store, command) => {
-    const rag = mustGet(store, 'rags', command.sourceId, 'RAG');
+    const rag = mustGet(store, 'rags', command.sourceId, 'store.kind.rag');
     const target = String(command.targetId);
     const slot = RAG_SOURCE_SLOTS.find((s) => s.matches(store, target));
     if (!slot) {
-      throw new CommandError('El RAG indexa read models, tablas externas, APIs, sistemas externos'
-        + ` o contextos; destino desconocido: ${target}`);
+      throw new CommandError(t('store.agent.invalidRagSource', { target }));
     }
     store.addToList('rags', rag.id, slot.list, target);
   },
@@ -236,9 +235,9 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 
   /** External content: a repo, a web site, an FTP server. Identified by its URI, not by an id. */
   'add-rag-content-source': (store, command) => {
-    const rag = mustGet(store, 'rags', command.sourceId, 'RAG');
+    const rag = mustGet(store, 'rags', command.sourceId, 'store.kind.rag');
     const uri = typeof command.uri === 'string' ? command.uri.trim() : '';
-    if (!uri) throw new CommandError('La fuente necesita una URI');
+    if (!uri) throw new CommandError(t('store.agent.sourceNeedsUri'));
     const sources = nested(rag.contentSources);
     if (sources.some((s) => s.uri === uri)) return;
     store.patch('rags', rag.id, {
@@ -258,8 +257,8 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 
   /** Another implementation site for the SAME API — not a copy of it. */
   'add-api-implementation': (store, command) => {
-    const api = mustGet(store, 'apis', command.apiId, 'API');
-    mustGet(store, 'boundedContexts', command.boundedContextId, 'Bounded context');
+    const api = mustGet(store, 'apis', command.apiId, 'store.kind.api');
+    mustGet(store, 'boundedContexts', command.boundedContextId, 'store.kind.boundedContext');
     store.addToList('apis', api.id, 'implementedByBoundedContextIds',
       String(command.boundedContextId));
   },
@@ -271,7 +270,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 
   /** Route ONE proxy operation to one implementation site of the API it fronts. */
   'add-proxy-operation-route': (store, command) => {
-    const proxy = mustGet(store, 'proxyApis', command.proxyId, 'Proxy');
+    const proxy = mustGet(store, 'proxyApis', command.proxyId, 'store.kind.proxy');
     const routes = nested(proxy.operationRoutes);
     const already = routes.some((r) =>
       r.operationId === command.operationId && r.targetSiteId === command.targetSiteId);
@@ -296,7 +295,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 
   /** Per-site wiring: which use case implements an operation AT a given site. */
   'set-api-operation-implementation': (store, command) => {
-    const api = mustGet(store, 'apis', command.apiId, 'API');
+    const api = mustGet(store, 'apis', command.apiId, 'store.kind.api');
     const kept = nested(api.operationImplementations).filter((w) =>
       !(w.operationId === command.operationId && w.boundedContextId === command.boundedContextId));
     store.patch('apis', api.id, {
@@ -321,7 +320,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 
   /** An external system calling one operation AT a site (a published API, a proxy or a site). */
   'add-external-operation-use': (store, command) => {
-    const external = mustGet(store, 'externalSystems', command.sourceId, 'Sistema externo');
+    const external = mustGet(store, 'externalSystems', command.sourceId, 'store.kind.externalSystem');
     const uses = nested(external.apiOperationUses);
     const already = uses.some((u) =>
       u.operationId === command.operationId && u.siteId === command.targetSiteId);
@@ -346,7 +345,7 @@ export const AGENT_COMMANDS: Record<string, Handler> = {
 };
 
 /** Agent reaches target: check the target exists, then record it on the agent. */
-function agentLink(list: string, type: string, label: string): Handler {
+function agentLink(list: string, type: string, label: MessageKey): Handler {
   return (store, command) => {
     const agent = requireAgent(store, command.sourceId);
     mustGet(store, type, command.targetId, label);
@@ -381,7 +380,7 @@ const nestedHas = (store: ModelStore, type: string, list: string, id: string) =>
 
 function requireAgent(store: ModelStore, id: unknown): Element {
   const agent = store.get('aiAgents', String(id));
-  if (!agent) throw new CommandError(`Agente desconocido: ${id}`);
+  if (!agent) throw new CommandError(t('store.unknown.agent', { id: String(id) }));
   return agent;
 }
 

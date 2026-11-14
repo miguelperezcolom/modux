@@ -1,5 +1,6 @@
 import type { ModuxModel } from '../model.js';
 import type { Scene, SceneNode, SceneEdge, DiagramLayout } from '../scene.js';
+import { t } from '../i18n/index.js';
 
 /**
  * EventStorming view: the causal chain derived from the model, in classic
@@ -76,10 +77,10 @@ export function eventstormingScene(
       symbol: uc.policy ? 'flow' : 'gear',
       fill: uc.policy ? STICKY.policy.fill : STICKY.command.fill,
       stroke: uc.policy ? STICKY.policy.stroke : STICKY.command.stroke,
-      badge: uc.policy ? 'POLICY' : 'COMANDO',
+      badge: uc.policy ? 'POLICY' : t('views.eventstorming.commandBadge'),
       tooltip: uc.policy
-        ? `${uc.name} — policy de ${boundedContextName.get(uc.boundedContextId) ?? uc.boundedContextId} (reacción, no caso de negocio)`
-        : `${uc.name} — caso de uso de ${boundedContextName.get(uc.boundedContextId) ?? uc.boundedContextId}`,
+        ? t('views.eventstorming.policyTooltip', { name: uc.name, context: boundedContextName.get(uc.boundedContextId) ?? uc.boundedContextId })
+        : t('views.eventstorming.useCaseTooltip', { name: uc.name, context: boundedContextName.get(uc.boundedContextId) ?? uc.boundedContextId }),
     });
   }
 
@@ -98,7 +99,7 @@ export function eventstormingScene(
     steps.forEach((st, i) => {
       addNode(b, {
         id: st.id,
-        label: `${i + 1}. ${st.name || st.type || 'paso'}`,
+        label: `${i + 1}. ${st.name || st.type || t('views.eventstorming.stepFallback')}`,
         x: 0,
         y: 0,
         w: STICKY.command.w,
@@ -109,7 +110,10 @@ export function eventstormingScene(
         stroke: '#1d4ed8',
         dashed: !!st.customCodeId,
         ownerId: uc.id,
-        tooltip: `Paso de ${uc.name}${st.customCodeId ? ' — delega en código a mano' : ''} — arrastra su asa hasta un CODE para delegar en él`,
+        tooltip:
+          t('views.eventstorming.stepTooltip', { name: uc.name }) +
+          (st.customCodeId ? t('views.eventstorming.stepDelegates') : '') +
+          t('views.eventstorming.stepDragHint'),
       });
       addEdge(b, {
         id: `esstep:${i === 0 ? uc.id : steps[i - 1].id}->${st.id}`,
@@ -119,7 +123,7 @@ export function eventstormingScene(
         color: '#94a3b8',
         dashed: true,
         arrow: true,
-        tooltip: `pipeline de ${uc.name}`,
+        tooltip: t('views.eventstorming.pipelineEdge', { name: uc.name }),
       });
     });
   }
@@ -137,7 +141,7 @@ export function eventstormingScene(
       stroke: '#0f172a',
       badge: 'CODE',
       dashed: true,
-      tooltip: `${cc.name} — código a mano: los pasos Custom delegan en él`,
+      tooltip: t('views.eventstorming.customCodeTooltip', { name: cc.name }),
     });
   }
   for (const uc of useCases) {
@@ -159,8 +163,8 @@ export function eventstormingScene(
         dashed: true,
         arrow: true,
         tooltip: rolled
-          ? `Un paso plegado de ${uc.name} delega en este código — expande el comando para verlo`
-          : `El paso delega en código a mano — Supr lo desconecta`,
+          ? t('views.eventstorming.foldedStepDelegates', { name: uc.name })
+          : t('views.eventstorming.stepDelegatesEdge'),
       });
     }
   }
@@ -178,8 +182,8 @@ export function eventstormingScene(
       symbol: 'aggregate',
       fill: STICKY.aggregate.fill,
       stroke: STICKY.aggregate.stroke,
-      badge: 'AGREGADO',
-      tooltip: `${agg.name} — agregado de ${boundedContextName.get(agg.boundedContextId) ?? agg.boundedContextId}`,
+      badge: t('views.eventstorming.aggregateBadge'),
+      tooltip: t('views.eventstorming.aggregateTooltip', { name: agg.name, context: boundedContextName.get(agg.boundedContextId) ?? agg.boundedContextId }),
     });
   }
 
@@ -197,8 +201,8 @@ export function eventstormingScene(
       symbol: 'event',
       fill: STICKY.event.fill,
       stroke: STICKY.event.stroke,
-      badge: ev.application ? 'EVENTO APLICACIÓN' : 'EVENTO',
-      tooltip: `${ev.name} — evento de ${boundedContextName.get(ev.boundedContextId) ?? ev.boundedContextId}`,
+      badge: ev.application ? t('views.eventstorming.applicationEventBadge') : t('views.eventstorming.eventBadge'),
+      tooltip: t('views.eventstorming.eventTooltip', { name: ev.name, context: boundedContextName.get(ev.boundedContextId) ?? ev.boundedContextId }),
     });
     eventNodeByName.set(norm(ev.name), ev.id);
   }
@@ -220,8 +224,8 @@ export function eventstormingScene(
       fill: STICKY.event.fill,
       stroke: STICKY.event.stroke,
       dashed: true,
-      badge: 'EVENTO (sin declarar)',
-      tooltip: `${name} — referenciado por nombre, sin evento declarado en el catálogo`,
+      badge: t('views.eventstorming.undeclaredEventBadge'),
+      tooltip: t('views.eventstorming.undeclaredEventTooltip', { name }),
     });
     return synthId;
   };
@@ -302,8 +306,8 @@ export function eventstormingScene(
       symbol: 'robot',
       fill: '#faf5ff',
       stroke: '#9333ea',
-      badge: 'AGENTE IA',
-      tooltip: `${agent.name} — agente de IA (consume por MCP)`,
+      badge: t('views.eventstorming.aiAgentBadge'),
+      tooltip: t('views.eventstorming.aiAgentTooltip', { name: agent.name }),
     });
     for (const use of uses) {
       if (!ucIds.has(use.useCaseId)) continue;
@@ -315,7 +319,7 @@ export function eventstormingScene(
         color: '#9333ea',
         dashed: true,
         arrow: true,
-        tooltip: 'consume por MCP',
+        tooltip: t('views.eventstorming.consumesViaMcp'),
       });
     }
     for (const use of externalUses) {
@@ -336,7 +340,7 @@ export function eventstormingScene(
         fill: STICKY.external.fill,
         stroke: STICKY.external.stroke,
         dashed: true,
-        badge: 'EXTERNO',
+        badge: t('views.eventstorming.externalBadge'),
       });
       addEdge(b, {
         id: `es-agentx:${agent.id}->${use.externalUseCaseId}`,
@@ -347,7 +351,7 @@ export function eventstormingScene(
         color: '#9333ea',
         dashed: true,
         arrow: true,
-        tooltip: opName ? `Llama a ${opName} del sistema externo` : undefined,
+        tooltip: opName ? t('views.eventstorming.callsExternal', { name: opName }) : undefined,
       });
     }
     for (const use of mcpUses) {
@@ -368,7 +372,7 @@ export function eventstormingScene(
         fill: STICKY.external.fill,
         stroke: STICKY.external.stroke,
         dashed: true,
-        badge: 'EXTERNO',
+        badge: t('views.eventstorming.externalBadge'),
       });
       addEdge(b, {
         id: `es-agentmcp:${agent.id}->${use.mcpServerId}`,
@@ -380,7 +384,7 @@ export function eventstormingScene(
         dashed: true,
         arrow: true,
         tooltip: serverName
-          ? `Consume las herramientas del servidor MCP ${serverName}`
+          ? t('views.eventstorming.consumesMcpTools', { name: serverName })
           : undefined,
       });
     }
@@ -399,7 +403,7 @@ export function eventstormingScene(
         fill: '#ecfeff',
         stroke: '#0e7490',
         badge: 'RAG',
-        tooltip: `${rag.name} — base de conocimiento (retrieval)`,
+        tooltip: t('views.eventstorming.ragTooltip', { name: rag.name }),
       });
       addEdge(b, {
         id: `es-agrag:${agent.id}->${rag.id}`,
@@ -409,7 +413,7 @@ export function eventstormingScene(
         color: '#0e7490',
         dashed: true,
         arrow: true,
-        tooltip: 'consulta (retrieval)',
+        tooltip: t('views.eventstorming.ragQuery'),
       });
       for (const rmId of rag.sourceReadModelIds ?? []) {
         const rm = readModelNodeFor({ id: rmId });
@@ -422,7 +426,7 @@ export function eventstormingScene(
           color: '#0e7490',
           dashed: true,
           arrow: true,
-          tooltip: 'alimenta el índice',
+          tooltip: t('views.eventstorming.feedsIndex'),
         });
       }
     }
@@ -444,7 +448,7 @@ export function eventstormingScene(
       fill: STICKY.external.fill,
       stroke: STICKY.external.stroke,
       dashed: true,
-      badge: 'EXTERNO',
+      badge: t('views.eventstorming.externalBadge'),
     });
     return ext.id;
   };
@@ -478,7 +482,7 @@ export function eventstormingScene(
       color: '#be185d',
       dashed: true,
       arrow: true,
-      tooltip: ucName ? `Llama a ${ucName} del sistema externo` : undefined,
+      tooltip: ucName ? t('views.eventstorming.callsExternal', { name: ucName }) : undefined,
     });
   }
 
@@ -515,7 +519,7 @@ export function eventstormingScene(
       kind: 'es-emission',
       color: '#c2410c',
       arrow: true,
-      tooltip: 'emite',
+      tooltip: t('views.eventstorming.emits'),
     });
   }
 
@@ -576,7 +580,9 @@ export function eventstormingScene(
       sub.name,
       'subscription',
       'POLICY · SUBSCRIPTION',
-      `${sub.name}${sub.eventName ? ` — reacciona a ${sub.eventName}` : ''}${sub.consumerGroup ? ` · grupo ${sub.consumerGroup}` : ''}`,
+      sub.name +
+        (sub.eventName ? t('views.eventstorming.reactsTo', { event: sub.eventName }) : '') +
+        (sub.consumerGroup ? t('views.eventstorming.consumerGroup', { group: sub.consumerGroup }) : ''),
     );
     trigger(sub.eventName, id);
     for (const action of sub.actions ?? []) {
@@ -615,8 +621,9 @@ export function eventstormingScene(
       projection.id,
       projection.name,
       'projection',
-      'PROYECCIÓN',
-      `${projection.name}${projection.readModelName ? ` — materializa ${projection.readModelName}` : ''}`,
+      t('views.eventstorming.projectionBadge'),
+      projection.name +
+        (projection.readModelName ? t('views.eventstorming.materializes', { readModel: projection.readModelName }) : ''),
     );
     for (const evId of projection.handledEventIds) {
       const ev = b.nodes.has(evId) ? evId : null;
@@ -641,7 +648,7 @@ export function eventstormingScene(
         color: '#0d9488',
         dashed: true,
         arrow: true,
-        tooltip: 'proyecta su estado',
+        tooltip: t('views.eventstorming.projectsState'),
       });
     }
     // Externally-sourced projection: classic polling from an operation or legacy table.
@@ -666,7 +673,7 @@ export function eventstormingScene(
           color: '#0d9488',
           dashed: true,
           arrow: true,
-          tooltip: sourceName ? `polling de ${sourceName}` : 'polling',
+          tooltip: sourceName ? t('views.eventstorming.pollingOf', { name: sourceName }) : t('views.eventstorming.polling'),
         });
       }
     }
@@ -730,7 +737,7 @@ export function eventstormingScene(
           symbol: 'component',
           fill: STICKY.boundedContext.fill,
           stroke: STICKY.boundedContext.stroke,
-          badge: 'CONTEXTO',
+          badge: t('views.eventstorming.contextBadge'),
         });
       }
       if (b.nodes.has(targetNodeId)) {
@@ -752,8 +759,8 @@ export function eventstormingScene(
       process.id,
       process.name,
       'process',
-      `PROCESO${process.sla ? ` · SLA ${process.sla}` : ''}`,
-      `${process.name}${process.triggerEvent ? ` — arranca con ${process.triggerEvent}` : ''}`,
+      `${t('views.eventstorming.processBadge')}${process.sla ? ` · SLA ${process.sla}` : ''}`,
+      process.name + (process.triggerEvent ? t('views.workflows.startsOn', { event: process.triggerEvent }) : ''),
     );
     trigger(process.triggerEvent, id);
     for (const step of process.steps) invoke(id, step.useCaseId);
@@ -766,7 +773,7 @@ export function eventstormingScene(
         kind: 'es-completion',
         color: '#c2410c',
         arrow: true,
-        tooltip: 'emite al completar',
+        tooltip: t('views.eventstorming.emitsOnCompletion'),
       });
     }
   }
@@ -778,7 +785,7 @@ export function eventstormingScene(
       workflow.name,
       'workflow',
       'WORKFLOW',
-      `${workflow.name}${workflow.triggerEvent ? ` — arranca con ${workflow.triggerEvent}` : ''}`,
+      workflow.name + (workflow.triggerEvent ? t('views.workflows.startsOn', { event: workflow.triggerEvent }) : ''),
     );
     trigger(workflow.triggerEvent, id);
     for (const step of workflow.steps ?? []) {
