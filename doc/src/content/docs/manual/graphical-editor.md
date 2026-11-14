@@ -7,23 +7,23 @@ For a task-oriented walkthrough, start with the
 [Graphical Editor Guide](/manual/graphical-editor-guide/); this page is the exhaustive
 reference.
 
-The **Graphical editor** page is a fully editable canvas over the model. It is not a
-drawing tool with a save button: every gesture emits a command that mutates the spec
-through the same use cases as the forms, and everything that changes the model is
-undoable. Diagram geometry (positions, sizes, edge bends, each sheet's per-element
+The graphical editor is a fully editable canvas over the model. It is not a
+drawing tool: every gesture emits a command that mutates the model files, and
+everything that changes the model is undoable. It runs in the
+[IntelliJ plugin](#where-it-runs), over the model in your repository. Diagram geometry (positions, sizes, edge bends, each sheet's per-element
 expansion) lives in the spec's own `diagrams` section — a separate structure that only
 *references* elements by id, so coordinates never leak into the authored elements
 themselves. Models saved before this section existed kept the geometry in a
 `modux-editor-layout.json` file next to the store; it is still read as a fallback and
-migrates into `diagrams` on the first change made in the editor. The page carries no
-header of its own: the title lives discreetly in the editor toolbar (its tooltip
-carries the subtitle) and the canvas takes the space.
+migrates into `diagrams` on the first change made in the editor. The editor carries no
+header of its own: the title lives discreetly in its toolbar (its tooltip carries the
+subtitle) and the canvas takes the space.
 
 ## Views
 
 | View | Shows | Extra semantics |
 |---|---|---|
-| **System map** (*Mapa del sistema*) | The whole landscape on ONE canvas, Archi style: every element is a **free box** (contexts, external systems, APIs, proxies, workflows, IdPs, actors, agents…) folded to a chip by default; the **chevron expands each one** and its children arrive as free boxes ringed around it, tied by a **composition edge** (grey line, filled diamond on the owner's side) — in cascade down to API operations. Strategic relations (solid, DDD abbreviations) and flows (dashed) ride on top | Flow colour = live coherence: green OK, amber missing relation, orange reversed. **Relations never hide**: an edge whose endpoint folded away re-anchors at the nearest visible ancestor (deduped, tooltip says so); edges internal to a folded box fold with it |
+| **System map** (*Mapa del sistema*) | The whole landscape on ONE canvas, Archi style: every element is a **free box** (contexts, external systems, APIs, proxies, workflows, IdPs, actors, agents…) folded to a chip by default; the **chevron expands each one** and its children arrive as free boxes ringed around it, tied by a **composition edge** (grey line, filled diamond on the owner's side) — in cascade down to API operations. Strategic relations (solid, DDD abbreviations) and flows (dashed) ride on top. **Data models** (use-case inputs/outputs, event payloads, read-model shapes) are not strategic and never float loose here: they show on a [curated view](/manual/views-and-large-models/) that lists them (drop one from the Catalog onto the view) | Flow colour = live coherence: green OK, amber missing relation, orange reversed. **Relations never hide**: an edge whose endpoint folded away re-anchors at the nearest visible ancestor (deduped, tooltip says so); edges internal to a folded box fold with it |
 | **Distribution** (*Distribución*) | Its own specialized view (no longer a «level»): services, the modules they deploy and the infrastructure they lean on. A context with only its main module draws no module box (the deploy edge lands on the context itself); with a second module, expanding the context brings its modules AND its unassigned elements as free boxes — drag an element's handle to a module to package it, a service's handle to a module (or its context) to deploy it | Same Archi grammar: composition diamonds, per-element expansion, roll-up |
 | **Aggregates** | Aggregates coloured by their bounded context's subdomain, entities as satellites, cross-aggregate references | |
 | **Flows** | Each flow as a pipeline: trigger aggregate → flow (coloured by archetype) → target | |
@@ -33,7 +33,7 @@ carries the subtitle) and the canvas takes the space.
 | **Page designer** *(inside the UI view)* | Double-click a page: a live **mockup inferred the Mateu way** — fields come from the viewmodel Model, their look from each field's config, the page shows its four zones — **header**, **toolbar** (top buttons), **content** and the **bottom bar** (closing actions, its own «+ botón») — plus a listing stub on CRUD pages. Nothing is drawn by hand: click a field to edit its **declaration** (stereotype, width, label) and the preview re-infers itself; drag fields to reorder (persisted as the fieldConfigs order); «Ficha» opens the page's full form | The designer is WYSIWYG over the MVVM: what you edit is the spec, never pixels. **UI-first composition**: the palette offers Mateu's full layout vocabulary (vertical, horizontal, form, split, tabs, accordion, card, grid, board, dashboard, master-detail, foldout, carousel, app) plus components (form, listing, button, field, text, metric, menu bar) — drop a layout on a frame, drop components inside (a tabLayout comes seeded with two tabs; **click a header to show and select that tab**, double click to configure it, **drag headers to reorder them**, and drops on the body land in the tab being shown — the palette also offers **Layout · Tab** to add tabs by dropping them on the tabLayout), **click selects** a node (Del deletes it, subtree included — one undo restores it whole), **double click edits its declaration**, and **dragging the node moves it**: the top half of a component slots it before, the bottom half after (a blue bar opens the gap), a layout's body drops it inside — palette drops honor the same slots, a node never lands in its own subtree, and **dragging works across frames** (the node moves to the other page). **Ctrl+C / Ctrl+V** copies the selected subtree and pastes it under the current selection, on any frame. Catalog drops wire declarations: a **use case on a button** is its action (on the frame, a new toolbar button), a **model on a form or the frame** is the viewmodel (pages also offer a violet **viewmodel handle** on the UI view — draw it to a model; the designer shows the chip with a ✕ to unset, no dropdown), a **query operation on a listing or the frame** is what it lists. Empty content = the page stays fully inferred |
 | **Integraciones** | Every **ETL flow** as a container with its pipeline unfolded — sources (pull/consumer) → transforms → writes (API/db/event) — plus the external systems (with their legacy tables), APIs and events it touches | Drop *ETL flow (integrator)* from the palette (in the open it floats; its owner context is set in its ficha); wire a **table or API to the flow** for a source step, an **event to the flow** for a consumer, and **from the flow** outwards for writes |
 | **EventStorming** | The whole causal narrative, derived from the model in classic sticky-note notation: actor → **command** (blue) → **aggregate** (yellow) → **event** (orange) → **policy** (lilac: subscription, flow, process, workflow or projection) → **read model** (green), external systems in pink, AI agents with their tools. Each command folds its pipeline steps (chevron); the CODE delegation thread re-anchors at the folded command | A read-only *lens* — you edit from the other views or the forms. Events referenced by name but not declared in the catalog render dashed («EVENT (undeclared)»): a built-in gap detector. Auto-layout orders the narrative |
-| **Sequences** (*Secuencias*) | UML sequence diagrams over the catalog: participants as lifelines (actors, pages, API operations, use cases, aggregates, query services, read models, external systems…), numbered messages top to bottom — solid with filled head for **COMMAND**, italic for **QUERY**, open orange head for **EVENT** (async), slate for **EXTERNAL**. Not a canvas scene: its own surface, like the page designer | Two sources: **«Derivar de:»** computes an *ephemeral* read-only sequence from an entry point (a use case, an API operation or an event — steps walked in order, event consumers forked, cycles cut; 📌 *Fijar como secuencia* persists it), or an **authored** sequence you edit by hand: drop participants, drag lifeline → lifeline to draw a message (kind inferred), drag to reorder, double click edits label/guard/kind, Del deletes. A message with no mechanism behind it shows **⚠ amber dashed**; its **✨ materialize** button creates the backing piece (a `CallUseCase` step, a query call, an emission + TRIGGERS flow, the API operation wiring…). The linter watches both ways: `interaction-message-without-backing` and `interaction-dangling-participant`. **⧉ Mermaid** copies the `sequenceDiagram` for the design doc. Also CRUD-able from *Modelo de dominio › Secuencias* and authorable over MCP (`interactions:` in the YAML) |
+| **Sequences** (*Secuencias*) | UML sequence diagrams over the catalog: participants as lifelines (actors, pages, API operations, use cases, aggregates, query services, read models, external systems…), numbered messages top to bottom — solid with filled head for **COMMAND**, italic for **QUERY**, open orange head for **EVENT** (async), slate for **EXTERNAL**. Not a canvas scene: its own surface, like the page designer | Two sources: **«Derivar de:»** computes an *ephemeral* read-only sequence from an entry point (a use case, an API operation or an event — steps walked in order, event consumers forked, cycles cut; 📌 *Fijar como secuencia* persists it), or an **authored** sequence you edit by hand: drop participants, drag lifeline → lifeline to draw a message (kind inferred), drag to reorder, double click edits label/guard/kind, Del deletes. A message with no mechanism behind it shows **⚠ amber dashed**; its **✨ materialize** button creates the backing piece (a `CallUseCase` step, a query call, an emission + TRIGGERS flow, the API operation wiring…). The linter watches both ways: `interaction-message-without-backing` and `interaction-dangling-participant`. **⧉ Mermaid** copies the `sequenceDiagram` for the design doc. Also authorable by hand, as `interactions/` files of the model |
 
 Boxes carry an ArchiMate-inspired glyph for their kind: component (contexts, external
 systems), diamond (aggregates), class (entities), arrow (flows), chevron (processes),
@@ -355,29 +355,13 @@ element from the project:
 - **Del on a member asks**: *delete the element from the model, or only take it out
   of this view?* — removing from the view never touches the element itself.
 
-## System and solutions
-
-The **Modelo:** bar above the canvas shows the model being edited — the **system**
-(the as-is, badge AS-IS) or a **solution** (a to-be proposal, badge TO-BE) — see
-[System & Solutions](/manual/solutions/). **Switching lives in the app header**: the
-«Modelo» application context, next to «Repositorio» and «Proyecto», works from every
-page. The bar keeps what is editor-specific: «＋ Nueva solución…» branches from the
-system, and on a solution the lifecycle actions (Proponer, Actualizar del sistema,
-Mergear, Descartar) plus the live **semantic diff** against the system: a dashed
-**green ring** marks elements that only exist in the solution, a dashed **amber
-ring** the modified ones, and the `＋n ～n −n` badge summarizes the change set
-(removed elements are listed in its tooltip).
-
 ## Live updates
 
-The server pushes a fingerprint of the store over SSE; when the model changes from
-anywhere else — the form editors, the [MCP server](/manual/mcp-authoring/), another
-browser — the canvas reloads within a couple of seconds and shows an info toast. The
-local undo history is discarded on external changes, since its inverses no longer
-describe the model. This reaches across processes too: the backend watches the store
-on disk, so a write from an agent's own MCP server, a `git pull` on the checkout or
-a hand edit in the IDE reloads the catalog and lands on every open canvas through
-the same channel — see [the live store](/manual/mcp-authoring/#the-live-store).
+There is no push channel: the editor shows the model as it was when it loaded it. When
+the files change outside the editor — a hand edit, an AI agent, a `git checkout` of
+another branch — reopen the view (or reload the web host) to see them. Comparing two
+versions of the model is a `git diff` over its files: one file per element makes it
+readable element by element.
 
 ## Language
 
@@ -396,9 +380,23 @@ own interface is translated: element names, descriptions and everything else you
 stay exactly as written in the model, and messages that come back from the server are
 shown as the server sends them. Keyboard shortcuts are the same in both languages.
 
+## Where it runs
+
+- **The IntelliJ plugin** (`Modux`; see [Installation](/getting-started/installation/#the-intellij-plugin))
+  hosts the editor in the IDE over the repository's model: *New → Modux Model* initialises the catalog
+  (`.modux/`), *New → Modux View* creates a view document (`*.modux-view.yaml`), and
+  opening a view document opens the canvas on it. The plugin edits the files and nothing
+  else; generation is the [Maven plugin](/reference/maven-plugin/).
+- **The modux server** (see [Installation](/getting-started/installation/#the-modux-server-optional))
+  serves the same component as a bundle, `/modux-editor/modux-editor.js`, which defines
+  `<modux-editor-connected base="/modux/editor">` — a host that talks to the server's
+  REST API (`GET /modux/editor/model`, `POST /modux/editor/commands`,
+  `GET`/`PUT /modux/editor/layout`).
+
 ## Under the hood
 
-The editor is a standalone Lit web component (`editor/` in the repo) embedded through
-a Mateu `Element` with the `import` attribute; it talks to `/modux/editor` (model
-projection in, commands and layout out). The canvas engine is semantics-free — each
-view is a pure *model → scene* adapter, so new diagram kinds are small additions.
+The editor is a standalone Lit web component (`editor/` in the repo). Its core renders
+a pure *scene* from a projection of the model and emits commands; the host applies
+them — the IntelliJ plugin on the files, the web host through the REST API. The canvas
+engine is semantics-free — each view is a pure *model → scene* adapter, so new diagram
+kinds are small additions.

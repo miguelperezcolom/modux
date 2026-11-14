@@ -3,14 +3,18 @@ title: Maven Plugin Reference
 description: Configuration reference for the modux-maven-plugin
 ---
 
-The `modux-maven-plugin` lets you trigger Modux code generation from any Maven build — without running the Modux UI. It shares the same generation logic as the UI-driven generator, so any templates added to `model-driven-generator` take effect automatically without any plugin changes.
+The `modux-maven-plugin` is how a model becomes code: it validates the model, generates the
+system from it, deploys it, and imports contracts into it. It reads the model directory of the
+project it runs in — `modux/`, or `.modux/` when that is what exists (the directory the
+IntelliJ plugin creates) — and carries the generator inside, so any template added to
+`model-driven-generator` takes effect without plugin changes.
 
 ## Coordinates
 
 ```xml
 <groupId>io.mateu.modux</groupId>
 <artifactId>modux-maven-plugin</artifactId>
-<version>0.6.5</version>
+<version>0.6.6</version>
 ```
 
 ## Goal: `validate`
@@ -106,18 +110,64 @@ mvn modux:deploy -Dmodux.env=prod
 
 See [Deploying](/manual/deploying/) for environments, URLs and DNS providers.
 
+## Goal: `hla`
+
+**Default phase:** none (run explicitly)
+
+Writes the project's high-level architecture document, derived from the model: context and
+objective (`project.objective`), decisions, structural view, sequence and state diagrams,
+transversal concerns, exposed contracts and open points. To see what a change does to it,
+`git diff` the regenerated file. (Today the document comes out in Spanish whatever the model's
+language.)
+
+| Parameter | Property | Default | Description |
+|---|---|---|---|
+| `modelPath` | `modux.modelPath` | the repository's model directory | Where the model is |
+| `output` | `modux.hla.output` | `${project.basedir}/HLA.generated.md` | Where the document goes |
+
+## Goal: `schema`
+
+**Default phase:** `generate-resources`
+
+Writes the model's JSON schema, `model-driven-store-schema.json`, into the model directory —
+the metamodel, which gives any editor or agent completion and validation over the YAML.
+`validate` and `generate` refresh it too; run `schema` after upgrading the plugin.
+
+| Parameter | Property | Default | Description |
+|---|---|---|---|
+| `modelPath` | `modux.modelPath` | the repository's model directory | Where the model is |
+
+## Goal: `import-api`
+
+**Default phase:** none (run explicitly)
+
+Imports an OpenAPI (YAML/JSON) or WSDL contract as a **first-class API** of the model — an
+`apis/` element with its operations waiting to be wired to whoever implements them.
+Re-importing an evolved contract updates the operations in place and keeps the wiring.
+
+| Parameter | Property | Default | Required | Description |
+|---|---|---|---|---|
+| `filePath` | `modux.filePath` | — | **Yes** | The contract |
+| `apiId` | `modux.apiId` | derived from the contract's title | No | An existing API to land the operations on |
+| `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is |
+
+```bash
+mvn modux:import-api -Dmodux.filePath=contracts/payments.yaml
+```
+
 ## Goal: `import-openapi`
 
 **Default phase:** none (run explicitly)
 
-Reads an OpenAPI 3.x YAML or JSON file and upserts `GatewayEntity` + `GatewayOperationEntity` entries into the spec store.
+Reads an OpenAPI 3.x YAML or JSON file and upserts a gateway (something the system *calls*) with its operations into the model.
 
 ### Parameters
 
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the OpenAPI YAML or JSON file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec store |
+| `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is (`modux/`, or `.modux/` when there is no `modux/`) |
+| `specFile` | `modux.specFile` | — | No | Deprecated: a store to write to instead of `modelPath` |
 | `serviceId` | `modux.serviceId` | — | No | Service ID to link the imported gateway to |
 
 ### Usage
@@ -134,14 +184,15 @@ See [Importing Existing Specs](/manual/importers/) for the full guide.
 
 **Default phase:** none (run explicitly)
 
-Reads an AsyncAPI 2.x YAML file and upserts `DomainEventEntity` (publish channels) and `SubscriptionEntity` (subscribe channels) into the spec store.
+Reads an AsyncAPI 2.x YAML file and upserts domain events (publish channels) and subscriptions (subscribe channels) into the model.
 
 ### Parameters
 
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the AsyncAPI YAML file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec store |
+| `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is (`modux/`, or `.modux/` when there is no `modux/`) |
+| `specFile` | `modux.specFile` | — | No | Deprecated: a store to write to instead of `modelPath` |
 | `boundedContextId` | `modux.boundedContextId` | — | No | Bounded context ID that owns these events/subscriptions |
 
 ### Usage
@@ -169,14 +220,17 @@ mvn modux:generate \
 
 ## How it works
 
-The plugin boots a minimal Spring `AnnotationConfigApplicationContext` containing only two beans:
-
-- `CommonFileRepository` — reads and deserialises the YAML spec file
-- `GenerateCodeUseCase` — renders all Freemarker templates and writes the output files
-
-No Spring Boot auto-configuration or embedded server is started. The plugin then calls `GenerateCodeUseCase.handle()` and shuts the context down.
+Each goal boots a plain Spring `AnnotationConfigApplicationContext` over the generator's
+application and outbound-infrastructure packages, with every bean lazy: only the use case the
+goal calls — and what it depends on — is instantiated. No Spring Boot auto-configuration, web
+server or inbound adapter is started.
 
 Because all generation logic lives in `model-driven-generator`, **adding new templates or domain concepts never requires changes to the plugin itself**.
+
+The generated Java is formatted with google-java-format, which needs the `--add-exports
+jdk.compiler/...` options on the JVM running Maven. Put them in `.mvn/jvm.config` (see the
+[Quick Start](/getting-started/quick-start/#1-a-maven-project-with-the-plugin)); without them the
+code still generates, unformatted.
 
 ## Building the plugin locally
 

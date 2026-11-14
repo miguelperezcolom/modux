@@ -9,11 +9,9 @@ A **Module** is the buildable, deployable unit *inside* a bounded context — pu
 
 ## Creating a bounded context
 
-1. Go to **Organización → Bounded Contexts**
-2. Click **New**
-3. Give it a name and save
+Add `modux/boundedContexts/{id}.yaml` and its main module, `modux/modules/{id}-main.yaml` (`boundedContextId` pointing back, `main: true`); then add the module id to a service's `moduleIds`, or nothing deploys the context. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
-Its main module (id `<bcId>-main`, named after the context) is created automatically.
+Created from the graphical editor, the context gets its main module (id `<bcId>-main`, named after the context) automatically.
 
 ## Configuration
 

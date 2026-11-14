@@ -5,27 +5,38 @@ Guidance for AI coding agents working in this repository.
 ## Project overview
 
 **Modux** is a model-driven code generation framework for Domain-Driven Design (DDD)
-systems. Users define a domain model as YAML (aggregates, entities, value objects,
+systems. Users define a domain model as a directory of YAML files in their own repository
+(`modux/` or `.modux/`, one file per element: aggregates, entities, value objects,
 events, operations, sagas, projections…) and Modux generates a production-ready
 Spring Boot application from it: domain/application/infrastructure layers following
 Hexagonal Architecture, CRUD UIs for the aggregates a UI consumes (Vaadin / Mateu UIDL), database migrations, and
 DevOps artifacts (Dockerfile, docker-compose, Kubernetes manifests, Terraform
 skeleton, GitHub Actions workflow, JaCoCo).
 
-Modux itself is a Spring Boot web application (port **8192**) that provides:
+How people use it — there is no admin UI, no MCP server and no «solutions» any more
+(removed in `d00f0241`; rationale in `docs/design/ide-plugin.md`):
 
-- A web UI (Mateu UIDL) for authoring models.
-- A graphical model editor (Lit web component, see `editor/`).
-- An **MCP server** (both stdio and HTTP at `/mcp`) so AI agents can author models
-  and drive generation (`infra/in/mcp`).
-- The code generator itself (Freemarker templates + google-java-format).
+- **The model is files.** Edited by hand, by an AI agent following the skill
+  `.claude/skills/modux-model/SKILL.md` (the authoritative description of the model), or
+  in the graphical editor. The JSON schema written next to the model is the metamodel.
+- **`modux-maven-plugin`** (`plugin/`) reads the model and does everything else:
+  `validate`, `generate`, `hla`, `schema`, `ai-complete`, `deploy`, `import-api`,
+  `import-openapi`, `import-asyncapi`.
+- **The graphical editor** (Lit web component, `editor/`) is hosted by the **IntelliJ
+  plugin** (`intellij-plugin/`) over the repository's model files, and by the modux
+  server as the static bundle `/modux-editor/modux-editor.js` (`<modux-editor-connected>`)
+  against its REST API `/modux/editor/*`.
+- **The modux server** (`model-driven-generator/`, Spring Boot, port **8192**) is now only
+  that web host of the editor plus the generator's headless CLI (`--modux.generate`,
+  `--modux.check`, `--modux.lint`…). The generator itself (Freemarker templates +
+  google-java-format) lives here and is what the Maven plugin embeds.
 
 Supported architecture patterns in generated code: DDD, CQRS, Event Sourcing
 (optional per aggregate), Saga (choreography/orchestration), Projections & Read
 Models, Outbox, RBAC, Gateways (circuit breakers, rate limiting), Scheduled
 Triggers.
 
-- Group / version: `io.mateu.modux` / `0.1.0`, MIT license.
+- Group / version: `io.mateu.modux` / `0.6.5`, MIT license.
 - Docs site: <https://modux.mateu.io> (source in `doc/`).
 - **Languages**: code, code comments, `README.md` and the docs site are in
   **English**; design RFCs (`docs/design/`), specs (`docs/specs/`), and ops
@@ -38,13 +49,14 @@ There is **no root Maven aggregator POM**; each module is built separately.
 
 | Path | What it is |
 |---|---|
-| `model-driven-generator/` | The main Spring Boot app — the modux product itself (Java 21, Maven). |
-| `editor/` | `@modux/editor` — standalone Lit/TypeScript graphical model editor (Vite + Vitest). Bundled into the Spring app's static resources. |
-| `plugin/` | `modux-maven-plugin` — Maven plugin over the generator jar: `generate`, `validate`, `hla`, `schema`, `ai-complete`, `deploy` (local Docker or a Kubernetes environment of the model, with DNS). |
+| `model-driven-generator/` | The generator (domain, use cases, templates) and the optional Spring Boot server hosting the web editor (Java 21, Maven). |
+| `editor/` | `@modux/editor` — standalone Lit/TypeScript graphical model editor (Vite + Vitest). Bundled into the IntelliJ plugin and into the server's static `/modux-editor`. |
+| `plugin/` | `modux-maven-plugin` — the main way to use modux: `validate`, `generate`, `hla`, `schema`, `ai-complete`, `deploy` (local Docker or a Kubernetes environment of the model, with DNS), `import-api`, `import-openapi`, `import-asyncapi`. |
 | `intellij-plugin/` | IntelliJ plugin (Gradle) hosting the editor over the repo's model files. See `docs/design/ide-plugin.md`. |
 | `figma-maven-plugin/` | Maven plugin generating Mateu views (Java/C#/Python) from Figma files. |
 | `sample/hla-booking/` | Hand-authored example spec (`model-driven-store.yaml` + JSON schema). Versioned. |
-| `sample/patterns/` | Hand-authored didactic pattern stores (BFF, ACL, CQRS, event-driven, saga, event sourcing, human process). Versioned; seeded to `~/.modux/examples` by `install.sh`. |
+| `sample/patterns/` | Hand-authored didactic pattern stores (BFF, ACL, CQRS, event-driven, saga, event sourcing, human process, integrations). Versioned; seeded to `~/.modux/examples` by `install.sh`. |
+| `media/` | Example systems behind the videos (`promo-video/`, `video-series/`): model + pom + custom zones; generated code git-ignored. |
 | `sample/biblioteca/` | A system built end to end with the IntelliJ plugin (model in `.modux/`, view, custom zone; two services). Versioned without its generated code. |
 | `sample/hotel-checkin/` | Generated sample application (multi-module). **Not versioned** — `sample/*` is git-ignored except `sample/hla-booking/`, `sample/patterns/` and `sample/biblioteca/`. |
 | `doc/` | Astro Starlight documentation site (npm). |
@@ -64,8 +76,8 @@ There is **no root Maven aggregator POM**; each module is built separately.
 - **Jackson (YAML)** for model serialization; **victools jsonschema-generator** for
   the store JSON schema; **swagger-parser** for OpenAPI import.
 - **Mateu** (`io.mateu:*`, from Maven Central): the UI layer of the *generated* applications.
-- Persistence: file+git on local disk, or JDBC (**H2 / PostgreSQL**) for the
-  `DATABASE` repository type.
+- Persistence of the model: YAML files (granular — one per element — or the legacy single
+  file), or JDBC (**H2 / PostgreSQL**) for the server's `DATABASE` store backend.
 - Editor: **Lit 3**, **d3-zoom**, **elkjs**, **Vite 6**, **Vitest**, TypeScript 5.7.
 - Tests: **JUnit 5**, **Testcontainers** (PostgreSQL, Kafka) for e2e.
 
@@ -78,21 +90,21 @@ compile a generated project with a UI: Mateu's API moves between betas.
 ## Build and run commands
 
 ```bash
-# Build the main app (jar lands in model-driven-generator/target/*-exec.jar)
-mvn -f model-driven-generator/pom.xml package -DskipTests
+# Install the generator (thin jar) and the Maven plugin into ~/.m2 — what users run
+mvn -f model-driven-generator/pom.xml install -DskipTests
+mvn -f plugin/pom.xml install
 
-# Run the app from sources (serves http://localhost:8192)
-cd model-driven-generator && mvn spring-boot:run
+# In a project with the plugin and a modux/ model:
+mvn modux:validate && mvn modux:generate
 
-# Or install a `modux` launcher into ~/.local/bin (works against ~/.modux)
-./install.sh            # local jar mode
+# The optional server (editor web host + REST API); exec jar in model-driven-generator/target/
+cd model-driven-generator && mvn spring-boot:run     # http://localhost:8192
+./install.sh            # or a `modux` launcher in ~/.local/bin (local jar mode)
 ./install.sh --docker   # container mode, ~/.modux mounted as home
 ```
 
-Runtime knobs: `MODUX_PORT` (default 8192), `MODUX_HOME` (default `~/.modux`).
-The same binary also runs as an MCP stdio server with `--modux.mcp` (no web server;
-stdout is reserved for JSON-RPC, so never log to console in that mode — see
-`ModelDrivenGeneratorApplication.main`).
+Server runtime knobs: `MODUX_PORT` (default 8192), `MODUX_HOME` (default `~/.modux`),
+`--modux.model-file=<dir or file>`.
 
 ### Editor (TypeScript)
 
@@ -105,7 +117,8 @@ npm test       # vitest run
 npm run copy   # build + copy bundle into model-driven-generator static resources
 ```
 
-After changing the editor you must run `npm run copy` and restart the modux server.
+After changing the editor, run `npm run copy` (and restart the modux server) for the web
+host; the IntelliJ plugin's gradle build rebuilds the bundle from `editor/` itself.
 
 ### Docs site
 
@@ -153,47 +166,47 @@ The app follows **Hexagonal Architecture** (the same pattern it generates), unde
 - `application/usecases/{type}/{create,save,delete,...}/` — one use case per
   operation per element type. Notable extras: `project/generatecode`
   (`GenerateCodeUseCase`, the generator entry point), `project/importopenapi`,
-  `project/importasyncapi`, `project/importwsdl`, `project/importfigma`,
-  `project/aicomplete`, `project/generatehla`, `model/{check,lint,topology,view}`,
+  `project/importasyncapi`, `project/importapi`, `project/importwsdl`,
+  `project/importfigma`, `project/generatehla`, `model/{check,lint,topology,view}`,
   `flow/coherence`, `process/expand`, `interaction/{derive,shared}` (sequence
-  scenarios: ephemeral derivation + message-backing resolution).
+  scenarios: ephemeral derivation + message-backing resolution). The Maven plugin
+  (`plugin/`) calls these use cases directly; `ai-complete` lives in the plugin
+  (`HookImplementer`).
 - `application/out/` — ports: `repositories/`, `query/` (+ `dtos/`), `store/`
-  (`ModelStore`, `WorkspaceStore`), `shared/`.
-- `infra/in/` — inbound adapters:
-  - `ui/` — Mateu pages/shell (`ModelDrivenGeneratorHome`, `pages/`, `menu/`).
-  - `rest/` — `EditorApiController` and `SolutionApiController` (base
-    `/modux/editor`) backing the graphical editor.
-  - `mcp/` — MCP server: `McpHttpController` (HTTP `/mcp`), `McpStdioServer` +
-    `McpCliRunner` (stdio), `ModelMcpTools` (tool surface for AI agents).
-  - `cli/` — `GenerationCliRunner` (headless generation).
+  (`ModelStore`), `shared/`.
+- `infra/in/` — inbound adapters (no Mateu UI and no MCP server any more):
+  - `rest/` — `EditorApiController` (base `/modux/editor`: `model`, `version`,
+    `commands`, `layout`) backing the web host of the graphical editor.
+  - `cli/` — `GenerationCliRunner` (headless `--modux.generate`, `--modux.check`,
+    `--modux.lint [--modux.watch]`, `--modux.split/merge`, `--modux.view`).
 - `infra/out/` — outbound adapters:
   - `persistence/` — file-based repositories (`*FileRepository`,
     `*FileQueryService`, `file/*Entity` records); all persistence funnels through
-    one choke-point class (`CommonFileRepository`).
-  - `git/` — `GitWorkspaceStore`, solution diff/merge (`SolutionDiffService`,
-    `SolutionMergeService`).
-  - `db/` — `JdbcModelDatabase` + `DbWorkspaceStore` (DATABASE repository type).
-  - `store/` — `WorkspaceStoreRouter` routes to the right store per repository type.
-  - `ai/` — AI completion adapter.
+    one choke-point class (`file/CommonFileRepository`), which reads and writes the
+    granular or monolithic YAML formats. `home/` is the server's `~/.modux`
+    (last-opened model, legacy repository registry).
+  - `db/` — `JdbcModelDatabase` (the `DATABASE` store backend).
 
 Key architectural concepts to respect:
 
 - **Storage ports** (`docs/design/storage-ports.md`): the model is a catalog of
-  elements keyed by `(type, id)`; file+git and JDBC are interchangeable adapters
-  behind `ModelStore`/`WorkspaceStore`. New persistence concerns go behind those
-  ports, not into the use cases.
+  elements keyed by `(type, id)`; YAML files and JDBC are interchangeable adapters
+  behind `ModelStore`. New persistence concerns go behind that port, not into the
+  use cases. Java only *reads* the model in the plugin path; the editor writes it
+  (`docs/design/ide-plugin.md` §1.1).
 - **Two-zone code generation** (`docs/design/two-zone-codegen.md`): generated code
   is always overwritten (hash-protected manifest); business logic holes become
   interface hooks implemented in a separate `{service}-custom` module that is
   scaffolded once and never overwritten. Do not emit `// TODO` business logic into
   generated files — add a hook instead.
-- **YAML store round-trip fidelity**: several UI saves carry over fields the domain
-  records do not model yet so a UI save never wipes what was authored in YAML (see
+- **YAML store round-trip fidelity**: several saves carry over fields the domain
+  records do not model yet so an editor save never wipes what was authored in YAML (see
   the "carry over" comments in use cases). Preserve that behavior when editing
   save use cases.
 - **Editor contract**: `editor/` renders a pure `Scene` from a model projection and
-  emits commands; the server applies them via `EditorApiController`. Geometry
-  (layout) is stored outside the YAML model. Specialized surfaces that are not a
+  emits commands; the host applies them — the IntelliJ plugin on the files, the web
+  host via `EditorApiController`. Geometry (layout) lives in `diagrams/`, apart from
+  the elements. Specialized surfaces that are not a
   `Scene` (the page designer, `<modux-sequence>` for sequence scenarios) follow the
   same command contract.
 
@@ -237,12 +250,12 @@ Key architectural concepts to respect:
 
 ## Security considerations
 
-- The in-app chat uses `io.mateu:agent-cli`, which **bridges the developer's local
-  `claude`/`gemini` CLI with no API key** and gives it access to the app's own MCP
-  tools (`mateu.agent.cli.*` in `application.properties`). This is a local-dev
-  convenience — an exposed server must point `@AI` at a real agent instead.
-- The MCP endpoint (`/mcp`) exposes model-mutating tools; the stdio mode
-  (`--modux.mcp`) is the intended integration for local agents.
+- AI agents author the model by editing its files (skill
+  `.claude/skills/modux-model/SKILL.md`); modux exposes no MCP server or in-app chat.
+  `mvn modux:ai-complete` runs the developer's local `claude` CLI (no API key) and writes
+  only under `{service}-custom/src/main/java`.
+- The server's REST API (`/modux/editor/commands`) mutates the model and has no
+  authentication: it is a local-dev host for the editor, not something to expose.
 - DB credentials are passed only via environment (`MODUX_DB_USER`,
   `MODUX_DB_PASSWORD`) or embedded in the JDBC URL — never commit them. The Helm
   chart ships default `modux/modux` PostgreSQL credentials; override them for real

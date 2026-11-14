@@ -12,6 +12,7 @@ import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.ProjectEnt
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UseCaseEntity;
 
 import io.mateu.modux.modeldrivengenerator.application.usecases.aggregate.scaffold.CrudUseCases;
+import io.mateu.modux.modeldrivengenerator.application.usecases.project.generatecode.GenerateCodeUseCase;
 import io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.UiMenuItemEntity;
 
 import java.util.List;
@@ -31,47 +32,60 @@ public final class HlaDocumentRenderer {
 
     private HlaDocumentRenderer() {}
 
+    /**
+     * The document's own words, in the project's language: English unless the project speaks
+     * Spanish — the rule of the generated UI ({@code GenerateCodeUseCase.speaksSpanish}).
+     */
+    private record Words(boolean es) {
+        String t(String spanish, String english) {
+            return es ? spanish : english;
+        }
+    }
+
     public static String render(ModelSnapshot m) {
         var project = m.projects().isEmpty() ? null : m.projects().get(0);
+        var w = new Words(project != null && GenerateCodeUseCase.speaksSpanish(project));
         var md = new StringBuilder();
 
-        md.append("# HLA — ").append(project != null ? project.name() : "modelo").append("\n\n");
-        md.append("> Documento generado desde el modelo modux — no editar a mano: es un informe de la especificación.\n\n");
+        md.append("# HLA — ").append(project != null ? project.name() : w.t("modelo", "model")).append("\n\n");
+        md.append(w.t("> Documento generado desde el modelo modux — no editar a mano: es un informe de la especificación.\n\n",
+                "> Document generated from the modux model — do not edit by hand: it is a report of the specification.\n\n"));
 
-        contextAndObjective(md, project);
-        decisions(md, m);
-        structuralView(md, m, project);
-        responsibilities(md, m, project);
-        contextDetails(md, m);
-        processes(md, m);
-        lifecycles(md, m);
-        transversals(md, m, project);
-        contracts(md, m);
-        openPoints(md, m);
+        contextAndObjective(md, project, w);
+        decisions(md, m, w);
+        structuralView(md, m, project, w);
+        responsibilities(md, m, project, w);
+        contextDetails(md, m, w);
+        processes(md, m, w);
+        lifecycles(md, m, w);
+        transversals(md, m, project, w);
+        contracts(md, m, w);
+        openPoints(md, m, w);
 
         return md.toString();
     }
 
     // --- §1 -------------------------------------------------------------------
 
-    private static void contextAndObjective(StringBuilder md, ProjectEntity project) {
-        md.append("## 1. Contexto y objetivo\n\n");
+    private static void contextAndObjective(StringBuilder md, ProjectEntity project, Words w) {
+        md.append(w.t("## 1. Contexto y objetivo\n\n", "## 1. Context and objective\n\n"));
         if (project != null && project.objective() != null && !project.objective().isBlank()) {
             md.append(project.objective().trim()).append("\n\n");
         } else {
-            md.append("_(sin objetivo declarado — rellena `project.objective` en el modelo)_\n\n");
+            md.append(w.t("_(sin objetivo declarado — rellena `project.objective` en el modelo)_\n\n",
+                    "_(no objective declared — fill in `project.objective` in the model)_\n\n"));
         }
     }
 
     // --- §2 -------------------------------------------------------------------
 
-    private static void decisions(StringBuilder md, ModelSnapshot m) {
-        md.append("## 2. Decisiones (ADR)\n\n");
+    private static void decisions(StringBuilder md, ModelSnapshot m, Words w) {
+        md.append(w.t("## 2. Decisiones (ADR)\n\n", "## 2. Decisions (ADR)\n\n"));
         if (m.decisions().isEmpty()) {
-            md.append("_Sin decisiones registradas._\n\n");
+            md.append(w.t("_Sin decisiones registradas._\n\n", "_No decisions recorded._\n\n"));
             return;
         }
-        md.append("| # | Decisión | Motivo | Estado |\n|---|---|---|---|\n");
+        md.append(w.t("| # | Decisión | Motivo | Estado |\n", "| # | Decision | Rationale | Status |\n")).append("|---|---|---|---|\n");
         var ordered = m.decisions().stream()
                 .sorted(java.util.Comparator.comparingInt((io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.DecisionEntity d) ->
                         d.id() != null ? d.id().length() : 0)
@@ -89,10 +103,10 @@ public final class HlaDocumentRenderer {
 
     // --- §3 -------------------------------------------------------------------
 
-    private static void structuralView(StringBuilder md, ModelSnapshot m, ProjectEntity project) {
-        md.append("## 3. Vista estructural\n\n```mermaid\nflowchart LR\n");
+    private static void structuralView(StringBuilder md, ModelSnapshot m, ProjectEntity project, Words w) {
+        md.append(w.t("## 3. Vista estructural", "## 3. Structural view")).append("\n\n```mermaid\nflowchart LR\n");
         for (var service : m.services()) {
-            md.append("  subgraph ").append(id(service.id())).append("[\"servicio ").append(service.name()).append("\"]\n");
+            md.append("  subgraph ").append(id(service.id())).append("[\"").append(w.t("servicio ", "service ")).append(service.name()).append("\"]\n");
             for (var boundedContextId : nvlList(service.moduleIds()).stream()
                     .map(mid -> m.modules().stream().filter(mm -> mm.id().equals(mid)).findFirst().orElse(null))
                     .filter(java.util.Objects::nonNull)
@@ -129,30 +143,30 @@ public final class HlaDocumentRenderer {
 
     // --- §4 -------------------------------------------------------------------
 
-    private static void responsibilities(StringBuilder md, ModelSnapshot m, ProjectEntity project) {
-        md.append("## 4. Responsabilidades por contenedor\n\n");
-        md.append("| Contenedor | Subdominio | Responsabilidad |\n|---|---|---|\n");
+    private static void responsibilities(StringBuilder md, ModelSnapshot m, ProjectEntity project, Words w) {
+        md.append(w.t("## 4. Responsabilidades por contenedor\n\n", "## 4. Responsibilities per container\n\n"));
+        md.append(w.t("| Contenedor | Subdominio | Responsabilidad |\n", "| Container | Subdomain | Responsibility |\n")).append("|---|---|---|\n");
         for (var boundedContext : m.boundedContexts()) {
             var notes = new StringBuilder(nvl(boundedContext.description()));
             nvlList(boundedContext.bffs()).forEach(b -> notes.append(notes.isEmpty() ? "" : " ")
                     .append("**BFF** ").append(b.name()).append(" (").append(nvl(b.basePath())).append(")."));
             nvlList(boundedContext.acls()).forEach(a -> notes.append(notes.isEmpty() ? "" : " ")
-                    .append("**ACL** hacia ").append(a.externalSystem()).append("."));
-            // "la lectura vive en otro sitio" — the delegated read side is an architectural fact
+                    .append(w.t("**ACL** hacia ", "**ACL** to ")).append(a.externalSystem()).append("."));
+            // "the read side lives elsewhere" — the delegated read side is an architectural fact
             if (boundedContext.readSideBoundedContextId() != null || boundedContext.readSideExternalSystemId() != null) {
                 var target = boundedContext.readSideBoundedContextId() != null
                         ? boundedContextById(m, boundedContext.readSideBoundedContextId()) != null
                                 ? boundedContextById(m, boundedContext.readSideBoundedContextId()).name() : boundedContext.readSideBoundedContextId()
                         : boundedContext.readSideExternalSystemId();
-                notes.append(notes.isEmpty() ? "" : " ").append("**Lectura delegada** en ").append(target)
-                        .append(boundedContext.readSideVia() != null ? " vía " + boundedContext.readSideVia() : "").append(".");
+                notes.append(notes.isEmpty() ? "" : " ").append(w.t("**Lectura delegada** en ", "**Delegated read side** in ")).append(target)
+                        .append(boundedContext.readSideVia() != null ? w.t(" vía ", " via ") + boundedContext.readSideVia() : "").append(".");
             }
             md.append("| ").append(boundedContext.name())
                     .append(" | ").append(boundedContext.subdomainType() != null ? boundedContext.subdomainType().name() : "—")
                     .append(" | ").append(notes.isEmpty() ? "—" : notes.toString()).append(" |\n");
         }
         for (var external : m.externalSystems()) {
-            md.append("| ").append(external.name()).append(" _(externo)_ | — | ")
+            md.append("| ").append(external.name()).append(w.t(" _(externo)_ | — | ", " _(external)_ | — | "))
                     .append(nvl(external.description())).append(" |\n");
         }
         md.append("\n");
@@ -160,26 +174,26 @@ public final class HlaDocumentRenderer {
 
     // --- §5 -------------------------------------------------------------------
 
-    private static void processes(StringBuilder md, ModelSnapshot m) {
+    private static void processes(StringBuilder md, ModelSnapshot m, Words w) {
         if (m.processes().isEmpty()) return;
-        md.append("## 5. Procesos de negocio\n\n");
+        md.append(w.t("## 5. Procesos de negocio\n\n", "## 5. Business processes\n\n"));
         for (var process : m.processes()) {
             md.append("### ").append(process.name()).append("\n\n");
             if (process.description() != null) md.append(process.description()).append("\n\n");
-            if (process.sla() != null) md.append("_SLA extremo a extremo: ").append(process.sla()).append("_\n\n");
+            if (process.sla() != null) md.append(w.t("_SLA extremo a extremo: ", "_End-to-end SLA: ")).append(process.sla()).append("_\n\n");
             md.append("```mermaid\nsequenceDiagram\n  autonumber\n");
             var owner = boundedContextById(m, process.ownerBoundedContextId());
             var ownerName = owner != null ? owner.name() : nvl(process.ownerBoundedContextId());
             md.append("  participant SAGA as ").append(process.name()).append(" (saga · ").append(ownerName).append(")\n");
-            md.append("  Note over SAGA: arranca con ").append(nvl(process.triggerEvent())).append("\n");
+            md.append(w.t("  Note over SAGA: arranca con ", "  Note over SAGA: starts on ")).append(nvl(process.triggerEvent())).append("\n");
             for (var step : process.steps()) {
                 if (step.type() == ProcessStepType.HUMAN) {
                     var role = nvl(step.roleId());
-                    md.append("  SAGA->>").append(id(role)).append(": tarea '").append(step.name()).append("'");
-                    if (step.deadline() != null) md.append(" (plazo ").append(step.deadline()).append(")");
+                    md.append("  SAGA->>").append(id(role)).append(w.t(": tarea '", ": task '")).append(step.name()).append("'");
+                    if (step.deadline() != null) md.append(w.t(" (plazo ", " (deadline ")).append(step.deadline()).append(")");
                     md.append("\n");
                     if (step.escalationRoleId() != null) {
-                        md.append("  Note over ").append(id(role)).append(": vencida → escala a ")
+                        md.append("  Note over ").append(id(role)).append(w.t(": vencida → escala a ", ": overdue → escalates to "))
                                 .append(step.escalationRoleId()).append("\n");
                     }
                 } else {
@@ -188,23 +202,23 @@ public final class HlaDocumentRenderer {
                     md.append("  SAGA->>EXEC: ").append(target).append("\n");
                     if (step.compensationUseCaseId() != null && !step.compensationUseCaseId().isBlank()) {
                         var comp = useCaseById(m, step.compensationUseCaseId());
-                        md.append("  Note over EXEC: compensación: ")
+                        md.append(w.t("  Note over EXEC: compensación: ", "  Note over EXEC: compensation: "))
                                 .append(comp != null ? comp.name() : step.compensationUseCaseId()).append("\n");
                     }
                 }
             }
             var completion = process.onCompletionEventName() != null && !process.onCompletionEventName().isBlank()
                     ? process.onCompletionEventName() : process.name() + "Completed";
-            md.append("  Note over SAGA: publica ").append(completion).append("\n```\n\n");
+            md.append(w.t("  Note over SAGA: publica ", "  Note over SAGA: publishes ")).append(completion).append("\n```\n\n");
         }
     }
 
     // --- §6 -------------------------------------------------------------------
 
-    private static void lifecycles(StringBuilder md, ModelSnapshot m) {
+    private static void lifecycles(StringBuilder md, ModelSnapshot m, Words w) {
         var withLifecycle = m.aggregates().stream().filter(a -> a.lifecycle() != null).toList();
         if (withLifecycle.isEmpty()) return;
-        md.append("## 6. Ciclos de vida\n\n");
+        md.append(w.t("## 6. Ciclos de vida\n\n", "## 6. Lifecycles\n\n"));
         for (var aggregate : withLifecycle) {
             var lc = aggregate.lifecycle();
             md.append("### ").append(aggregate.name()).append("\n\n```mermaid\nstateDiagram-v2\n");
@@ -230,32 +244,34 @@ public final class HlaDocumentRenderer {
 
     // --- §7 -------------------------------------------------------------------
 
-    private static void transversals(StringBuilder md, ModelSnapshot m, ProjectEntity project) {
-        md.append("## 7. Aspectos transversales\n\n");
+    private static void transversals(StringBuilder md, ModelSnapshot m, ProjectEntity project, Words w) {
+        md.append(w.t("## 7. Aspectos transversales\n\n", "## 7. Cross-cutting concerns\n\n"));
 
         var idempotent = m.useCases().stream().filter(UseCaseEntity::idempotencyEnabled).toList();
         if (!idempotent.isEmpty()) {
-            md.append("- **Idempotencia**: ").append(idempotent.stream()
-                    .map(uc -> uc.name() + " (clave `" + nvl(uc.idempotencyKeyField()) + "`)")
+            md.append(w.t("- **Idempotencia**: ", "- **Idempotency**: ")).append(idempotent.stream()
+                    .map(uc -> uc.name() + w.t(" (clave `", " (key `") + nvl(uc.idempotencyKeyField()) + "`)")
                     .reduce((a, b) -> a + ", " + b).orElse("")).append(".\n");
         }
         var events = m.domainEvents();
         if (!events.isEmpty()) {
             long published = events.stream().filter(e -> e.publishAsIntegrationEvent()).count();
             long dlq = events.stream().filter(e -> e.deadLetterQueueEnabled()).count();
-            md.append("- **Eventos**: ").append(events.size()).append(" eventos de dominio, ")
-                    .append(published).append(" publicados como integración, ")
-                    .append(dlq).append(" con DLQ.\n");
+            md.append(w.t("- **Eventos**: ", "- **Events**: ")).append(events.size()).append(w.t(" eventos de dominio, ", " domain events, "))
+                    .append(published).append(w.t(" publicados como integración, ", " published as integration events, "))
+                    .append(dlq).append(w.t(" con DLQ.\n", " with a DLQ.\n"));
         }
         var withOutbox = m.services().stream().filter(s -> s.outboxEnabled()).map(s -> s.name()).toList();
         var withoutOutbox = m.services().stream().filter(s -> !s.outboxEnabled()).map(s -> s.name()).toList();
         if (!events.isEmpty() && !m.services().isEmpty()) {
-            md.append("- **Outbox**: ").append(withOutbox.isEmpty() ? "ningún servicio"
+            md.append("- **Outbox**: ").append(withOutbox.isEmpty() ? w.t("ningún servicio", "no service")
                     : String.join(", ", withOutbox)).append(withOutbox.isEmpty() ? ""
-                    : " guarda cada evento en la misma transacción que el cambio de estado y lo envía un relé");
+                    : w.t(" guarda cada evento en la misma transacción que el cambio de estado y lo envía un relé",
+                          " stores each event in the same transaction as the state change, and a relay sends it"));
             if (!withoutOutbox.isEmpty()) {
                 md.append("; ").append(String.join(", ", withoutOutbox))
-                        .append(" publica directamente: un fallo entre guardar y publicar pierde el evento");
+                        .append(w.t(" publica directamente: un fallo entre guardar y publicar pierde el evento",
+                                " publishes directly: a failure between saving and publishing loses the event"));
             }
             md.append(".\n");
         }
@@ -275,35 +291,36 @@ public final class HlaDocumentRenderer {
         }
         for (var boundedContext : m.boundedContexts()) {
             for (var policy : boundedContext.accessPolicies()) {
-                md.append("- **Acceso por datos** (").append(boundedContext.name()).append("): ")
+                md.append(w.t("- **Acceso por datos** (", "- **Data-based access** (")).append(boundedContext.name()).append("): ")
                         .append(policy.name()).append(" — `").append(nvl(policy.expression())).append("`.\n");
             }
             for (var kpi : boundedContext.kpis()) {
                 md.append("- **KPI** (").append(boundedContext.name()).append("): ").append(kpi.name())
                         .append(" — ").append(kpi.measure() != null ? kpi.measure().name() : "—")
-                        .append(kpi.valueField() != null ? " de " + kpi.valueField() : "")
-                        .append(" por ").append(String.join("+", kpi.dimensionFields()))
+                        .append(kpi.valueField() != null ? w.t(" de ", " of ") + kpi.valueField() : "")
+                        .append(w.t(" por ", " by ")).append(String.join("+", kpi.dimensionFields()))
                         .append(kpi.timeGrain() != null ? " · " + kpi.timeGrain().name() : "").append(".\n");
             }
         }
         var audited = m.aggregates().stream().filter(AggregateEntity::audited).map(AggregateEntity::name).toList();
         if (!audited.isEmpty()) {
-            md.append("- **Auditoría**: ").append(String.join(", ", audited)).append(".\n");
+            md.append(w.t("- **Auditoría**: ", "- **Audit**: ")).append(String.join(", ", audited)).append(".\n");
         }
         md.append("\n");
     }
 
     // --- §8 -------------------------------------------------------------------
 
-    private static void contracts(StringBuilder md, ModelSnapshot m) {
-        md.append("## 8. Contratos expuestos\n\n");
+    private static void contracts(StringBuilder md, ModelSnapshot m, Words w) {
+        md.append(w.t("## 8. Contratos expuestos\n\n", "## 8. Exposed contracts\n\n"));
         for (var app : m.uiAdapters()) {
-            md.append("### Aplicación ").append(app.name()).append("\n\n");
+            md.append(w.t("### Aplicación ", "### Application ")).append(app.name()).append("\n\n");
             menuOf(app.menuItems()).forEach(item -> md.append("- ").append(nvl(item.label())).append("\n"));
             md.append("\n");
         }
         for (var api : m.apis()) {
-            md.append("### API ").append(api.name()).append("\n\n| Método | Ruta | Operación |\n|---|---|---|\n");
+            md.append("### API ").append(api.name()).append("\n\n")
+                    .append(w.t("| Método | Ruta | Operación |\n", "| Method | Path | Operation |\n")).append("|---|---|---|\n");
             nvlList(api.operations()).forEach(op -> md.append("| ").append(nvl(op.httpMethod())).append(" | `")
                     .append(nvl(op.path())).append("` | ").append(nvl(op.name())).append(" |\n"));
             md.append("\n");
@@ -334,11 +351,12 @@ public final class HlaDocumentRenderer {
 
     // --- §9 -------------------------------------------------------------------
 
-    private static void openPoints(StringBuilder md, ModelSnapshot m) {
-        md.append("## 9. Puntos abiertos\n\n");
+    private static void openPoints(StringBuilder md, ModelSnapshot m, Words w) {
+        md.append(w.t("## 9. Puntos abiertos\n\n", "## 9. Open points\n\n"));
         var open = m.decisions().stream().filter(d -> d.status() == DecisionStatus.PROPOSED).toList();
         if (open.isEmpty()) {
-            md.append("_Ninguno — todas las decisiones registradas están resueltas._\n");
+            md.append(w.t("_Ninguno — todas las decisiones registradas están resueltas._\n",
+                    "_None — every recorded decision is resolved._\n"));
             return;
         }
         for (var d : open) {
@@ -348,14 +366,14 @@ public final class HlaDocumentRenderer {
 
     // --- helpers ----------------------------------------------------------------
 
-    private static void contextDetails(StringBuilder md, ModelSnapshot m) {
+    private static void contextDetails(StringBuilder md, ModelSnapshot m, Words w) {
         for (var boundedContext : m.boundedContexts()) {
             md.append("### ").append(boundedContext.name()).append("\n\n");
             var aggregates = nvlList(boundedContext.aggregateIds()).stream()
                     .map(id -> m.aggregates().stream().filter(a -> a.id().equals(id)).findFirst().orElse(null))
                     .filter(java.util.Objects::nonNull).toList();
             if (!aggregates.isEmpty()) {
-                md.append("**Agregados**\n\n");
+                md.append(w.t("**Agregados**\n\n", "**Aggregates**\n\n"));
                 aggregates.forEach(a -> md.append("- **").append(a.name()).append("**: ").append(fieldsOf(m, a.modelId())).append("\n"));
                 md.append("\n");
             }
@@ -364,7 +382,8 @@ public final class HlaDocumentRenderer {
                     .filter(id -> !scaffolded.contains(id)).map(id -> useCaseById(m, id))
                     .filter(java.util.Objects::nonNull).toList();
             if (!useCases.isEmpty()) {
-                md.append("**Casos de uso** (además del CRUD de cada agregado)\n\n| Caso de uso | Qué hace |\n|---|---|\n");
+                md.append(w.t("**Casos de uso** (además del CRUD de cada agregado)\n\n| Caso de uso | Qué hace |\n",
+                        "**Use cases** (besides each aggregate's CRUD)\n\n| Use case | What it does |\n")).append("|---|---|\n");
                 useCases.forEach(uc -> md.append("| ").append(uc.name()).append(" | ").append(behaviourOf(uc)).append(" |\n"));
                 md.append("\n");
             }

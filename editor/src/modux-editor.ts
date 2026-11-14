@@ -5,7 +5,9 @@ import { normalizeViewLayout, resolveOverlaps as declump } from './scene.js';
 import type { DiagramLayout, EditorLayout, Point, Scene, SceneNode, ViewLayout } from './scene.js';
 import type { ModuxCommand } from './commands.js';
 import { MODUX_THEME } from './theme.js';
-import { contextMapScene, distributionScene, ownershipIndex, rollupOwnershipIndex } from './views/context-map.js';
+import {
+  contextMapScene, distributionScene, ownershipIndex, rollupOwnershipIndex, stageDataModelIds, withoutOffStageDataModels,
+} from './views/context-map.js';
 import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
@@ -1026,8 +1028,17 @@ export class ModuxEditor extends LitElement {
     return normalizeViewLayout(this.layout[this.layoutKey(view)]);
   }
 
+  /** The active curated view's members, or null on the base sheet (the whole model). */
+  private activeViewMemberIds(): string[] | null {
+    if (!this._activeViewId) return null;
+    return (this.model.views ?? []).find((v) => v.id === this._activeViewId)?.memberIds ?? null;
+  }
+
   private writeViewLayout(view: ViewId, next: ViewLayout): void {
-    this.layout = { ...this.layout, [this.layoutKey(view)]: next };
+    const key = this.layoutKey(view);
+    // The base sheet never draws data models: refs an older layout kept for them go on this write.
+    if (key === 'base') next = withoutOffStageDataModels(this.model, next);
+    this.layout = { ...this.layout, [key]: next };
     this.emit('layout-changed', { layout: this.layout });
   }
 
@@ -2166,6 +2177,7 @@ export class ModuxEditor extends LitElement {
         case 'page':
         case 'ui-app':
         case 'cdc':
+        case 'model':
           members.add(id);
           break;
         case 'menu-item':
@@ -2287,7 +2299,8 @@ export class ModuxEditor extends LitElement {
       entities,
       // Owned value objects ride with their aggregate; a free-standing one enters as a view member.
       valueObjects: (this.model.valueObjects ?? []).filter((v) => aggregateIds.has(v.aggregateId) || members.has(v.id)),
-      models: (this.model.models ?? []).filter((dm) => scopedModelIds.has(dm.id)),
+      // A data model the user made a member (dropped it on the view) rides in as such.
+      models: (this.model.models ?? []).filter((dm) => scopedModelIds.has(dm.id) || members.has(dm.id)),
       aggregateReferences: (this.model.aggregateReferences ?? []).filter(
         (r) => aggregateIds.has(r.sourceAggregateId) && aggregateIds.has(r.targetAggregateId),
       ),
@@ -4044,7 +4057,9 @@ export class ModuxEditor extends LitElement {
                 ? ['etl-flow', 'etl-transform', 'external-system', 'external-table'].includes(k.type)
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
-                : !['page', 'menu-item', 'model-field', 'transformation', 'ui-button'].includes(k.type)) &&
+                : !['page', 'menu-item', 'model-field', 'transformation', 'ui-button'].includes(k.type)
+                  // The system map draws no data models: a new one belongs to a curated view.
+                  && (k.type !== 'ui-model' || !!this._activeViewId)) &&
         (!needle || paletteLabel(k).toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
@@ -4174,7 +4189,10 @@ export class ModuxEditor extends LitElement {
                   ? eventstormingScene(model, vl.nodes, new Set(vl.expanded ?? []), expandAll)
                 : view === 'context-map' && this._canvasMode === 'distribution'
                   ? distributionScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup)
-                : contextMapScene(model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup);
+                : contextMapScene(
+                    model, vl.nodes, vl.sizes ?? {}, new Set(vl.expanded ?? []), expandAll, rollup,
+                    stageDataModelIds(model, this.activeViewMemberIds()),
+                  );
     this.withAreas(scene, view);
     this.withNotes(scene, view);
     this.withDescriptions(scene);

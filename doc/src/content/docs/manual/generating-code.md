@@ -1,16 +1,36 @@
 ---
 title: Generating Code
-description: How to run the Modux code generator — from the UI or from a Maven build
+description: How to run the Modux code generator — the Maven plugin, from the project that holds the model
 ---
 
-Once you have defined your domain model in the Modux UI, you can generate the full Spring Boot project at any time. Generation can be triggered **interactively** from the Modux UI or **automatically** during a Maven build via the Modux Maven plugin.
+Generation is a goal of the [Maven plugin](/reference/maven-plugin/), run from the project
+that holds the model:
 
-## From the UI
+```bash
+mvn modux:validate    # check the model
+mvn modux:generate    # check it again, then generate
+```
 
-The fastest way is the **⚙ Generar** button on the app header, next to the
-repository · project · model selectors: it generates the CURRENT project to its
-configured output path. It shows up as soon as the app context is fully resolved.
-The project's detail view keeps its own **Generate Code** button with the same effect.
+`generate` reads the model directory (`modux/`, or `.modux/`), refuses to generate while the
+model has errors — reported on the element that causes them, not as compiler errors in the
+output — and writes the system to the project's `outputPath`. The project, its output path and
+its package come from the model; `-Dmodux.outputPath`, `-Dmodux.packageName` and
+`-Dmodux.sourceOnly=true` (Maven projects and Java only, no DevOps artifacts) override them.
+
+To regenerate on every build, bind it to `generate-sources`:
+
+```xml
+<plugin>
+    <groupId>io.mateu.modux</groupId>
+    <artifactId>modux-maven-plugin</artifactId>
+    <version>0.6.6</version>
+    <executions>
+        <execution>
+            <goals><goal>generate</goal></goals>
+        </execution>
+    </executions>
+</plugin>
+```
 
 What generation guarantees:
 
@@ -21,57 +41,8 @@ What generation guarantees:
   services generates (and [deploys](/manual/deploying/)) through an in-memory service
   named after the project that deploys every context — nothing is persisted into
   your model.
-- The output path may use `~` for your home directory.
-
-## From a Maven build (Maven plugin)
-
-Add the plugin to any Maven project that should trigger generation:
-
-```xml
-<plugin>
-    <groupId>io.mateu.modux</groupId>
-    <artifactId>modux-maven-plugin</artifactId>
-    <version>0.1.0</version>
-    <configuration>
-        <projectId>my-project-id</projectId>
-        <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>
-        <outputPath>${project.basedir}/generated</outputPath>
-        <packageName>com.mycompany</packageName>
-    </configuration>
-    <executions>
-        <execution>
-            <goals><goal>generate</goal></goals>
-        </execution>
-    </executions>
-</plugin>
-```
-
-Run generation explicitly:
-
-```bash
-mvn modux:generate -Dmodux.projectId=my-project-id
-```
-
-Or let it run automatically during the `generate-sources` phase:
-
-```bash
-mvn generate-sources
-```
-
-See the [Maven Plugin Reference](/reference/maven-plugin/) for all configuration parameters.
-
-## From the command line (headless)
-
-The generator can also run headlessly — useful for scripts and CI. Pass the project id (and
-optionally an output directory) and it generates and exits:
-
-```bash
-mvn spring-boot:run \
-  -Dspring-boot.run.arguments="--modux.generate=<projectId> --modux.output=<dir>"
-```
-
-Without `--modux.generate`, the application starts normally in UI server mode. When
-`--modux.output` is omitted, the project's configured output path is used.
+- The output path may use `~` for your home directory; a relative one is resolved from
+  the directory Maven runs in.
 
 ## What happens during generation
 
@@ -86,43 +57,36 @@ For each aggregate, Modux:
 
 ```
 {output-path}/
-├── pom.xml                          # Root Maven POM (multi-module)
-└── {service-name}/
+├── README.md
+├── docker-compose.yml               # every service + PostgreSQL + Kafka
+├── up.sh / down.sh                  # the same, without compose
+├── deploy/targets.json              # what mvn modux:deploy can target
+├── terraform/main.tf
+├── e2e/                             # Playwright suite over the running apps
+└── {service}/                       # one Maven reactor per service
     ├── pom.xml
-    └── src/
-        ├── main/
-        │   ├── java/{package}/
-        │   │   ├── {Module}Application.java
-        │   │   └── {module}/
-        │   │       ├── domain/
-        │   │       │   └── aggregates/{Aggregate}/
-        │   │       │       ├── {Aggregate}.java
-        │   │       │       └── vo/
-        │   │       ├── application/
-        │   │       │   ├── usecases/
-        │   │       │   ├── query/
-        │   │       │   └── out/
-        │   │       └── infra/
-        │   │           ├── in/ui/
-        │   │           └── out/persistence/
-        │   └── resources/
-        │       └── application.yaml
-        └── test/
-            ├── java/{package}/{module}/
-            │   ├── domain/aggregates/{Aggregate}/
-            │   │   └── {Aggregate}Test.java          # unit test
-            │   ├── application/usecases/{aggregate}/
-            │   │   ├── create/Create{Aggregate}UseCaseTest.java
-            │   │   ├── update/Update{Aggregate}UseCaseTest.java
-            │   │   └── delete/Delete{Aggregate}UseCaseTest.java
-            │   ├── bdd/
-            │   │   ├── CucumberRunner.java
-            │   │   └── {Aggregate}Steps.java         # Cucumber step definitions
-            │   └── e2e/
-            │       ├── BaseE2ETest.java               # Playwright base class
-            │       └── {Aggregate}E2ETest.java        # Playwright tests
-            └── resources/features/{module}/
-                └── {Aggregate}.feature               # Gherkin scenarios
+    ├── Dockerfile
+    ├── k8s/{service}.yaml
+    ├── {module}/                    # one per deployed module
+    │   └── src/
+    │       ├── main/java/{package}/{module}/
+    │       │   ├── domain/aggregates/{aggregate}/
+    │       │   │   ├── {Aggregate}.java
+    │       │   │   └── vo/
+    │       │   ├── application/
+    │       │   │   ├── usecases/
+    │       │   │   ├── query/
+    │       │   │   └── out/
+    │       │   └── infra/
+    │       │       ├── in/ui/
+    │       │       └── out/persistence/
+    │       └── test/java/{package}/{module}/
+    │           ├── domain/aggregates/{aggregate}/{Aggregate}Test.java
+    │           ├── application/usecases/…           # one test per use case
+    │           ├── bdd/                              # Cucumber runner + steps
+    │           └── e2e/                              # Playwright tests
+    ├── {service}-app/               # the Spring Boot application (+ application.yaml)
+    └── {service}-custom/            # yours: hook implementations, never overwritten
 ```
 
 Each deployed [module](/manual/modules/#modules) becomes a Maven submodule of its service's reactor — the module lends its name, its bounded context lends the meaning. For a context with only its main module, the output is identical to a context generated whole.
@@ -168,34 +132,29 @@ To keep the generated zone honest, every generated file's hash is recorded in `.
 
 So: regenerate freely. The structural code stays in sync with the model, and your business logic in the custom module is never touched.
 
-## Building the generated project
-
-After generation:
+## Building and running the generated project
 
 ```bash
-cd {output-path}
-mvn clean install
+cd {output-path}/{service}
+mvn install -DskipTests
+mvn spring-boot:run -pl {service}-app -Dspring-boot.run.profiles=local   # in-memory H2
 ```
 
-## Running the generated application
-
-```bash
-cd {service-name}
-mvn spring-boot:run
-```
-
-The application starts at `http://localhost:{port}`. Aggregates a UI consumes (an app's menu, a bound page, a UI shell) get working CRUD pages; the rest are reached through their APIs.
+or run the whole system on Docker with `mvn modux:deploy` from the model's project (see
+[Deploying](/manual/deploying/)). A service listens on its `port`. Aggregates a UI consumes
+(an app's menu, a bound page, a UI shell) get working CRUD pages under the app's path; the
+rest are reached through their APIs.
 
 ## Re-generating after changes
 
-You can run the generator at any time after modifying your spec. Everything in the `{service}-custom` module is left untouched (see [two zones](#generated-code-vs-your-code-two-zones) above), so your custom business logic is safe; only the generated zone is refreshed from the model.
+Run the generator at any time after changing the model. Everything in the `{service}-custom` module is left untouched (see [two zones](#generated-code-vs-your-code-two-zones) above), so your custom business logic is safe; only the generated zone is refreshed from the model.
 
 Recommended workflow:
 
-1. Define aggregates and operations in Modux
-2. Generate code
+1. Change the model (aggregates, operations, use cases…)
+2. `mvn modux:validate`, then `mvn modux:generate`
 3. Implement business logic by filling in the hook defaults in the `{service}-custom` module
-4. If the spec changes, re-generate — only the generated zone is updated; your custom module is untouched
+4. When the model changes again, re-generate — only the generated zone is updated; your custom module is untouched
 
 ## E2E tests with Playwright
 
@@ -226,12 +185,12 @@ See [AI-Assisted Code Completion](/manual/ai-completion/) for the full guide.
 
 **Generated files have compilation errors**
 
-Check that all field types reference valid Java types or other aggregates defined in your spec. Cross-aggregate references must use the other aggregate's ID type.
+Run `mvn modux:validate` first: `generate` refuses a model with errors unless `-Dmodux.skipChecks=true`. Cross-aggregate references must use the other aggregate's ID type.
 
 **Output directory is empty**
 
-Ensure the output path exists and that the Modux process has write permissions to it.
+Check the project's `outputPath` (a relative one is resolved from where Maven runs) and that Maven can write there.
 
 **Fields are missing in the generated code**
 
-Verify the field types are supported. Use `String`, `Integer`, `Long`, `Boolean`, `LocalDate`, `LocalDateTime`, `BigDecimal`, `Enum`, or `ValueObject`.
+A field that is not in the JSON schema does not exist and is ignored silently. Check the field's `type` (`string`, `integer`, `date`, `money`…) and, for an enum, `enumId`, against `model-driven-store-schema.json`.

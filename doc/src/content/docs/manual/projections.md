@@ -43,9 +43,7 @@ A ReadModel is a denormalized view designed for a specific query or screen. It c
 
 ### Creating a ReadModel
 
-1. Open a bounded context and go to **Read Models**
-2. Click **New**
-3. Configure and save
+Add `modux/readModels/{id}.yaml` and list the id in its bounded context's `readModelIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ### Configuration
 
@@ -70,9 +68,7 @@ A Projection is the **event handler** that keeps a ReadModel up to date. When a 
 
 ### Creating a Projection
 
-1. Open a bounded context and go to **Projections**
-2. Click **New**
-3. Configure and save
+Add `modux/projections/{id}.yaml` and list the id in its bounded context's `projectionIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ### Configuration
 

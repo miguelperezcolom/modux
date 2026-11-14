@@ -393,7 +393,7 @@ public final class EditorBridge implements Disposable {
                 ? request.get("root").getAsString() : null;
         if (root == null || root.isBlank()) {
             if (files == null) throw new IllegalStateException(
-                    "no hay catálogo .modux/ por encima de este documento de vista");
+                    "no hay catálogo modux/ (ni .modux/) por encima de este documento de vista");
             return files;
         }
         var other = com.intellij.openapi.vfs.LocalFileSystem.getInstance()

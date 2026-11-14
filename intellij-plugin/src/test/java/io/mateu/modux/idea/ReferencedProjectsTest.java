@@ -33,6 +33,16 @@ public class ReferencedProjectsTest extends BasePlatformTestCase {
                 ReferencedProjects.locate(here, "git@github.com:acme/checkin.git", null));
     }
 
+    /** A sibling whose model is in `modux/` (the Maven plugin's convention) resolves too. */
+    public void testFindsASiblingWhoseModelIsInModuxDir() throws Exception {
+        var here = repository("booking");
+        myFixture.getTempDirFixture().createFile("checkouts/library/modux/projects/library.yaml", "id: library\n");
+        var there = myFixture.getTempDirFixture().findOrCreateDir("checkouts/library/modux");
+
+        assertEquals(there,
+                ReferencedProjects.locate(here, "https://github.com/acme/library.git", null));
+    }
+
     /** An explicit path can point straight at the catalog directory. */
     public void testAnExplicitPathWins() throws Exception {
         var here = repository("booking");

@@ -9,9 +9,7 @@ An **Entity** is a domain object with a distinct identity that belongs to an agg
 
 ### Creating an entity
 
-1. Open an aggregate and go to **Entities**
-2. Click **New**
-3. Configure and save
+Add `modux/entities/{id}.yaml` with its `parentAggregateId` and `modelId`, and list the id in its bounded context's `entityIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ### Entity configuration
 

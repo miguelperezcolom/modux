@@ -12,9 +12,7 @@ This is the **entry point** for cross-context event-driven integration. Within a
 
 ## Creating a subscription
 
-1. Open a bounded context and go to **Subscriptions**
-2. Click **New**
-3. Configure and save
+Add `modux/subscriptions/{id}.yaml` and list the id in its bounded context's `subscriptionIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

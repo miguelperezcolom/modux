@@ -7,9 +7,7 @@ A **Business Rule** defines a declarative rule in `when → then` form for evalu
 
 ## Creating a business rule
 
-1. Open **Behaviour → Business Rules**
-2. Click **New**
-3. Select the fact model, set priority and group, then add conditions and actions
+Add `modux/businessRules/{id}.yaml`: the fact model (`modelId`), priority and group, then its conditions and actions. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

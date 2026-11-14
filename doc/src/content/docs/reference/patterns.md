@@ -271,19 +271,25 @@ Bounded contexts declare business metrics by intent: a `measure` (`COUNT`, `SUM`
 
 ## Decisions (ADRs) and traceability
 
-Architecture decisions are first-class: a `Decision` records what was decided, why (`rationale`), its status (`PROPOSED`, `ACCEPTED`, `DEPRECATED`, `SUPERSEDED`) and its source document. Model elements link to them through `decisionIds`, so design-doc → spec traceability lives *in* the model (referentially checked) instead of in comments. `PROPOSED` decisions are the open points of the design and surface in Model health.
+Architecture decisions are first-class: a `Decision` records what was decided, why (`rationale`), its status (`PROPOSED`, `ACCEPTED`, `DEPRECATED`, `SUPERSEDED`) and its source document. Model elements link to them through `decisionIds`, so design-doc → spec traceability lives *in* the model (referentially checked) instead of in comments. `PROPOSED` decisions are the open points of the design and surface in `mvn modux:validate`'s lint.
 
 ---
 
 ## The design document, generated
 
-The HLA/design document the team receives is generated **from** the model (Organización › Design document): context and objective (`project.objective`), the ADR table, the structural view, one sequence diagram per business process, one state diagram per aggregate lifecycle (all mermaid), transversal concerns derived from the declared flags, exposed contracts, and open points. It cannot drift from the spec because it is a report of it.
+The HLA/design document the team receives is generated **from** the model (`mvn modux:hla`, which writes `HLA.generated.md`): context and objective (`project.objective`), the ADR table, the structural view, one sequence diagram per business process, one state diagram per aggregate lifecycle (all mermaid), transversal concerns derived from the declared flags, exposed contracts, and open points. It cannot drift from the spec because it is a report of it.
 
 ---
 
-## System and solutions (as-is / to-be)
+## As-is and to-be: branches of the model
 
-The store lives in its own git repo: `main` is the **system** (the as-is), each [solution](/manual/solutions/) a `solution/*` branch (a to-be proposal with its own identity, status and decisions). The editor switches between them, shows the **semantic diff** live (green = added, amber = modified, `＋n ～n −n`), and the solution's design document closes with a generated **«Qué cambia respecto al sistema»** section — the delta, justified by decisions. Approving merges the branch into main; the same change set will feed migrations (see `docs/design/system-and-solutions.md`). The discipline that keeps it honest: **what exists goes to `main`, a solution holds only its proposal** — pre-existing elements discovered mid-design are added to the system and brought in with «⟳ Actualizar del sistema» (see [the working method](/manual/solutions/#the-working-method-where-does-each-change-go)).
+The model is files in the repository, so a to-be proposal is a git branch: `main` holds the
+system as it is, a branch holds only the proposed change, and reviewing it is a pull request —
+one file per element makes `git diff` readable element by element. Decisions (ADRs) that justify
+the proposal are elements of the model and travel in the branch with it. The discipline that
+keeps it honest: **what already exists goes to `main`, a proposal branch holds only its
+proposal** — pre-existing elements discovered mid-design are added on `main` and brought in by
+merging `main` into the branch. (The design rationale is in `docs/design/ide-plugin.md` §4.8.)
 
 ---
 
@@ -307,7 +313,7 @@ A use case consumes functionality — another use case or a query service — in
 
 ## Model health (the linter)
 
-The model validates itself before any code is generated — the core payoff of being model-driven. Two layers: referential integrity (dangling ids are errors) and a semantic rule catalog (lifecycle coherence, subscription idempotency, DLQs, projection rebuild strategies, saga compensation, orphan use cases, PII exposure, human steps without roles, unclassified subdomains…). Open **Model health** in the UI for the full report. It doubles as the feedback loop for AI-authored specs: generate → lint → fix → regenerate.
+The model validates itself before any code is generated — the core payoff of being model-driven. Two layers: referential integrity (dangling ids are errors) and a semantic rule catalog (lifecycle coherence, subscription idempotency, DLQs, projection rebuild strategies, saga compensation, orphan use cases, PII exposure, human steps without roles, unclassified subdomains…). `mvn modux:validate` prints the full report and fails the build on its errors. It doubles as the feedback loop for AI-authored specs: generate → lint → fix → regenerate.
 
 ---
 
