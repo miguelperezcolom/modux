@@ -1,5 +1,7 @@
 """A toy card gateway for the demo: POST /charge, GET /transactions. Cards ending in 0000 are declined.
-PAYGATE_DELAY (seconds) makes it answer as slowly as a real bank, so a purchase is seen PENDING first."""
+PAYGATE_DELAY (seconds) makes it answer as slowly as a real bank, so a purchase is seen PENDING first.
+While the file PAYGATE_HOLD names exists (default /tmp/paygate.hold), a charge waits for it to go (at most
+two minutes): a filmed scene holds the bank until the PENDING purchase is on screen."""
 import json
 import os
 import time
@@ -22,6 +24,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, {"error": "not found"})
         req = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         time.sleep(float(os.environ.get("PAYGATE_DELAY", "0")))
+        hold, waited = os.environ.get("PAYGATE_HOLD", "/tmp/paygate.hold"), 0.0
+        while os.path.exists(hold) and waited < 120:
+            time.sleep(0.2)
+            waited += 0.2
         card = str(req.get("card") or "")
         accepted = not card.endswith("0000")
         reason = "" if accepted else "Card declined by the issuing bank"
