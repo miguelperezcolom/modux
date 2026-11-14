@@ -17,7 +17,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Service
+// An explicit bean name: a use case the model names Create${aggregate.name} is another class with
+// the same simple name, and Spring's default name would clash.
+@Service("${aggregate.name?uncap_first}CrudCreateUseCase")
 @RequiredArgsConstructor
 public class Create${aggregate.name}UseCase {
 

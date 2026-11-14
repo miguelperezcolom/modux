@@ -21,5 +21,5 @@ workflow:
     auth:
       sistema:
         type: basic
-        username: sistema
+        username: ${project.systemUser!"sistema"}
         password: ${r"${"}MODUX_SYSTEM_PASSWORD${r"}"}

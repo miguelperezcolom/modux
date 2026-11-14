@@ -25,4 +25,12 @@ class GeneratedUiLanguageTest {
     void without_a_default_the_first_locale_decides() {
         assertTrue(GenerateCodeUseCase.speaksSpanish(ProjectEntity.builder().id("p").name("P").locales(List.of("es", "en")).build()));
     }
+
+    @Test
+    void the_system_identity_is_named_in_the_project_language() {
+        org.junit.jupiter.api.Assertions.assertEquals("system",
+                GenerateCodeUseCase.systemUserOf(ProjectEntity.builder().id("p").name("P").build()));
+        org.junit.jupiter.api.Assertions.assertEquals("sistema",
+                GenerateCodeUseCase.systemUserOf(ProjectEntity.builder().id("p").name("P").defaultLocale("es").build()));
+    }
 }

@@ -5062,7 +5062,15 @@ public class GenerateCodeUseCase {
                 .map(this::serviceToMap)
                 .toList();
         map.put("services", services);
+        // the identity unattended work runs as (workflows, triggers, subscriptions): its name is seen
+        // in every history it writes, so it speaks the project's language
+        map.put("systemUser", systemUserOf(project));
         return map;
+    }
+
+    /** The system identity's user name: «sistema» in a Spanish project, «system» otherwise. */
+    static String systemUserOf(ProjectEntity project) {
+        return speaksSpanish(project) ? "sistema" : "system";
     }
 
     /**
