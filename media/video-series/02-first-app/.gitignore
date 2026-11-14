@@ -1,0 +1,7 @@
+**/target/
+# the generated system is not versioned — except its custom zone: the business logic
+# (DefaultWithdrawBookOperation) is the code that is ours
+system/*
+!system/*/
+system/*/*
+!system/*/*-custom/

@@ -7,9 +7,7 @@ A **Component** is a self-contained visual block that fetches its own data and r
 
 ## Creating a component
 
-1. Open the **Interfaces → Components** section
-2. Click **New**
-3. Set a name, data source and presentation type
+Add `modux/components/{id}.yaml` with its name, data source and presentation type. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

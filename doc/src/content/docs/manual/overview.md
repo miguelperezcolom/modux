@@ -35,29 +35,34 @@ Each level has its own configuration and generates its own code artefacts.
 
 Above these building blocks, a [**Flow**](/manual/flows/) lets you declare a cross-context interaction by intent (e.g. "this event materializes a read model over there") and have Modux derive the events, projections, subscriptions and sagas it implies — so you rarely wire them by hand.
 
-## Navigating the UI
+## Where the model lives
 
-The Modux UI is organised into six sections, accessible from the left sidebar:
+The model is a directory of YAML files in your repository — `modux/` (or `.modux/`, the name
+the IntelliJ plugin uses) — with one directory per element type and one file per element,
+named after its id: `aggregates/agg-book.yaml`, `useCases/uc-withdrawBook.yaml`. Each page of
+this manual says which directory its element lives in and what fields it takes; the
+authoritative list of fields is the model's JSON schema, `model-driven-store-schema.json`,
+written next to the model by `mvn modux:validate`.
 
-| Section | Contents |
-|---|---|
-| **Organization** | Projects, Services, Bounded Contexts, Modules |
-| **Domain Model** | Aggregates, Entities, Value Objects |
-| **Behaviour** | Operations, Use Cases |
-| **Async** | Domain Events, Sagas, Projections, Subscriptions, Scheduled Triggers |
-| **Interfaces** | Gateways (outbound), Read Models, Pages, Components, UI Adapters, UI Shells (inbound) |
-| **Security** | Roles |
+Three ways to edit it, all over the same files:
+
+- **By hand**, in any editor, with the schema giving completion — see
+  [Editing the Model](/getting-started/yaml-editing/).
+- **With an AI agent** that reads and writes the files, guided by the `modux-model` skill.
+- **In the [graphical editor](/manual/graphical-editor-guide/)** of the IntelliJ plugin.
 
 ## Typical workflow
 
-1. Create a **Project** with your package name and output path
-2. Add one or more **Services** (one per microservice)
-3. Add **Bounded Contexts** and wire each context's main module into a service
-4. Define **Aggregates** with their fields, operations, and events
-5. Add **Sagas**, **Projections**, and **Gateways** as needed
-6. Click **Generate Code** to produce the full Spring Boot project
-7. Implement the generated interfaces with your custom business logic
-8. Re-run generation at any time — custom code files are not overwritten
+1. Write the **Project** (`projects/`) with its package name and output path
+2. Add one or more **Services** (one per deployable)
+3. Add **Bounded Contexts**, each with its main module, and list the modules in a service's `moduleIds`
+4. Define **Aggregates** with their models, operations and events
+5. Add **Use cases**, **Sagas**, **Projections** and **Gateways** as needed
+6. `mvn modux:validate`, then `mvn modux:generate` to produce the Spring Boot projects
+7. Implement the generated hooks with your business logic, in the `{service}-custom` module
+8. Change the model and regenerate at any time — the custom module is never overwritten
+
+The [Quick Start](/getting-started/quick-start/) walks this loop end to end.
 
 ## Pages in this manual
 
@@ -83,3 +88,4 @@ The Modux UI is organised into six sections, accessible from the left sidebar:
 - [UI Adapters](/manual/ui-adapters/) — navigation structure per service
 - [UI Shells](/manual/ui-shells/) — frontend deployment targets
 - [Generating Code](/manual/generating-code/) — how to run the generator
+- [Search](/manual/search/) — finding elements in the model

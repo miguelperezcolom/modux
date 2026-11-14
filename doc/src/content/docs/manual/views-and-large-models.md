@@ -15,55 +15,59 @@ For the design rationale see the
 ## Referential integrity
 
 Whatever the size, a dangling reference (an `…Id` pointing at an element that no longer exists) is easy
-to introduce. Validate the whole model — handy as a CI gate (exits non-zero when broken):
+to introduce. Validate the whole model — handy as a CI gate (fails the build when broken):
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.check
+mvn modux:validate
 ```
 
 ## Granular storage
 
-A single store file is convenient at first, but a large model is painful to diff, merge and edit as one
-giant YAML. Keep it instead as a **granular tree** — one file per element, grouped by type:
+A large model is painful to diff, merge and edit as one giant YAML, which is why a model is a
+**granular tree** — one file per element, grouped by type — the layout `mvn modux:*` and the
+IntelliJ plugin work on (see [Editing the Model](/getting-started/yaml-editing/#layout)):
 
 ```
-model/
-├── index.yaml
+modux/
 ├── aggregates/{id}.yaml
-├── usecases/{id}.yaml
+├── useCases/{id}.yaml
 └── …
 ```
 
-Convert between the two formats; the format is auto-detected on load (a directory → granular, a file →
-monolithic), and Modux persists changes in whatever it loaded:
+Older models kept everything in one `model-driven-store.yaml`; the format is auto-detected on load
+(a directory → granular, a file → monolithic), and [converting one](/getting-started/yaml-editing/#older-models-the-single-file-store)
+is a single command. Granular storage diffs and merges cleanly — the real lever for working on a
+huge model with several people.
 
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.split=./model    # monolith → granular tree
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.merge=./store.yaml  # granular tree → one file
-```
-
-Granular storage diffs and merges cleanly — the real lever for working on a huge model with several
-people.
+:::note
+The view commands below (`--modux.view`, scoped `--modux.generate`, `--modux.load-view`) are
+options of the generator's own command line, not Maven plugin goals yet: run them from the modux
+sources, in `model-driven-generator/`, adding `--modux.model-file=<path to the model>` to the
+arguments.
+:::
 
 ## Views
 
-A view is an element in the catalog (in the `views:` list). It can be **curated** — listing its members
+A view is an element of the model (`views/{id}.yaml`). It can be **curated** — listing its members
 — or **computed** — naming a seed and deriving its members:
 
 ```yaml
-views:
-  - id: view-checkin
-    name: Check-in
-    kind: CURATED
-    memberIds: [uc-crearEstancia, reserva]
-
-  - id: view-frontoffice
-    name: FrontOffice bounded context
-    kind: COMPUTED
-    seedId: mod-frontoffice          # the whole bounded context, recomputed as the model changes
+# modux/views/view-checkin.yaml
+id: view-checkin
+name: Check-in
+kind: CURATED
+memberIds: [uc-crearEstancia, reserva]
 ```
 
-Because members (and the seed) are plain references, `--modux.check` validates them too. Inspect what a
+```yaml
+# modux/views/view-frontoffice.yaml
+id: view-frontoffice
+name: FrontOffice bounded context
+kind: COMPUTED
+seedId: mod-frontoffice          # the whole bounded context, recomputed as the model changes
+```
+
+Because members (and the seed) are plain references, `mvn modux:validate` checks them too. Inspect what a
 view actually touches — its **dependency closure**, following every reference transitively (a use case
 pulls in its aggregate, gateway, event and input model):
 
@@ -98,8 +102,8 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--modux.load-view=view-frontoffi
 
 :::note[Honest limits]
 Partial loading optimizes editing, navigation and *scoped* generation. **Full-project generation still
-loads the whole graph** (it resolves cross-context flows and references), as does booting the generator
-in UI mode today — so lazy loading does not speed up a full generate. Saving while partially loaded is
+loads the whole graph** (it resolves cross-context flows and references), as does booting the modux
+server today — so lazy loading does not speed up a full generate. Saving while partially loaded is
 disabled (read-only) so a slice can't clobber the rest of the model on disk.
 :::
 

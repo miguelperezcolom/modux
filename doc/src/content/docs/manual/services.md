@@ -7,10 +7,7 @@ A **Service** represents a deployable microservice within your project. Each ser
 
 ## Creating a service
 
-1. Open a project and go to **Services**
-2. Click **New**
-3. Fill in the name and configuration
-4. Save
+Add `modux/services/{id}.yaml` with the modules it deploys (`moduleIds`) and its `port`, and list the id in the project's `serviceIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

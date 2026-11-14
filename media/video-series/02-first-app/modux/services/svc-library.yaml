@@ -1,0 +1,6 @@
+id: svc-library
+name: Library
+port: 8091
+moduleIds:
+  - bc-catalog-main
+projectId: library

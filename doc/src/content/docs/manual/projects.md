@@ -7,9 +7,7 @@ A **Project** is the top-level container for your entire system. It holds global
 
 ## Creating a project
 
-1. Click **Organization → Projects** in the sidebar
-2. Click **New**
-3. Fill in the required fields and save
+A repository holds exactly one project: `modux/projects/{id}.yaml`, with `packageName`, `outputPath` and the `serviceIds` it is made of. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

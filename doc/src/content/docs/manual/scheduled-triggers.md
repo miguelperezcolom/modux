@@ -7,9 +7,7 @@ A **Scheduled Trigger** defines a task that runs automatically on a schedule, li
 
 ## Creating a scheduled trigger
 
-1. Open a bounded context and go to **Scheduled Triggers**
-2. Click **New**
-3. Configure and save
+Add `modux/scheduledTriggers/{id}.yaml` and list the id in its bounded context's `scheduledTriggerIds`. The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 Or on the [context map](/manual/graphical-editor/): drag **Trigger programado** from
 the palette onto a bounded context (it starts with a daily cron), then **drag the

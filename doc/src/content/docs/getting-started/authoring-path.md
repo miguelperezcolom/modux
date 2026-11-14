@@ -3,7 +3,7 @@ title: The Authoring Path
 description: The natural order for modeling an information system in Modux — and when to escalate to richer elements
 ---
 
-There is a natural order for defining an information system, and Modux is built around it. It is not just a sequence — it is a **ladder of commitment**: each step adds semantics only when the system actually needs them. The linter knows this path and turns "what's next?" into findings; the MCP server teaches it to AI agents; the starter recipes jump you straight to step 3.
+There is a natural order for defining an information system, and Modux is built around it. It is not just a sequence — it is a **ladder of commitment**: each step adds semantics only when the system actually needs them. The linter knows this path and turns "what's next?" into findings; the `modux-model` skill teaches it to AI agents; the starter recipes jump you straight to step 3.
 
 ## 1. Topology — project, bounded contexts, services
 
@@ -71,7 +71,7 @@ In practice you don't walk the path once — you walk it per feature, and the li
 ```
 topology → models → (aggregate? read side?) → relations as intent → operations
    ↑                                                                    │
-   └-------------------- lint_model / Model health ←--------------------┘
+   └---------------------- mvn modux:validate ←-------------------------┘
 ```
 
-The same rules run in the UI (**Model health**), in CI (`--modux.lint`), while editing (`--modux.lint --modux.watch`) and in agent sessions (MCP `lint_model`) — so wherever you author, the path pushes back the same way.
+The same rules run wherever the model is checked — `mvn modux:validate` after an edit (yours or an agent's), `mvn modux:generate` before it writes anything, and CI — so wherever you author, the path pushes back the same way.

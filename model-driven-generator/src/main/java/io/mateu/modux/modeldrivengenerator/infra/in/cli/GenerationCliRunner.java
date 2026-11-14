@@ -25,7 +25,7 @@ import java.util.List;
  * </pre>
  *
  * Generates the project (or checks/lints the model) and exits. Without any flag the application
- * starts normally (UI server mode).
+ * starts normally (the editor's REST server).
  */
 @Component
 @RequiredArgsConstructor
@@ -138,13 +138,13 @@ public class GenerationCliRunner implements ApplicationRunner {
 
     /**
      * Validation/generation against a nonexistent store is almost always a typo'd path: a phantom
-     * empty model would lint green or generate nothing. Authoring modes (MCP, UI, --modux.watch)
+     * empty model would lint green or generate nothing. Authoring modes (--modux.watch)
      * legitimately start from scratch and are not gated.
      */
     private void failIfStoreMissing(String flag) {
         if (repository.startedFromScratch()) {
             log.error("Model store not found at {} — refusing {} against an empty model. "
-                    + "Fix the path, or author the model first (--modux.mcp, the UI, or --modux.lint --modux.watch).",
+                    + "Fix the path, or author the model first (by hand, in the graphical editor, or with --modux.lint --modux.watch).",
                     repository.storePath(), flag);
             System.exit(SpringApplication.exit(context, () -> 1));
         }

@@ -108,7 +108,7 @@ families — **structured** (elements of the map, declared as relations) and
 The curated type catalog for external content: `WEB`, `REPO`, `FTP`, `DATABASE`,
 `BUCKET`, `SHAREPOINT`, `CONFLUENCE`, `DRIVE`, `FILESYSTEM`, `TICKETING`, `CRM` — the
 field stays free-form in the meta-model on purpose, so an unforeseen kind can be
-declared through REST/MCP without waiting for a release. Prefer the structured
+declared in the model's YAML without waiting for a release. Prefer the structured
 relation over a URI whenever the source already exists on the map: the relation
 survives renames, feeds the diff, and says *what* is indexed, not just *where*.
 

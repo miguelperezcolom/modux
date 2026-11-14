@@ -1,57 +1,46 @@
 ---
 title: Importing Existing Specs
-description: Bootstrap your Modux spec store from OpenAPI, WSDL and AsyncAPI files
+description: Bootstrap your Modux model from OpenAPI, WSDL and AsyncAPI files
 ---
 
-Instead of defining every gateway, operation, event and subscription by hand, Modux can read existing API contracts and populate the spec store automatically:
+Instead of defining every gateway, operation, event and subscription by hand, Modux can read existing API contracts and write the model elements for you. The importers are goals of the [Maven plugin](/reference/maven-plugin/), run from the project that holds the model:
 
-| Importer | Source | Creates |
+| Goal | Source | Creates |
 |---|---|---|
-| OpenAPI (outbound) | OpenAPI 3.x YAML / JSON | Gateways + operations |
-| OpenAPI (inbound) | OpenAPI 3.x YAML / JSON | REST-exposed **use-case stubs** on a bounded context + typed models |
-| OpenAPI (partner) | OpenAPI 3.x YAML / JSON | **Operations on an external system** |
-| WSDL | WSDL 1.1 | **Operations on an external system**, or SOAP **use-case stubs** on a bounded context |
-| AsyncAPI | AsyncAPI 2.x YAML | Domain events + subscriptions |
+| `import-api` | OpenAPI 3.x YAML / JSON, or WSDL 1.1 | A **first-class API** with its operations (+ typed models for OpenAPI) |
+| `import-openapi` | OpenAPI 3.x YAML / JSON | A **gateway** + its operations (something the system calls) |
+| `import-asyncapi` | AsyncAPI 2.x YAML | Domain events + subscriptions |
 
-All importers use **upsert** semantics with deterministic ids: if an entity with the same id/name/topic already exists it is updated in place; otherwise a new entity is created. You can re-import as the external spec evolves and Modux will keep the store in sync.
+All importers use **upsert** semantics with deterministic ids: if an entity with the same id/name/topic already exists it is updated in place; otherwise a new entity is created. You can re-import as the external spec evolves and Modux will keep the model in sync.
 
-## One door: Import API contract
+## `import-api`: a contract as a first-class API
 
-**Organización › Import API contract (OpenAPI / WSDL)** handles both formats and both
-directions with a single form: the file's format is detected, and the **target** decides
-the meaning —
+```bash
+mvn modux:import-api -Dmodux.filePath=contracts/payments.yaml
+```
 
-- **No target** — the contract **is** the element: it lands as a **first-class API**
-  on the map (named after the contract's title), its operations waiting to be **wired
-  to whoever implements them** — a bounded context (coarse), a use case or a policy
-  (fine). Drag each operation's handle on the canvas to wire it; re-importing an
-  evolved contract updates the operations and **preserves the wiring**. The
-  `api-operation-unwired` lint rule flags published operations nobody implements.
-- **External system id** — the contract describes what a *partner* offers: every
-  operation lands as an operation of the external system (`xuc-<system>-<operation>`),
-  ready to be called by use cases (`CallExternalUseCase`), consumed by
-  [AI agents](/manual/ai-agents/), or polled by
-  [projections](/manual/projections/#alternative-sources). For WSDL, the
-  `portType.operation` and its `documentation` travel as the description.
-- **Bounded context id** — the contract is something *we* must expose: OpenAPI operations
-  become REST-exposed use-case stubs (method, path, typed models); WSDL operations become
-  plain use-case stubs (the exposure — SOAP shim, REST — is the developer's call).
+The format is detected (a `.wsdl`, or a contract that declares `definitions` and mentions
+neither `openapi` nor `swagger`, is a WSDL). The contract **is** the element: it lands as a
+**first-class API** on the map (`apis/api-<title>.yaml`, named after the contract's title),
+its operations waiting to be **wired to whoever implements them** — a bounded context
+(coarse), a use case or a policy (fine). Wire each operation by dragging its handle in the
+[graphical editor](/manual/graphical-editor/) (or by setting its target in the YAML);
+re-importing an evolved contract updates the operations and **preserves the wiring**. The
+`api-operation-unwired` lint rule flags published operations nobody implements.
 
-At most one target. Context-targeted imports never hijack a use-case id owned by
-another bounded context: the id is scoped (`uc-<context>-<operation>`) instead of silently
-overwriting.
+`-Dmodux.apiId=<id>` lands the operations on an API that already exists instead of creating
+one from the title. `-Dmodux.modelPath` points at the model when it is not `modux/` (or
+`.modux/`).
+
+:::note
+The importers that turned a contract into operations of an **external system**, or into
+use-case stubs of a **bounded context** (REST from OpenAPI, plain from WSDL), were part of
+the modux web UI and have no Maven goal yet.
+:::
 
 ## OpenAPI → Gateways
 
 An OpenAPI file describes an external HTTP API your system depends on. Modux maps it to a `Gateway` with one `GatewayOperation` per HTTP method + path combination.
-
-### From the UI
-
-1. Open the Modux UI and navigate to **Import OpenAPI spec**
-2. Fill in:
-   - **Service ID** — the service that owns this gateway (optional; links the gateway to the service)
-   - **File path** — absolute path to the `.yaml` or `.json` OpenAPI file on disk
-3. Click **Import OpenAPI**
 
 ### From the command line
 
@@ -60,6 +49,9 @@ mvn modux:import-openapi \
   -Dmodux.filePath=/path/to/openapi.yaml \
   -Dmodux.serviceId=my-service-id
 ```
+
+They write into the project's model: `modux/` (or `.modux/` when there is no `modux/`);
+`-Dmodux.modelPath=…` points them elsewhere.
 
 `serviceId` is optional. When provided, the gateway is automatically added to the service's `gatewayIds` list.
 The gateway is written to the repository's model (`modux/`, or `.modux/` when there is no
@@ -99,7 +91,7 @@ Each operation's `inputModelId` and `outputModelId` are wired to the models deri
 
 OpenAPI `path`, `query`, `header` and `cookie` parameters are captured per operation and become typed method arguments. The generated adapter binds them automatically: path placeholders (e.g. `/pets/{petId}`) and query parameters are expanded from the call's arguments, header parameters are set on the request headers, and cookie parameters are added to the `Cookie` header. Parameter names that aren't valid Java identifiers (e.g. `X-Trace-Id`) are turned into camelCase arguments while the original name is used on the wire.
 
-Parameters are also editable in the Modux UI: each gateway operation has a parameters list where you can add, edit or remove them, and they are preserved when you save.
+Parameters are also editable by hand: each gateway operation has a parameters list in the gateway's YAML, and a re-import preserves it.
 
 ### Auth detection
 
@@ -112,7 +104,7 @@ The gateway's `authType` is inferred from the OpenAPI `securitySchemes`:
 | `http` + `basic` | `Basic` |
 | `oauth2` (client credentials) | `OAuth2ClientCredentials` (token URL + scopes captured) |
 
-Fill in the actual credentials (keys, tokens, client secret) in the UI after import.
+Fill in the actual credentials (keys, tokens, client secret) after import.
 
 ### Re-importing
 
@@ -126,14 +118,6 @@ An AsyncAPI file describes the event-driven interface of a service: which events
 
 - `publish` channels → **DomainEventEntity** (this service sends the event)
 - `subscribe` channels → **SubscriptionEntity** (this service consumes the event)
-
-### From the UI
-
-1. Navigate to **Import AsyncAPI spec**
-2. Fill in:
-   - **Bounded context ID** — the bounded context that owns these events/subscriptions
-   - **File path** — absolute path to the AsyncAPI YAML file
-3. Click **Import AsyncAPI**
 
 ### From the command line
 
@@ -182,8 +166,8 @@ Running the importer again matches existing entities by `topicName`. If a matchi
 ## Typical bootstrap workflow
 
 1. Collect the OpenAPI / AsyncAPI files from the teams or services you integrate with
-2. Run the importers to seed the spec store
-3. Open the UI to fill in the missing model references
+2. Run the importers to seed the model
+3. Fill in the missing model references (by hand, with an AI agent or in the graphical editor) until `mvn modux:validate` is clean
 4. Run `mvn modux:generate` to generate the full project
 
 ```bash
@@ -195,5 +179,5 @@ mvn modux:import-openapi -Dmodux.filePath=apis/inventory.yaml -Dmodux.serviceId=
 mvn modux:import-asyncapi -Dmodux.filePath=events/orders-events.yaml -Dmodux.boundedContextId=orders-bc
 
 # Generate the full project
-mvn modux:generate -Dmodux.projectId=acme-platform
+mvn modux:generate
 ```

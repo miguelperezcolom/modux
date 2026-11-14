@@ -44,8 +44,9 @@ in the modux editor and generate again.
 </#if>
 
 ---
-<#if uiEs>Regenerar: desde la UI de modux (proyecto «${project.name}») o por CLI:<#else>Regenerate: from the modux UI (project «${project.name}») or from the CLI:</#if>
+<#if uiEs>Regenerar: tras cambiar el modelo, desde el proyecto que lo contiene, con el plugin de Maven:<#else>Regenerate: after changing the model, from the project that holds it, with the Maven plugin:</#if>
 
 ```bash
-mvn spring-boot:run -Dspring-boot.run.arguments="--modux.generate=${project.id} --modux.output=<#if uiEs><destino><#else><target></#if>"
+mvn modux:validate
+mvn modux:generate
 ```

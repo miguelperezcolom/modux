@@ -16,11 +16,7 @@ A **Page** is the fundamental unit of UI in Modux. In hexagonal architecture ter
 
 ## Creating a page
 
-1. Open the **Interfaces → Pages** section
-2. Click **New**
-3. Set a name, route and type
-4. Fill in the type-specific fields
-5. Configure optional tabs (toolbar, triggers, rules, validations, field configs)
+Add `modux/pages/{id}.yaml` with its name, route and type, the type-specific fields and the optional parts (toolbar, triggers, rules, validations, field configs). Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 
@@ -205,6 +201,6 @@ All pages respect the configured toolbar, bottom bar, triggers, rules, validatio
 
 **FORM** and **WIZARD** pages additionally emit an [EventConductor](https://eventconductor.mateu.io/)
 form definition (`src/main/resources/forms/<Page>.form.json`) derived from the page's model fields.
-EventConductor `USER_TASK` [workflow steps](/manual/sagas/#orchestration-with-eventconductor) can
+EventConductor `USER_TASK` [workflow steps](/manual/workflows/#human-tasks) can
 reference these forms by id, so a human task in a workflow renders the same form you designed in
 Modux.

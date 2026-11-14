@@ -1,0 +1,7 @@
+id: bc-catalog
+name: Catalog
+aggregateIds:
+  - agg-book
+useCaseIds:
+  - uc-withdrawBook
+projectId: library

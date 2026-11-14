@@ -1,0 +1,11 @@
+id: model-withdraw-book
+name: WithdrawBookInput
+fields:
+  - id: f-withdraw-bookId
+    name: bookId
+    basicType: true
+    type: string
+    validations:
+      - id: v-withdraw-bookId
+        type: NotEmpty
+projectId: library

@@ -17,9 +17,7 @@ description: Commands and queries on aggregates
 
 ## Creating an operation
 
-1. Open an aggregate and go to **Operations**
-2. Click **New**
-3. Configure and save
+Operations live inside their aggregate, in its `operations` list (`modux/aggregates/{id}.yaml`). Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

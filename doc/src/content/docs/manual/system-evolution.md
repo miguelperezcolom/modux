@@ -74,4 +74,3 @@ A consumer that receives an older-version message decodes it as a raw map, calls
 - [Generating Code → two zones](/manual/generating-code/#generated-code-vs-your-code-two-zones)
 - [Use Cases](/manual/use-cases/) — `apiVersion` and REST exposure
 - [Domain Events](/manual/domain-events/) and [Subscriptions](/manual/subscriptions/)
-- [System & Solutions](/manual/solutions/) — approving a to-be produces the change set these migrations will derive from
