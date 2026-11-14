@@ -1,0 +1,60 @@
+{
+  "number": 4,
+  "slug": "editor",
+  "series": "modux in N minutes",
+  "title": { "en": "The graphical editor", "es": "El editor gráfico" },
+  "thumbnail": { "scene": "open", "at": 3.5 },
+  "scenes": [
+    { "id": "open", "kind": "title", "min": 3.6, "title": "The graphical editor",
+      "subtitle": "The model, drawn. Every gesture, a change to it." },
+
+    { "id": "map", "kind": "live", "script": "live/map.mjs", "scale": 1.5,
+      "narration": { "en": "This is the Tickets system in the modux editor. The people who use it, four bounded contexts, the APIs they publish, the systems outside, and how they all talk. It is not a drawing: it is the model in your repository.",
+                     "es": "Este es el sistema Tickets en el editor de modux. Las personas que lo usan, cuatro contextos, las APIs que publican, los sistemas de fuera, y cómo se hablan. No es un dibujo: es el modelo de tu repositorio." } },
+
+    { "id": "unfold", "kind": "live", "script": "live/unfold.mjs", "scale": 1.5,
+      "narration": { "en": "Unfold a context to see what it holds. Payments has its aggregate, its use cases, the events it publishes and its queries. They arrive around it, wherever there is room.",
+                     "es": "Despliega un contexto para ver lo que contiene. Payments tiene su agregado, sus casos de uso, los eventos que publica y sus consultas. Llegan a su alrededor, donde hay sitio." } },
+
+    { "id": "layout", "kind": "live", "script": "live/layout.mjs", "scale": 1.5,
+      "narration": { "en": "Auto-layout lays the whole view out again, with orthogonal lines that go around the boxes. The positions are kept apart from the model, in a file of their own.",
+                     "es": "El auto-layout vuelve a colocar toda la vista, con líneas ortogonales que rodean las cajas. Las posiciones se guardan aparte del modelo, en un fichero propio." } },
+
+    { "id": "yugo", "kind": "live", "script": "live/yugo.mjs", "scale": 1.5,
+      "narration": { "en": "The same view has other surfaces. Yugo shows the model as a living tree: search for an element, and it unfolds the path and flies there.",
+                     "es": "La misma vista tiene otras superficies. Yugo enseña el modelo como un árbol vivo: buscas un elemento, y despliega el camino y vuela hasta él." } },
+
+    { "id": "notify", "kind": "live", "script": "live/notify.mjs", "scale": 1.5,
+      "narration": { "en": "Now let's change something. Customers should hear when the bank declines their card. Drag a notification from the palette onto Payments, and press F2 to name it.",
+                     "es": "Ahora cambiemos algo. El cliente debe enterarse cuando el banco rechaza su tarjeta. Arrastras una notificación desde la paleta hasta Payments, y con F2 le das nombre." } },
+
+    { "id": "wire", "kind": "live", "script": "live/wire.mjs", "scale": 1.5,
+      "narration": { "en": "Then draw the lines. The PaymentDeclined event fires it, and it goes to the customer, by email.",
+                     "es": "Luego trazas las líneas. El evento PaymentDeclined la dispara, y va al cliente, por email." } },
+
+    { "id": "status", "kind": "terminal", "cwd": "~/tickets", "title": "terminal — tickets", "command": "git status --short",
+      "lines": "@lines:real/status.txt", "box": { "x": 200, "y": 300, "w": 1520, "h": 300 }, "size": 26,
+      "narration": { "en": "Every gesture is a change to the model files. Git sees one new notification, and the diagram's positions, which live in their own file.",
+                     "es": "Cada gesto es un cambio en los ficheros del modelo. Git ve una notificación nueva, y las posiciones del diagrama, que viven en su propio fichero." } },
+
+    { "id": "yaml", "kind": "code", "lang": "diff", "file": "git diff — modux/notifications/…", "numbers": false,
+      "code": "@file:real/notification.diff", "box": { "x": 160, "y": 110, "w": 1600, "h": 780 }, "size": 23,
+      "caption": "Written by the editor. Reviewed like any other change.",
+      "narration": { "en": "Here is what the editor wrote: the event that fires it, the channel, and who receives it. The same YAML you would write by hand, ready to review in a pull request.",
+                     "es": "Esto es lo que escribió el editor: el evento que la dispara, el canal y quién la recibe. El mismo YAML que escribirías a mano, listo para revisarlo en un pull request." } },
+
+    { "id": "es", "kind": "live", "script": "live/es.mjs", "scale": 1.5,
+      "narration": { "en": "The editor speaks English and Spanish. Your model stays exactly as you wrote it.",
+                     "es": "El editor habla inglés y español. Tu modelo se queda tal como lo escribiste." } },
+
+    { "id": "ide", "kind": "statement", "lines": ["The same editor,", "inside <span class=\"accent\">IntelliJ</span>."],
+      "lead": "The Modux plugin opens it over the model files in your repository.",
+      "narration": { "en": "And it is the same editor that runs inside the IntelliJ plugin, where it edits the model files directly, with no server.",
+                     "es": "Y es el mismo editor que va dentro del plugin de IntelliJ, donde edita directamente los ficheros del modelo, sin servidor." } },
+
+    { "id": "close", "kind": "close", "title": "The model, drawn. Every gesture, a change you can review.", "min": 6,
+      "lines": ["Next: contexts that talk to each other.", "modux.mateu.io"],
+      "narration": { "en": "modux. The model, drawn, and every gesture a change you can review. Next: contexts that talk to each other.",
+                     "es": "modux. El modelo, dibujado, y cada gesto un cambio que puedes revisar. En el siguiente: contextos que hablan entre sí." } }
+  ]
+}

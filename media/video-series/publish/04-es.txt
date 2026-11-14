@@ -1,0 +1,14 @@
+El editor gráfico de modux sobre un sistema real de cuatro contextos (Tickets): el mapa del sistema con sus actores, contextos, APIs y sistemas externos; un contexto desplegado; el auto-layout; la superficie Yugo y su buscador; y después un cambio real hecho con el ratón —una notificación arrastrada desde la paleta, con nombre, conectada al evento que la dispara y al rol que la recibe— y el fichero YAML que escribió el editor, tal como lo ve git. El mismo editor en español, y dentro del plugin de IntelliJ.
+
+Todo lo que sale es real: el componente web del editor funcionando contra un servidor de modux sobre una copia del modelo, y la salida de git de ese modelo después de los gestos.
+
+0:00 El mapa del sistema
+0:20 Desplegar un contexto, auto-layout
+0:45 Yugo: el modelo como árbol, y el buscador
+0:56 Un cambio con el ratón: una notificación, conectada
+1:20 Lo que escribió el editor: git status y el diff
+1:43 En español, y dentro de IntelliJ
+
+Documentación (guía del editor gráfico): https://modux.mateu.io/manual/graphical-editor-guide/
+Código: https://github.com/miguelperezcolom/modux (MIT)
+Serie: modux en N minutos, un aspecto de modux por capítulo.
