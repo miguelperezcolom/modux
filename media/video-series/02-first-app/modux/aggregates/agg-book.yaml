@@ -1,0 +1,12 @@
+id: agg-book
+name: Book
+title: Books
+modelId: model-book
+operations:
+  - id: op-withdraw
+    name: withdraw
+    type: CUSTOM
+    intent: >-
+      An AVAILABLE book becomes WITHDRAWN and its copies drop to 0. A book that is
+      already WITHDRAWN is rejected with «The book is already withdrawn».
+projectId: library

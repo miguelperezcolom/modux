@@ -1,0 +1,20 @@
+id: uc-withdrawBook
+name: WithdrawBook
+title: Withdraw a book
+exposedAsUi: true
+inputModelId: model-withdraw-book
+steps:
+  - id: step-read
+    name: readBook
+    type: ReadAggregate
+    aggregateId: agg-book
+  - id: step-withdraw
+    name: withdraw
+    type: CallAggregateOperation
+    aggregateId: agg-book
+    operationId: op-withdraw
+  - id: step-save
+    name: saveBook
+    type: SaveAggregate
+    aggregateId: agg-book
+projectId: library

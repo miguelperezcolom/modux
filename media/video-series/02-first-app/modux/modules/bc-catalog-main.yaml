@@ -1,0 +1,5 @@
+id: bc-catalog-main
+name: Catalog
+boundedContextId: bc-catalog
+main: true
+projectId: library
