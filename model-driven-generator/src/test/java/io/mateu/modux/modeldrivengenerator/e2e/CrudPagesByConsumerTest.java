@@ -271,6 +271,31 @@ class CrudPagesByConsumerTest {
     }
 
     @Test
+    void the_local_stack_is_its_own_compose_project_and_says_what_it_exposes() throws Exception {
+        // no shell: each service on its own port, at the path of its app
+        var store = Files.createTempFile("ui-crud-local", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("moduleIds: [\"bc-catalogo-main\"]}", "moduleIds: [\"bc-catalogo-main\"], port: 8091}")
+                .replace("  title: \"Backoffice\"\n", "  title: \"Backoffice\"\n  path: \"/library\"\n"));
+        var out = generateAll(store.toString());
+        assertTrue(read(out, "docker-compose.yml").contains("\nname: editorial\n"),
+                "named after the project, not after the folder: " + read(out, "docker-compose.yml"));
+        var targets = read(out, "targets.json");
+        assertTrue(targets.contains("\"composeProject\" : \"editorial\""), targets);
+        assertTrue(targets.contains("\"urls\" : [ \"http://localhost:8091/library\" ]"), targets);
+        assertFalse(targets.contains("8088"), "there is no gateway: " + targets);
+
+        // with a shell, the gateway is the front door
+        Files.writeString(store, Files.readString(store) + """
+
+                uiShells:
+                - {id: "sh-portal", name: "Portal", title: "Portal", serviceIds: ["svc-editorial"]}
+                """);
+        var withShell = read(generateAll(store.toString()), "targets.json");
+        assertTrue(withShell.contains("\"urls\" : [ \"http://localhost:8088\" ]"), withShell);
+    }
+
+    @Test
     void a_projection_is_wired_to_its_event_and_a_query_in_the_menu_gets_a_listing() throws Exception {
         var store = Files.createTempFile("ui-crud-readmodel", ".yaml");
         Files.writeString(store, Files.readString(STORE)

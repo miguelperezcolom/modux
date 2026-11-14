@@ -327,8 +327,14 @@ public class GenerateCodeUseCase {
         // Roles (all project roles, once per service in app boundedContext)
         generateRolesConfig(project, service, serviceDir);
 
-        // UIAdapters: assigned to the service by id, or realizing the declared UI of a
-        // context this service deploys (the App is how that UI materializes).
+        appsOf(service).forEach(adapter -> generateUiAdapter(project, service, serviceDir, adapter));
+    }
+
+    /**
+     * The apps (UIAdapters) a service serves: assigned to it by id, or realizing the declared UI of
+     * a context it deploys (the App is how that UI materializes).
+     */
+    private List<UiAdapterEntity> appsOf(ServiceEntity service) {
         var deployedIds = deployedUnits(service).stream()
                 .map(BoundedContextEntity::id)
                 .collect(java.util.stream.Collectors.toSet());
@@ -336,13 +342,56 @@ public class GenerateCodeUseCase {
                 .filter(u -> u.boundedContextId() != null && deployedIds.contains(u.boundedContextId()))
                 .flatMap(u -> u.appIds().stream())
                 .collect(java.util.stream.Collectors.toSet());
-        repository.findAllOfType(UiAdapterEntity.class).stream()
+        return repository.findAllOfType(UiAdapterEntity.class).stream()
                 .filter(a -> service.id().equals(a.serviceId()) || realizingAppIds.contains(a.id())
                         // an app drawn with no service lives where the aggregates it manages are deployed
                         || ((a.serviceId() == null || a.serviceId().isBlank()) && flattenMenu(a.menuItems()).stream()
                                 .anyMatch(it -> it.aggregateId() != null && deployedUnits(service).stream()
                                         .anyMatch(unit -> unit.aggregateIds() != null && unit.aggregateIds().contains(it.aggregateId())))))
-                .forEach(adapter -> generateUiAdapter(project, service, serviceDir, adapter));
+                .toList();
+    }
+
+    /** Where an app answers inside its service: the realized UI's path, else the app's own (as its @UI does). */
+    private String uiPathOf(UiAdapterEntity adapter) {
+        var path = repository.findAllOfType(UiEntity.class).stream()
+                .filter(u -> u.appIds() != null && u.appIds().contains(adapter.id()))
+                .map(UiEntity::path)
+                .filter(p -> p != null && !p.isBlank())
+                .findFirst()
+                .orElse(adapter.path());
+        if (path == null || path.isBlank() || path.equals("/")) return "";
+        return "/" + path.replaceAll("^/+|/+$", "");
+    }
+
+    /**
+     * What the local compose exposes to the browser: the API gateway (the shell's front door) when
+     * there is a shell; otherwise each service on its own port, at the path of each app it serves
+     * (its root — UI home or REST — when it serves none).
+     */
+    private List<String> localUrls(List<ServiceEntity> services, boolean hasShells) {
+        if (hasShells) return List.of("http://localhost:8088");
+        var urls = new java.util.LinkedHashSet<String>();
+        for (var sv : services) {
+            var base = "http://localhost:" + (sv.port() != null ? sv.port() : 8080);
+            var apps = appsOf(sv);
+            if (apps.isEmpty()) urls.add(base);
+            apps.forEach(a -> urls.add(base + uiPathOf(a)));
+        }
+        return new ArrayList<>(urls);
+    }
+
+    /**
+     * The Docker Compose project name of the generated system, from the project id. Compose would
+     * otherwise name it after the output folder, and every system generated into {@code system/}
+     * would be the same project, sharing containers and (worse) volumes. Compose's rules:
+     * lowercase letters, digits, {@code -} and {@code _}, starting with a letter or a digit.
+     */
+    static String composeProjectName(String projectId) {
+        var name = (projectId == null ? "" : projectId).toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("[^a-z0-9_-]+", "-")
+                .replaceAll("^[^a-z0-9]+", "")
+                .replaceAll("-+$", "");
+        return name.isEmpty() ? "modux-system" : name;
     }
 
     // ─── BoundedContext level ─────────────────────────────────────────────────────────
@@ -3914,6 +3963,7 @@ public class GenerateCodeUseCase {
     private void generateDockerCompose(ProjectEntity project) {
         Map<String, Object> model = new HashMap<>();
         model.put("project", projectToMap(project));
+        model.put("composeProject", composeProjectName(project.id()));
 
         // Gateway base URLs inside the compose network: the model's baseUrl points at
         // localhost (the local-run default), so a "http://localhost:<port>" that matches a
@@ -4366,7 +4416,11 @@ public class GenerateCodeUseCase {
 
         var targets = new ArrayList<Map<String, Object>>();
         // the local Docker target is always there: the compose file next to up.sh
-        targets.add(new HashMap<>(Map.of("name", "local", "target", "DOCKER", "compose", "docker-compose.yml")));
+        // its own Compose project and what it exposes, so the deploy names the right stack and URLs
+        var composeProject = composeProjectName(project.id());
+        var localUrls = localUrls(services, !shells.isEmpty());
+        targets.add(new HashMap<>(Map.of("name", "local", "target", "DOCKER", "compose", "docker-compose.yml",
+                "composeProject", composeProject, "urls", localUrls)));
         var environments = deployment != null && deployment.environments() != null
                 ? deployment.environments() : List.<ProjectEnvironmentConfigEntity>of();
         for (var env : environments) {
@@ -4375,7 +4429,8 @@ public class GenerateCodeUseCase {
                     : (env.kubernetesContext() != null && !env.kubernetesContext().isBlank() ? "KUBERNETES" : "DOCKER");
             var envName = env.environment().toLowerCase();
             if (!"KUBERNETES".equals(target)) {
-                targets.add(new HashMap<>(Map.of("name", envName, "target", "DOCKER", "compose", "docker-compose.yml")));
+                targets.add(new HashMap<>(Map.of("name", envName, "target", "DOCKER", "compose", "docker-compose.yml",
+                        "composeProject", composeProject, "urls", localUrls)));
                 continue;
             }
             var registry = env.imageRegistry() != null && !env.imageRegistry().isBlank() ? env.imageRegistry()

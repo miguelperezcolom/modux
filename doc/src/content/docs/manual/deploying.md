@@ -35,8 +35,57 @@ environments:
 ```
 
 `local` always exists: it is the generated `docker-compose.yml` (Postgres, Kafka, the
-services, and the API gateway and shell when there is one), entered at `http://localhost:8088`.
-An environment with `deployTarget: DOCKER` deploys the same way.
+services, and the API gateway and shell when there is one). The deploy prints where to enter it:
+`http://localhost:8088` when there is a shell (the API gateway is its front door); otherwise each
+service on its own port, at the path of each app it serves (`http://localhost:8091/library`), or
+at its root when it serves none. An environment with `deployTarget: DOCKER` deploys the same way.
+
+## The Compose project name
+
+Docker Compose groups containers and volumes into a *project*, named after the folder unless the
+file says otherwise. Every system generated with `outputPath: system` would then be the project
+`system`: deploying one would recreate another's containers and reuse its volumes, its database
+included. So the generated `docker-compose.yml` names its own project after the project id
+(`name: library`), sanitized to Compose's rules (lowercase letters, digits, `-` and `_`, starting
+with a letter or a digit). A plain `docker compose up` in the folder uses it too.
+
+A system deployed **before** it had that name lives in the folder's project, with its data in
+that project's volumes (`system_postgres_data`). Moving it silently would bring it up on empty
+volumes, so `mvn modux:deploy` decides, once:
+
+| What Docker holds | The project the deploy uses |
+|---|---|
+| Nothing under either name | the new one |
+| Containers or volumes of the new one | the new one |
+| Containers (running or stopped) of the folder's project, from **this** folder | the folder's — the system keeps its data |
+| Containers of the folder's project from **another** folder | the new one: that stack is another system's |
+| Only volumes of the folder's project, no container to say whose | none: the deploy stops and asks |
+
+When it keeps the folder's name it says so in one line and pins it in the folder's `.env`
+(`COMPOSE_PROJECT_NAME=system`; the rest of the file is left alone), which Compose reads
+too: `docker compose ps`, `logs` or `down` in the folder address the same stack. To choose
+explicitly — say, to answer the last case — pass `-Dmodux.composeProject=<name>`; choosing the new
+name removes the pin. Do not commit that `.env` line: it describes this machine's Docker.
+
+`up.sh` and `down.sh` do not use Compose: they run named containers (`<project>-postgres`,
+`<project>-kafka`) with no volumes, and are not affected.
+
+### Moving a stack to its new name
+
+The data is in the folder project's volumes; copy it to the new project's, then drop the pin:
+
+```bash
+docker compose -p system down                     # stops it; volumes stay
+docker compose -p library create postgres         # the new project's (empty) volume
+docker run --rm -v system_postgres_data:/from -v library_postgres_data:/to \
+  alpine sh -c 'cp -a /from/. /to/'
+sed -i.bak '/COMPOSE_PROJECT_NAME/d' .env          # drop the pin (or edit .env by hand)
+mvn modux:deploy -Dmodux.env=local                # finds the new project's volume: uses it
+```
+
+Check the system answers with its data before removing the old volumes
+(`docker volume rm system_postgres_data`). Kafka holds no volume: its topics start empty either
+way.
 
 ## What a Kubernetes deploy does
 
