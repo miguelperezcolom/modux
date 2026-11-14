@@ -1,0 +1,3 @@
+   5 analytics
+  20 catalog
+   5 sales

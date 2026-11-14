@@ -1,0 +1,10 @@
+[INFO] Modux: analytics has no pending hooks.
+[INFO] Modux: catalog: 7 pending hook(s).
+[INFO] Modux: catalog compiles (attempt 1).
+[INFO] Modux: payments: 1 pending hook(s).
+[INFO] Modux: payments compiles (attempt 1).
+[INFO] Modux: sales: 5 pending hook(s).
+[INFO] Modux: sales compiles (attempt 1).
+[INFO] Modux: 14 file(s) written to the custom zone. Review them before committing.
+[INFO] BUILD SUCCESS
+[INFO] Total time:  01:52 min

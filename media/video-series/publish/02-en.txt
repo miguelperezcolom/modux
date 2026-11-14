@@ -1,0 +1,15 @@
+From an empty repository to a running application with modux: one aggregate (a book) modelled in YAML, validated, generated into a Spring Boot service in hexagonal layers, deployed with its database in Docker, used in the browser — then a new field added through the model, with its migration.
+
+Everything on screen is real: the model files, the output of each mvn modux command, and the generated application running.
+
+0:00 An empty repository and the modux plugin
+0:11 The model: one YAML file per element
+0:28 Validate: a typo caught
+0:41 Generate
+1:01 Deploy, and the app: create, validate, search, detail
+1:32 A new field: model, code, migration
+1:51 Redeploy: the data is still there
+
+Docs (quick start): https://modux.mateu.io/getting-started/quick-start/
+Code: https://github.com/miguelperezcolom/modux (MIT)
+Series: modux in N minutes — one aspect of modux per episode.

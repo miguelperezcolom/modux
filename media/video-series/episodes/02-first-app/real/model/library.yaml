@@ -1,0 +1,7 @@
+id: library
+name: Library
+packageName: com.example.library
+outputPath: system
+serviceIds:
+  - svc-library
+objective: A small library keeps the catalog of its books and how many copies it owns.

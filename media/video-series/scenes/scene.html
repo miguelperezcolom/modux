@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>modux — scene</title>
+<!--
+  One scene of an episode, 1920x1080. window.SCENE (injected by lib/episode.mjs) says which kind
+  and what it holds; the page builds it once and CSS animations with their delays do the rest.
+  The frame engine stops the CSS timeline and moves it one frame at a time, so the same scene
+  always renders the same frames. Visual language of Mateu's reel, in modux's colours.
+-->
+<style>
+  @font-face { font-family: 'Inter'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2') format('woff2'); }
+  @font-face { font-family: 'Inter'; font-weight: 100 900; src: url('../node_modules/@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2') format('woff2'); unicode-range: U+0100-024F, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+  @font-face { font-family: 'JetBrains Mono'; font-weight: 100 800; src: url('../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); }
+  :root {
+    --bg0: #0b0a14; --panel: #15122b; --panel2: #1b1736; --ink: #eeecf7; --muted: #8f8ab0; --faint: #5b5680; --line: #2a2650;
+    --violet: #a78bfa; --violet2: #7c5cf0; --azure: #4cb2ff; --amber: #f6b23c; --good: #39d98a; --pink: #ff7597;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg0); }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; font-family: 'Inter', sans-serif; color: var(--ink);
+    background:
+      radial-gradient(1300px 800px at 78% -10%, rgba(124,92,240,.22), transparent 60%),
+      radial-gradient(1000px 900px at 8% 115%, rgba(76,178,255,.10), transparent 60%),
+      var(--bg0); }
+
+  /* entrances (delays set inline) */
+  .in { opacity: 0; animation: in .7s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+  .pop { opacity: 0; animation: pop .45s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes pop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+  .fade { opacity: 0; animation: fade .5s ease forwards; }
+  @keyframes fade { to { opacity: 1; } }
+  .dimout { animation: dimout .6s ease forwards; }
+  @keyframes dimout { to { opacity: .28; } }
+  .shrink { animation: shrink .9s cubic-bezier(.2,.8,.2,1) forwards; }
+  @keyframes shrink { to { transform: translate(-330px, -240px) scale(.42); } }
+
+  .kicker { font-size: 22px; font-weight: 650; letter-spacing: .18em; text-transform: uppercase; color: var(--violet); }
+  .h1 { font-size: 92px; font-weight: 760; letter-spacing: -.035em; line-height: 1.04; }
+  .h2 { font-size: 64px; font-weight: 720; letter-spacing: -.03em; line-height: 1.1; }
+  .lead { font-size: 34px; color: var(--muted); font-weight: 450; line-height: 1.35; }
+  .accent { color: var(--violet); }
+  .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 28px; padding: 0 160px; }
+
+  /* the mark */
+  .mark { width: 120px; height: 120px; }
+  .mark svg { width: 100%; height: 100%; }
+  .mark svg path { fill: var(--violet); filter: drop-shadow(0 0 24px rgba(167,139,250,.55)); }
+  .glow { position: absolute; width: 520px; height: 520px; border-radius: 50%; background: radial-gradient(circle, rgba(167,139,250,.35), transparent 65%); opacity: 0; animation: fade 1.6s .1s ease forwards; }
+  .word { font-family: var(--mono); font-size: 76px; font-weight: 700; letter-spacing: -.02em; }
+  .ep { display: inline-flex; gap: 14px; align-items: center; font-size: 22px; color: var(--muted); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .ep b { color: var(--ink); background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 14px; letter-spacing: 0; }
+
+  /* windows */
+  .win { position: absolute; background: #0f0d1f; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; box-shadow: 0 40px 120px -40px rgba(0,0,0,.8); }
+  .bar { height: 46px; display: flex; align-items: center; gap: 9px; padding: 0 18px; background: #16132c; border-bottom: 1px solid var(--line); position: relative; }
+  .bar i { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
+  .bar .title { position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; color: var(--muted); font-weight: 500; pointer-events: none; }
+  .body { padding: 22px 28px; font-family: var(--mono); font-size: 22px; line-height: 34px; white-space: pre; color: #d9d6ee; }
+  .row { opacity: 0; animation: fade .18s ease forwards; }
+  .ln { display: inline-block; width: 44px; color: #4a4570; text-align: right; margin-right: 22px; user-select: none; }
+  .emph { background: rgba(167,139,250,.16); box-shadow: inset 4px 0 0 var(--violet); }
+  .add { background: rgba(57,217,138,.12); } .del { background: rgba(255,117,151,.12); }
+  .k { color: #c4b5fd; } .s { color: #a7f3d0; } .c { color: #6b6690; font-style: italic; } .p { color: #fbbf24; } .kw { color: #ff9ac1; } .ty { color: #7dd3fc; } .num { color: #fbbf24; }
+  .ok { color: var(--good); } .warn { color: var(--amber); } .err { color: var(--pink); } .dim { color: #6b6690; } .prompt { color: var(--azure); }
+  .typed span { opacity: 0; animation: fade .01s linear forwards; }
+  .caret { display: inline-block; width: 12px; height: 26px; background: var(--azure); vertical-align: -4px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* captions over a window */
+  .cap { position: absolute; left: 96px; bottom: 70px; display: flex; align-items: center; gap: 16px; font-size: 30px; font-weight: 620; }
+  .cap .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--violet); box-shadow: 0 0 18px var(--violet); }
+  .label { position: absolute; left: 96px; top: 64px; }
+
+  /* chips & cards */
+  .chips { position: absolute; display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
+  .chip { padding: 16px 26px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); font-size: 28px; font-weight: 560; color: #d9d6ee; }
+  .chip.v { border-color: rgba(167,139,250,.5); color: var(--ink); }
+  .cards { position: absolute; left: 140px; right: 140px; display: grid; gap: 22px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 26px 30px; }
+  .card .n { font-family: var(--mono); color: var(--violet); font-size: 20px; font-weight: 700; }
+  .card .t { font-size: 29px; font-weight: 640; margin-top: 8px; line-height: 1.25; }
+  .card .d { font-size: 21px; color: var(--muted); margin-top: 8px; line-height: 1.35; }
+  .tag { display: inline-block; margin-left: 10px; font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--amber); border: 1px solid rgba(246,178,60,.5); border-radius: 6px; padding: 2px 8px; vertical-align: 3px; }
+  .stat { text-align: center; }
+  .stat .v { font-size: 120px; font-weight: 780; letter-spacing: -.04em; color: var(--ink); }
+  .stat .u { font-size: 26px; color: var(--muted); font-weight: 560; }
+  .arrow { font-size: 90px; color: var(--violet); }
+  .spec { position: absolute; left: 410px; top: 300px; width: 1100px; transform-origin: 0 0; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 46px 56px; }
+  .spec .t { font-size: 44px; font-weight: 700; margin-bottom: 26px; }
+  .spec li { list-style: none; font-size: 31px; color: #d9d6ee; padding: 12px 0 12px 44px; position: relative; line-height: 1.3; }
+  .spec li::before { content: ''; position: absolute; left: 4px; top: 25px; width: 16px; height: 16px; border-radius: 4px; background: var(--violet); }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const S = window.SCENE || { kind: 'title', title: 'modux', subtitle: 'scene preview' };
+const stage = document.getElementById('stage');
+const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const at = (d) => `animation-delay:${(+d).toFixed(3)}s`;
+const LOGO = S.logo || '';
+
+/* ---------- syntax colouring (one pass per line) ---------- */
+function hlYaml(line) {
+  if (/^\s*#/.test(line)) return `<span class="c">${esc(line)}</span>`;
+  const m = line.match(/^(\s*-?\s*)([A-Za-z_][\w-]*)(:)(.*)$/);
+  const val = (v) => esc(v).replace(/("[^"]*")/g, '<span class="s">$1</span>').replace(/\b(true|false|\d+)\b/g, '<span class="num">$1</span>');
+  if (!m) return val(line);
+  return `${esc(m[1])}<span class="k">${m[2]}</span>${m[3]}${val(m[4])}`;
+}
+const JAVA = /("(?:[^"\\]|\\.)*")|(@\w+)|\b(public|private|protected|final|class|record|interface|implements|extends|void|if|else|return|new|throw|throws|boolean|null|static|this|var|for|import|package)\b|\b([A-Z][A-Za-z0-9]+)\b|\b(\d+(?:\.\d+)?)\b/g;
+function hlJava(line) {
+  const t = line.trimStart();
+  if (/^(\/\*\*|\*|\/\/|\*\/)/.test(t)) return `<span class="c">${esc(line)}</span>`;
+  let out = '', last = 0, m; JAVA.lastIndex = 0;
+  while ((m = JAVA.exec(line))) {
+    out += esc(line.slice(last, m.index));
+    const cls = m[1] ? 's' : m[2] ? 'p' : m[3] ? 'kw' : m[4] ? 'ty' : 'num';
+    out += `<span class="${cls}">${esc(m[0])}</span>`; last = m.index + m[0].length;
+  }
+  return out + esc(line.slice(last));
+}
+function hlSql(line) {
+  return esc(line).replace(/\b(ALTER|TABLE|ADD|COLUMN|IF|NOT|EXISTS|CREATE|INSERT|INTO|VALUES|PRIMARY|KEY|varchar|numeric|integer|date|bigint|text)\b/g, '<span class="kw">$1</span>');
+}
+function hlXml(line) {
+  return esc(line).replace(/(&lt;\/?)([\w.:-]+)/g, '$1<span class="k">$2</span>').replace(/(&gt;)([^&]+)(&lt;)/g, '$1<span class="s">$2</span>$3');
+}
+const HL = { yaml: hlYaml, java: hlJava, sql: hlSql, xml: hlXml, text: esc,
+  diff: (l) => l.startsWith('+') ? hlYaml(l) : l.startsWith('-') ? hlYaml(l) : hlYaml(l) };
+
+/** The lines a code scene shows: the real file, Java's package/imports folded away, optionally a range. */
+function shown(p) {
+  let lines = p.code.replace(/\s+$/, '').split('\n');
+  if (p.lang === 'java' && p.imports !== true) lines = lines.filter((l) => !/^(package|import) /.test(l)).join('\n').replace(/^\s*\n+/, '').split('\n');
+  if (p.from || p.to) lines = lines.slice((p.from || 1) - 1, p.to || lines.length);
+  return lines;
+}
+function bar(title) { return `<div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="title">${esc(title)}</span></div>`; }
+function caption(text, d) { return text ? `<div class="cap in" style="${at(d)}"><span class="dot"></span><span>${text}</span></div>` : ''; }
+
+/* ---------- kinds ---------- */
+const KINDS = {
+  /** Episode opener: the mark, the series, the episode's title. */
+  title() {
+    stage.innerHTML = `<div class="center">
+      <div class="glow"></div>
+      <div class="mark pop" style="${at(.15)}">${LOGO}</div>
+      <div class="ep in" style="${at(.5)}">${esc(S.series || 'modux in N minutes')}${S.number ? ` <b>${esc(S.number)}</b>` : ''}</div>
+      <div class="h1 in" style="${at(.75)}">${S.title}</div>
+      ${S.subtitle ? `<div class="lead in" style="${at(1.1)}">${S.subtitle}</div>` : ''}
+    </div>`;
+  },
+  /** A big statement, line after line. */
+  statement() {
+    const lines = S.lines.map((l, i) => `<div class="${i === 0 ? 'h2' : 'h2'} in" style="${at((S.start ?? .2) + i * (S.step ?? 1.1))}">${l}</div>`).join('');
+    stage.innerHTML = `<div class="center">${S.kicker ? `<div class="kicker in">${esc(S.kicker)}</div>` : ''}${lines}
+      ${S.lead ? `<div class="lead in" style="${at((S.start ?? .2) + S.lines.length * (S.step ?? 1.1))}">${S.lead}</div>` : ''}</div>`;
+  },
+  /** The spec as a card, its rules ticking in. */
+  spec() {
+    stage.innerHTML = `<div class="spec pop" id="spec"><div class="t">${S.title}</div><ul>${S.rules.map((r, i) =>
+      `<li class="in" style="${at(.8 + i * (S.step ?? 1.6))}">${r}</li>`).join('')}</ul></div>`;
+  },
+  /** The spec shrinks to a corner while what production adds fills the screen. */
+  production() {
+    stage.innerHTML = `<div class="spec shrink" style="${at(.3)}"><div class="t">${S.title}</div><ul>${S.rules.map((r) => `<li>${r}</li>`).join('')}</ul></div>
+      <div class="chips" style="left:160px; right:160px; top:380px">${S.chips.map((c, i) =>
+        `<div class="chip pop" style="${at(1.2 + i * (S.step ?? .32))}">${esc(c)}</div>`).join('')}</div>
+      ${S.lead ? `<div class="center" style="justify-content:flex-end; padding-bottom:110px"><div class="h2 in" style="${at(1.4 + S.chips.length * (S.step ?? .32))}">${S.lead}</div></div>` : ''}`;
+  },
+  /** A terminal: the command typed, then its real output, line by line. */
+  terminal() {
+    const typing = S.typing ?? .9, perLine = S.perLine ?? .22, t0 = S.start ?? .4;
+    const cmd = [...S.command].map((ch, i) => `<span style="${at(t0 + typing * i / S.command.length)}">${esc(ch)}</span>`).join('');
+    const rows = (S.lines || []).map((l, i) => {
+      const cls = /BUILD SUCCESS|0 error|compiles|\bok\b|✓/.test(l) ? 'ok' : /\[WARNING\]|WARN/.test(l) ? 'warn' : /\[ERROR\]|ERROR|BUILD FAILURE/.test(l) ? 'err' : /Total time/.test(l) ? 'dim' : '';
+      const text = l.replace(/^\[INFO\] /, '').replace(/^Modux: /, '');
+      return `<div class="row ${cls}" style="${at(t0 + typing + .3 + i * perLine)}">${esc(text)}</div>`;
+    }).join('');
+    const { x = 120, y = 110, w = 1680, h = 820 } = S.box || {};
+    stage.innerHTML = `${S.label ? `<div class="label kicker in">${esc(S.label)}</div>` : ''}
+      <div class="win pop" style="left:${x}px; top:${y}px; width:${w}px; height:${h}px">${bar(S.title || 'terminal')}
+      <div class="body" style="font-size:${S.size || 22}px; line-height:${(S.size || 22) * 1.55}px"><div><span class="prompt">${esc(S.cwd || '~/library')} $</span> <span class="typed">${cmd}</span></div>${rows}</div></div>
+      ${caption(S.caption, t0 + typing + .3 + (S.lines || []).length * perLine + .3)}`;
+  },
+  /** A file: real content, coloured, optional highlighted lines appearing in order. */
+  code() {
+    const hl = HL[S.lang || 'yaml'];
+    const lines = shown(S);
+    const emph = new Set();
+    (S.emph || []).forEach(([a, b]) => { for (let i = a; i <= (b ?? a); i++) emph.add(i); });
+    const t0 = S.start ?? .3, per = S.perLine ?? .03;
+    const rows = lines.map((l, i) => {
+      const cls = [emph.has(i + 1) ? 'emph' : '', S.lang === 'diff' ? (l.startsWith('+') ? 'add' : l.startsWith('-') ? 'del' : '') : ''].join(' ');
+      return `<div class="row ${cls}" style="${at(t0 + i * per)}">${S.numbers === false ? '' : `<span class="ln">${i + 1}</span>`}${hl(l)}</div>`;
+    }).join('');
+    const { x = 120, y = 100, w = 1680, h = 840 } = S.box || {};
+    stage.innerHTML = `${S.label ? `<div class="label kicker in">${esc(S.label)}</div>` : ''}
+      <div class="win pop" style="left:${x}px; top:${y}px; width:${w}px; height:${h}px">${bar(S.file)}
+      <div class="body" style="font-size:${S.size || 21}px; line-height:${Math.round((S.size || 21) * 1.55)}px">${rows}</div></div>
+      ${caption(S.caption, t0 + lines.length * per + .4)}`;
+  },
+  /** Two files side by side (an interface and its implementation; a model and its code). */
+  split() {
+    const pane = (p, x, d) => {
+      const hl = HL[p.lang || 'yaml'];
+      const rows = shown(p).map((l, i) => `<div class="row" style="${at(d + i * .02)}">${hl(l)}</div>`).join('');
+      return `<div class="win pop" style="${at(d - .2)}; left:${x}px; top:150px; width:850px; height:800px">${bar(p.file)}<div class="body" style="font-size:${p.size || 18}px; line-height:${Math.round((p.size || 18) * 1.55)}px">${rows}</div></div>`;
+    };
+    stage.innerHTML = `${S.label ? `<div class="label kicker in">${esc(S.label)}</div>` : ''}${pane(S.left, 80, .3)}${pane(S.right, 990, S.rightAt ?? 1.6)}${caption(S.caption, (S.rightAt ?? 1.6) + .8)}`;
+  },
+  /** Big numbers: a → b. */
+  stats() {
+    const items = S.items.map((it, i) => `${i ? `<div class="arrow in" style="${at(.6 + i * .9 - .3)}">→</div>` : ''}<div class="stat in" style="${at(.4 + i * .9)}"><div class="v">${esc(it.v)}</div><div class="u">${esc(it.u)}</div></div>`).join('');
+    stage.innerHTML = `<div class="center"><div style="display:flex; gap:60px; align-items:center">${items}</div>
+      ${S.chips ? `<div class="chips" style="position:static; margin-top:30px">${S.chips.map((c, i) => `<div class="chip pop" style="${at(.6 + S.items.length * .9 + i * .18)}">${esc(c)}</div>`).join('')}</div>` : ''}
+      ${S.lead ? `<div class="lead in" style="${at(1 + S.items.length * .9 + (S.chips?.length || 0) * .18)}">${S.lead}</div>` : ''}</div>`;
+  },
+  /** Cards: what else is in the series, what the episode covers… */
+  cards() {
+    const cols = S.cols || 3;
+    stage.innerHTML = `${S.title ? `<div class="center" style="justify-content:flex-start; padding-top:90px"><div class="h2 in">${S.title}</div></div>` : ''}
+      <div class="cards" style="top:${S.title ? 260 : 140}px; grid-template-columns:repeat(${cols}, 1fr)">${S.cards.map((c, i) =>
+        `<div class="card in" style="${at(.4 + i * (S.step ?? .18))}">${c.n ? `<div class="n">${esc(c.n)}</div>` : ''}<div class="t">${c.t}${c.tag ? `<span class="tag">${esc(c.tag)}</span>` : ''}</div>${c.d ? `<div class="d">${c.d}</div>` : ''}</div>`).join('')}</div>`;
+  },
+  /** Closing card. */
+  close() {
+    stage.innerHTML = `<div class="center"><div class="glow"></div>
+      <div class="mark pop" style="${at(.1)}">${LOGO}</div>
+      <div class="word in" style="${at(.4)}">modux</div>
+      <div class="h2 in" style="${at(.8)}">${S.title}</div>
+      ${(S.lines || []).map((l, i) => `<div class="lead in" style="${at(1.3 + i * .35)}">${l}</div>`).join('')}</div>`;
+  },
+};
+(KINDS[S.kind] || KINDS.title)();
+window.ready = document.fonts.ready.then(() => true);
+</script>
+</body>
+</html>

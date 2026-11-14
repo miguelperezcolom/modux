@@ -1,0 +1,14 @@
+catalog/  domain: the aggregate and its values         3 files
+catalog/  application: use cases and queries          15 files
+catalog/  infrastructure: persistence and screens     11 files
+catalog/  tests: unit, BDD and end to end              9 files
+library-app/  migrations, H2 and PostgreSQL            2 files
+library-app/  the Spring Boot app and its config       6 files
+library-custom/  your code: the custom zone            2 files
+Dockerfile, docker-compose, up.sh / down.sh            6 files
+Kubernetes manifests                                   1 file
+Terraform skeleton                                     1 file
+CI workflow (GitHub Actions)                           1 file
+e2e suite (Playwright)                                 3 files
+Maven build: poms                                      2 files
+README                                                 1 file

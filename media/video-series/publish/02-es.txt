@@ -1,0 +1,15 @@
+De un repositorio vacío a una aplicación en marcha con modux: un agregado (un libro) modelado en YAML, validado, generado como un servicio Spring Boot por capas hexagonales, desplegado con su base de datos en Docker y usado en el navegador. Después, un campo nuevo añadido a través del modelo, con su migración.
+
+Todo lo que sale es real: los ficheros del modelo, la salida de cada comando mvn modux y la aplicación generada en marcha.
+
+0:00 Un repositorio vacío y el plugin de modux
+0:11 El modelo: un fichero YAML por elemento
+0:28 Validar: una errata detectada
+0:41 Generar
+1:01 Desplegar, y la aplicación: crear, validar, buscar, detalle
+1:32 Un campo nuevo: modelo, código, migración
+1:51 Volver a desplegar: los datos siguen ahí
+
+Documentación (inicio rápido): https://modux.mateu.io/getting-started/quick-start/
+Código: https://github.com/miguelperezcolom/modux (MIT)
+Serie: modux en N minutos, un aspecto de modux por capítulo.

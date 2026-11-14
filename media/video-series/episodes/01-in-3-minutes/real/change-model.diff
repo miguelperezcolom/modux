@@ -1,0 +1,12 @@
+diff --git a/modux/models/model-concert.yaml b/modux/models/model-concert.yaml
+index a466105..ccd3244 100644
+--- a/modux/models/model-concert.yaml
++++ b/modux/models/model-concert.yaml
+@@ -12,2 +12,7 @@ fields:
+   label: "Artist"
++- id: "f-model-concert-genre"
++  name: "genre"
++  basicType: true
++  type: "string"
++  label: "Genre"
+ - id: "f-model-concert-venue"

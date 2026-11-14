@@ -9,6 +9,12 @@ Spring Boot application, and Docker runs it. The finished example lives in the m
 repository under
 [`media/video-series/02-first-app/`](https://github.com/miguelperezcolom/modux/tree/main/media/video-series/02-first-app).
 
+<div style="max-width: 920px; margin: 1.5rem 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;">
+  <iframe src="https://www.youtube-nocookie.com/embed/xqIx8CE_-KE?rel=0" title="From one aggregate to a running app" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width: 100%; height: 100%; border: 0; display: block;"></iframe>
+</div>
+
+*From one aggregate to a running app* — this guide, recorded. [En español](https://youtu.be/8zNfZ23hKx8) · [The whole series: modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
+
 You need **Java 21+**, **Maven 3.9+** and, to run the app, **Docker** (see
 [Installation](/getting-started/installation/)).
 

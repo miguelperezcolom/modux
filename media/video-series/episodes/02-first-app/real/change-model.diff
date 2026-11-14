@@ -1,0 +1,11 @@
+diff --git a/modux/models/model-book.yaml b/modux/models/model-book.yaml
+index e493c14..3a11850 100644
+--- a/modux/models/model-book.yaml
++++ b/modux/models/model-book.yaml
+@@ -30,2 +30,6 @@ fields:
+     type: money
++  - id: f-book-pages
++    name: pages
++    basicType: true
++    type: integer
+   - id: f-book-status

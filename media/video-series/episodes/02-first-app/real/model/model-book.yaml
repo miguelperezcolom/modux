@@ -1,0 +1,33 @@
+id: model-book
+name: Book
+fields:
+  - id: f-book-title
+    name: title
+    basicType: true
+    type: string
+    validations:
+      - id: v-book-title
+        type: NotEmpty
+  - id: f-book-author
+    name: author
+    basicType: true
+    type: string
+  - id: f-book-isbn
+    name: isbn
+    basicType: true
+    type: string
+  - id: f-book-published
+    name: published
+    basicType: true
+    type: date
+  - id: f-book-copies
+    name: copies
+    basicType: true
+    type: integer
+  - id: f-book-price
+    name: price
+    basicType: true
+    type: money
+  - id: f-book-status
+    name: status
+    enumId: enum-book-status

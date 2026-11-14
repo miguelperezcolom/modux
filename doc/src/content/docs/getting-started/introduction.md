@@ -5,6 +5,12 @@ description: What is Modux and why use it
 
 ## What is Modux?
 
+<div style="max-width: 920px; margin: 1.5rem 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;">
+  <iframe src="https://www.youtube-nocookie.com/embed/36YZd8HI0bk?rel=0" title="modux in 3 minutes" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width: 100%; height: 100%; border: 0; display: block;"></iframe>
+</div>
+
+*modux in 3 minutes* — a system from its model to running, and changed through it. [En español](https://youtu.be/bhxzFJl-W58) · [The whole series: modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
+
 Modux is a **model-driven code generation framework** for building **enterprise information systems** in Java, using Domain-Driven Design (DDD). It targets the long-lived, business-critical systems made of several bounded contexts that must hold invariants, run business processes, and integrate with each other — not just forms over tables. Instead of writing the same structural boilerplate over and over, you describe your domain as a model — a directory of YAML files versioned in your repository, one per element — and let Modux generate the code for you.
 
 For *why* Modux ships the patterns it does — derived from what an enterprise system actually requires — see [Enterprise Information Systems](/getting-started/enterprise-systems/). For *where AI fits* — and why Modux uses it to author the model but not to generate production code — see [Spec-Driven Development](/getting-started/spec-driven-development/).

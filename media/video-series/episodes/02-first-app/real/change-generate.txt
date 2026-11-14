@@ -1,0 +1,4 @@
+[INFO] Modux: generating 'library' from modux → system
+[INFO] Modux: model checked — 0 error(s), 0 warning(s)
+[INFO] BUILD SUCCESS
+[INFO] Total time:  2.092 s
