@@ -67,7 +67,16 @@ public final class ComponentTreeJava {
      *     that node — its query operation loads the routed record into the page's fields.
      */
     public static Tree of(List<UiComponentNodeEntity> content, Wiring wiring, UiComponentNodeEntity detailSource) {
-        var b = new ComponentTreeJava(wiring);
+        return of(content, wiring, detailSource, false);
+    }
+
+    /**
+     * @param spanish whether the project speaks Spanish: the placeholder content the model
+     *     leaves empty, and the messages the page shows on its own, follow the project language.
+     */
+    public static Tree of(List<UiComponentNodeEntity> content, Wiring wiring, UiComponentNodeEntity detailSource,
+                          boolean spanish) {
+        var b = new ComponentTreeJava(wiring, spanish);
         var expr = content.size() == 1 ? b.expr(content.get(0)) : b.vertical(content);
         var hydration = detailSource == null ? null : b.hydration(detailSource);
         var classFields = new ArrayList<>(b.services.values());
@@ -87,9 +96,17 @@ public final class ComponentTreeJava {
     /** Action-wired use cases, keyed by actionId; cases materialize in actionHandler(). */
     private final Map<String, ActionWiring> actionWirings = new LinkedHashMap<>();
     private final Wiring wiring;
+    /** The project speaks Spanish: user-visible literals the generator adds are Spanish. */
+    private final boolean es;
 
-    private ComponentTreeJava(Wiring wiring) {
+    private ComponentTreeJava(Wiring wiring, boolean es) {
         this.wiring = wiring;
+        this.es = es;
+    }
+
+    /** The user-visible literal in the project language: Spanish projects keep theirs. */
+    private String t(String spanish, String english) {
+        return es ? spanish : english;
     }
 
     private String expr(UiComponentNodeEntity n) {
@@ -98,7 +115,7 @@ public final class ComponentTreeJava {
             // ---- containers ----
             case "verticalLayout", "app", "appLayout", "tab" -> vertical(kids);
             case "section" -> use("VerticalLayout") + ".builder().spacing(true).content(" +
-                    listOf(prepend(text(or(n.title(), "Sección"), "h4"), kids)) + ").build()";
+                    listOf(prepend(text(or(n.title(), t("Sección", "Section")), "h4"), kids)) + ").build()";
             case "horizontalLayout" -> use("HorizontalLayout") + ".builder().spacing(true).content(" + listOf(map(kids)) + ").build()";
             case "zones" -> use("HorizontalLayout") + ".builder().spacing(true).fullWidth(true).content(" + listOf(map(kids)) + ").build()";
             case "formLayout" -> use("FormLayout") + ".builder().autoResponsive(true).content(" + listOf(map(kids)) + ").build()";
@@ -114,7 +131,7 @@ public final class ComponentTreeJava {
                 var i = 0;
                 for (var t : kids) {
                     if (!"tab".equals(t.kind())) continue;
-                    tabs.add(use("Tab") + ".builder().label(" + q(or(t.title(), "Pestaña " + (tabs.size() + 1))) +
+                    tabs.add(use("Tab") + ".builder().label(" + q(or(t.title(), t("Pestaña ", "Tab ") + (tabs.size() + 1))) +
                             ").content(" + expr(t) + ").active(" + (i++ == 0) + ").build()");
                 }
                 yield use("TabLayout") + ".builder().tabs(" + listOf(tabs) + ").build()";
@@ -122,7 +139,7 @@ public final class ComponentTreeJava {
             case "accordionLayout" -> {
                 var panels = new ArrayList<String>();
                 for (var c : kids) {
-                    panels.add(use("AccordionPanel") + ".builder().label(" + q(or(c.title(), or(c.label(), "Sección " + (panels.size() + 1)))) +
+                    panels.add(use("AccordionPanel") + ".builder().label(" + q(or(c.title(), or(c.label(), t("Sección ", "Section ") + (panels.size() + 1)))) +
                             ").content(" + expr(c) + ").active(" + panels.isEmpty() + ").build()");
                 }
                 yield use("AccordionLayout") + ".builder().panels(" + listOf(panels) + ").build()";
@@ -142,13 +159,13 @@ public final class ComponentTreeJava {
                 yield use("FoldoutLayout") + ".builder().panels(" + listOf(panels) + ").build()";
             }
             case "carouselLayout" -> use("CarouselLayout") + ".builder().content(" + listOf(map(kids)) + ").dots(true).nav(true).build()";
-            case "hero" -> use("HeroSection") + ".builder().title(" + q(or(n.title(), "Un titular que vende")) +
-                    ").subtitle(" + q(or(n.text(), "El subtítulo que lo explica")) + ").centered(true)" +
+            case "hero" -> use("HeroSection") + ".builder().title(" + q(or(n.title(), t("Un titular que vende", "A headline that sells"))) +
+                    ").subtitle(" + q(or(n.text(), t("El subtítulo que lo explica", "The subtitle that explains it"))) + ").centered(true)" +
                     (kids.isEmpty() ? "" : ".content(" + listOf(map(kids)) + ")") + ".build()";
             case "pageHeader" -> use("HorizontalLayout") + ".builder().spacing(true).content(" +
-                    listOf(prepend(text(or(n.title(), "Título de la página"), "h3"), kids)) + ").build()";
+                    listOf(prepend(text(or(n.title(), t("Título de la página", "Page title")), "h3"), kids)) + ").build()";
             case "toolbar" -> use("HorizontalLayout") + ".builder().spacing(true).content(" +
-                    (kids.isEmpty() ? listOf(List.of(button("Acción"))) : listOf(map(kids))) + ").build()";
+                    (kids.isEmpty() ? listOf(List.of(button(t("Acción", "Action")))) : listOf(map(kids))) + ").build()";
             case "scoreboard" -> {
                 var metrics = new ArrayList<String>();
                 for (var c : kids) {
@@ -158,8 +175,8 @@ public final class ComponentTreeJava {
                 }
                 if (metrics.isEmpty()) {
                     metrics.add(metricCard("KPI"));
-                    metrics.add(metricCard("Otro KPI"));
-                    metrics.add(metricCard("Un tercero"));
+                    metrics.add(metricCard(t("Otro KPI", "Another KPI")));
+                    metrics.add(metricCard(t("Un tercero", "A third one")));
                 }
                 yield use("Scoreboard") + ".builder().metrics(" + listOf(metrics) + ").build()";
             }
@@ -167,39 +184,47 @@ public final class ComponentTreeJava {
                     listOf(prepend(progressSteps(kids), kids)) + ").build()";
             // ---- display leaves, with the designer's sample content ----
             case "text" -> use("Text") + ".builder().text(" + q(or(n.text(), "Lorem ipsum dolor sit amet, consectetur adipiscing elit.")) + ").build()";
-            case "notice" -> use("Notice") + ".builder().text(" + q(or(n.text(), "Un aviso para el usuario")) + ").build()";
-            case "banner" -> use("Notice") + ".builder().text(" + q(or(n.text(), or(n.title(), "Banner destacado"))) + ").theme(\"warning\").fullWidth(true).build()";
+            case "notice" -> use("Notice") + ".builder().text(" + q(or(n.text(), t("Un aviso para el usuario", "A notice for the user"))) + ").build()";
+            case "banner" -> use("Notice") + ".builder().text(" + q(or(n.text(), or(n.title(), t("Banner destacado", "Featured banner")))) + ").theme(\"warning\").fullWidth(true).build()";
             case "calloutCard" -> use("CalloutCard") + ".builder().icon(\"💡\").title(" + q(or(n.title(), "Callout")) +
-                    ").description(" + q(or(n.text(), "Algo que merece atención especial.")) + ").build()";
-            case "bulletedList" -> use("BulletedList") + ".builder().items(List.of(\"Primer punto\", \"Segundo punto\", \"Tercer punto\")).build()" + hidden(useList());
+                    ").description(" + q(or(n.text(), t("Algo que merece atención especial.", "Something that deserves special attention."))) + ").build()";
+            case "bulletedList" -> use("BulletedList") + ".builder().items(List.of(" + q(t("Primer punto", "First point")) + ", " +
+                    q(t("Segundo punto", "Second point")) + ", " + q(t("Tercer punto", "Third point")) + ")).build()" + hidden(useList());
             case "statusList" -> use("StatusList") + ".builder().items(" + listOf(List.of(
-                    statusItem("Operativo", "OK"), statusItem("Degradado", "Aviso"), statusItem("Caído", "Error"))) + ").build()";
+                    statusItem(t("Operativo", "Operational"), "OK"), statusItem(t("Degradado", "Degraded"), t("Aviso", "Warning")),
+                    statusItem(t("Caído", "Down"), "Error"))) + ").build()";
             case "checklist" -> use("Checklist") + ".builder()" +
                     (n.title() != null && !n.title().isBlank() ? ".title(" + q(n.title()) + ")" : "") + ".items(" + listOf(List.of(
-                    checklistItem("Hecho", true), checklistItem("También hecho", true), checklistItem("Pendiente", false))) + ").build()";
+                    checklistItem(t("Hecho", "Done"), true), checklistItem(t("También hecho", "Also done"), true),
+                    checklistItem(t("Pendiente", "Pending"), false))) + ").build()";
             case "fileList" -> use("FileList") + ".builder().files(" + listOf(List.of(
-                    use("FileItem") + ".builder().name(\"contrato.pdf\").size(\"1,2 MB\").build()",
-                    "FileItem.builder().name(\"foto.png\").size(\"340 KB\").build()")) + ").build()";
+                    use("FileItem") + ".builder().name(" + q(t("contrato.pdf", "contract.pdf")) + ").size(" + q(t("1,2 MB", "1.2 MB")) + ").build()",
+                    "FileItem.builder().name(" + q(t("foto.png", "photo.png")) + ").size(\"340 KB\").build()")) + ").build()";
             case "separator" -> use("Separator") + ".builder().build()";
-            case "entityHeader" -> use("EntityHeader") + ".builder().title(" + q(or(n.title(), "Entidad")) +
-                    ").subtitle(" + q(or(n.text(), "metadatos · estado")) + ").build()";
-            case "emptyState" -> use("EmptyState") + ".builder().icon(\"🗇\").title(" + q(or(n.title(), or(n.text(), "Nada por aquí todavía"))) + ").build()";
+            case "entityHeader" -> use("EntityHeader") + ".builder().title(" + q(or(n.title(), t("Entidad", "Entity"))) +
+                    ").subtitle(" + q(or(n.text(), t("metadatos · estado", "metadata · status"))) + ").build()";
+            case "emptyState" -> use("EmptyState") + ".builder().icon(\"🗇\").title(" + q(or(n.title(), or(n.text(), t("Nada por aquí todavía", "Nothing here yet")))) + ").build()";
             case "skeleton" -> use("Skeleton") + ".builder().variant(" + use("SkeletonVariant") + ".text).count(3).build()";
             case "progressBar" -> use("ProgressBar") + ".builder().max(100).value(40).build()";
-            case "meter" -> use("Meter") + ".builder().label(" + q(or(n.title(), "Medidor")) + ").value(72.0).max(100.0).build()";
-            case "taskProgress" -> use("TaskProgress") + ".builder().label(" + q(or(n.title(), "Tareas")) + ").total(5).done(3).build()";
+            case "meter" -> use("Meter") + ".builder().label(" + q(or(n.title(), t("Medidor", "Meter"))) + ").value(72.0).max(100.0).build()";
+            case "taskProgress" -> use("TaskProgress") + ".builder().label(" + q(or(n.title(), t("Tareas", "Tasks"))) + ").total(5).done(3).build()";
             case "progressSteps" -> progressSteps(List.of());
             case "timeline" -> use("Timeline") + ".builder().items(" + listOf(List.of(
-                    timelineItem("t1", "Creado", "hace 2 días"), timelineItem("t2", "Aprobado", "ayer"), timelineItem("t3", "Enviado", "hoy"))) + ").build()";
+                    timelineItem("t1", t("Creado", "Created"), t("hace 2 días", "2 days ago")),
+                    timelineItem("t2", t("Aprobado", "Approved"), t("ayer", "yesterday")),
+                    timelineItem("t3", t("Enviado", "Sent"), t("hoy", "today")))) + ").build()";
             case "calendar" -> use("Calendar") + ".builder().month(" + useLocalDate() + ".now().withDayOfMonth(1)).events(" + listOf(List.of(
-                    use("CalendarEvent") + ".builder().id(\"e1\").title(" + q(or(n.title(), "Evento")) + ").date(LocalDate.now()).build()")) + ").build()";
+                    use("CalendarEvent") + ".builder().id(\"e1\").title(" + q(or(n.title(), t("Evento", "Event"))) + ").date(LocalDate.now()).build()")) + ").build()";
             case "kanban" -> use("Kanban") + ".builder().columns(" + listOf(List.of(
-                    kanbanColumn("todo", "Por hacer", 2), kanbanColumn("doing", "En curso", 1), kanbanColumn("done", "Hecho", 1))) + ").build()";
+                    kanbanColumn("todo", t("Por hacer", "To do"), 2), kanbanColumn("doing", t("En curso", "In progress"), 1),
+                    kanbanColumn("done", t("Hecho", "Done"), 1))) + ").build()";
             case "gantt" -> use("Gantt") + ".builder().tasks(" + listOf(List.of(
-                    ganttTask("g1", "Análisis", 0, 7, 1.0), ganttTask("g2", "Diseño", 5, 14, 0.5), ganttTask("g3", "Construcción", 12, 24, 0.1))) + ").build()";
+                    ganttTask("g1", t("Análisis", "Analysis"), 0, 7, 1.0), ganttTask("g2", t("Diseño", "Design"), 5, 14, 0.5),
+                    ganttTask("g3", t("Construcción", "Build"), 12, 24, 0.1))) + ").build()";
             case "trendChart" -> use("TrendChart") + ".builder()" +
                     (n.title() != null && !n.title().isBlank() ? ".title(" + q(n.title()) + ")" : "") +
-                    ".values(List.of(3.0, 5.0, 4.0, 8.0, 7.0, 10.0)).labels(List.of(\"L\", \"M\", \"X\", \"J\", \"V\", \"S\")).build()" + hidden(useList());
+                    ".values(List.of(3.0, 5.0, 4.0, 8.0, 7.0, 10.0)).labels(List.of(" + t("\"L\", \"M\", \"X\", \"J\", \"V\", \"S\"",
+                            "\"M\", \"T\", \"W\", \"T\", \"F\", \"S\"") + ")).build()" + hidden(useList());
             case "heatmap" -> {
                 var cells = new ArrayList<String>();
                 var sample = new double[]{3, 6, 2, 8, 5, 1, 7};
@@ -209,70 +234,78 @@ public final class ComponentTreeJava {
                 yield use("Heatmap") + ".builder().cells(" + listOf(cells) + ").build()";
             }
             case "funnel" -> use("Funnel") + ".builder().stages(" + listOf(List.of(
-                    funnelStage("Visitas", 100), funnelStage("Interesados", 70), funnelStage("Ofertas", 45), funnelStage("Cierres", 25))) + ").build()";
-            case "orgChart" -> use("OrgChart") + ".builder().root(" + use("OrgNode") + ".builder().id(\"root\").title(" + q(or(n.title(), "Dirección")) +
-                    ").children(" + listOf(List.of(orgNode("a", "Área A"), orgNode("b", "Área B"))) + ").build()).build()";
+                    funnelStage(t("Visitas", "Visits"), 100), funnelStage(t("Interesados", "Leads"), 70),
+                    funnelStage(t("Ofertas", "Offers"), 45), funnelStage(t("Cierres", "Deals"), 25))) + ").build()";
+            case "orgChart" -> use("OrgChart") + ".builder().root(" + use("OrgNode") + ".builder().id(\"root\").title(" + q(or(n.title(), t("Dirección", "Management"))) +
+                    ").children(" + listOf(List.of(orgNode("a", t("Área A", "Area A")), orgNode("b", t("Área B", "Area B")))) + ").build()).build()";
             case "featureGrid" -> use("FeatureGrid") + ".builder().columns(3).features(" + listOf(List.of(
-                    feature("⚡", "Rápido"), feature("🔒", "Seguro"), feature("🧩", "Modular"))) + ").build()";
+                    feature("⚡", t("Rápido", "Fast")), feature("🔒", t("Seguro", "Secure")), feature("🧩", "Modular"))) + ").build()";
             case "testimonials" -> use("Testimonials") + ".builder().items(" + listOf(List.of(
-                    use("Testimonial") + ".builder().quote(" + q(or(n.text(), "Nos cambió la forma de trabajar.")) + ").author(\"Cliente contento\").build()")) + ").build()";
+                    use("Testimonial") + ".builder().quote(" + q(or(n.text(), t("Nos cambió la forma de trabajar.", "It changed the way we work."))) +
+                    ").author(" + q(t("Cliente contento", "Happy customer")) + ").build()")) + ").build()";
             case "faq" -> use("Faq") + ".builder().items(" + listOf(List.of(
-                    faqItem("¿Cómo empiezo?", "Creando tu primer proyecto."), faqItem("¿Cuánto cuesta?", "Depende del plan."))) + ").build()";
+                    faqItem(t("¿Cómo empiezo?", "How do I start?"), t("Creando tu primer proyecto.", "By creating your first project.")),
+                    faqItem(t("¿Cuánto cuesta?", "How much does it cost?"), t("Depende del plan.", "It depends on the plan.")))) + ").build()";
             case "commentThread" -> use("CommentThread") + ".builder().comments(" + listOf(List.of(
-                    comment("c1", "Ana", "Esto está casi listo"), comment("c2", "Luis", "Le doy un repaso y cierro"))) + ").build()";
-            case "comparisonCard" -> use("ComparisonCard") + ".builder().title(" + q(or(n.title(), "Comparativa")) +
-                    ").leftLabel(\"Básico\").leftValue(\"✓\").rightLabel(\"Pro\").rightValue(\"✓✓\").build()";
-            case "kpi", "metricCard" -> metricCard(or(n.title(), "kpi".equals(n.kind()) ? "KPI" : "Métrica"));
-            case "stat" -> use("Stat") + ".builder().label(" + q(or(n.title(), "Estadística")) + ").value(\"1.234\").build()";
+                    comment("c1", t("Ana", "Anna"), t("Esto está casi listo", "This is almost ready")),
+                    comment("c2", t("Luis", "Louis"), t("Le doy un repaso y cierro", "I will give it a final pass and close it")))) + ").build()";
+            case "comparisonCard" -> use("ComparisonCard") + ".builder().title(" + q(or(n.title(), t("Comparativa", "Comparison"))) +
+                    ").leftLabel(" + q(t("Básico", "Basic")) + ").leftValue(\"✓\").rightLabel(\"Pro\").rightValue(\"✓✓\").build()";
+            case "kpi", "metricCard" -> metricCard(or(n.title(), "kpi".equals(n.kind()) ? "KPI" : t("Métrica", "Metric")));
+            case "stat" -> use("Stat") + ".builder().label(" + q(or(n.title(), t("Estadística", "Statistic"))) + ").value(" + q(t("1.234", "1,234")) + ").build()";
             // ---- Mateu enterprise/booking wave ----
             case "planningBoard" -> use("PlanningBoard") + ".builder().from(" + useLocalDate() + ".now()).to(LocalDate.now().plusDays(13)).resources(" + listOf(List.of(
-                    use("PlanningResource") + ".builder().id(\"r1\").label(\"Recurso A\").build()",
-                    "PlanningResource.builder().id(\"r2\").label(\"Recurso B\").build()")) +
+                    use("PlanningResource") + ".builder().id(\"r1\").label(" + q(t("Recurso A", "Resource A")) + ").build()",
+                    "PlanningResource.builder().id(\"r2\").label(" + q(t("Recurso B", "Resource B")) + ").build()")) +
                     ").blocks(" + listOf(List.of(
-                    use("PlanningBlock") + ".builder().id(\"b1\").resourceId(\"r1\").start(LocalDate.now().plusDays(1)).end(LocalDate.now().plusDays(4)).label(\"Bloque\").build()")) + ").build()";
-            case "offerCard" -> use("OfferCard") + ".builder().title(" + q(or(n.title(), "Una oferta irresistible")) +
-                    ").subtitle(" + q(or(n.text(), "Lo que la hace especial")) +
-                    ").features(List.of(\"Ventaja uno\", \"Ventaja dos\")).priceLabel(\"59 €\").actionLabel(\"Añadir\").build()" + hidden(useList());
+                    use("PlanningBlock") + ".builder().id(\"b1\").resourceId(\"r1\").start(LocalDate.now().plusDays(1)).end(LocalDate.now().plusDays(4)).label(" + q(t("Bloque", "Block")) + ").build()")) + ").build()";
+            case "offerCard" -> use("OfferCard") + ".builder().title(" + q(or(n.title(), t("Una oferta irresistible", "An irresistible offer"))) +
+                    ").subtitle(" + q(or(n.text(), t("Lo que la hace especial", "What makes it special"))) +
+                    ").features(List.of(" + q(t("Ventaja uno", "Benefit one")) + ", " + q(t("Ventaja dos", "Benefit two")) +
+                    ")).priceLabel(\"59 €\").actionLabel(" + q(t("Añadir", "Add")) + ").build()" + hidden(useList());
             case "addOnPicker" -> use("AddOnPicker") + ".builder().totalLabel(\"Total\").currency(\"€\").items(" + listOf(List.of(
                     use("AddOn") + ".builder().id(\"a1\").icon(\"🧖\").title(\"Spa\").price(25.0).build()",
-                    "AddOn.builder().id(\"a2\").icon(\"🍳\").title(\"Desayuno\").price(12.0).build()")) + ").build()";
+                    "AddOn.builder().id(\"a2\").icon(\"🍳\").title(" + q(t("Desayuno", "Breakfast")) + ").price(12.0).build()")) + ").build()";
             case "paymentPicker" -> use("PaymentPicker") + ".builder().methods(" + listOf(List.of(
-                    use("PaymentMethod") + ".builder().id(\"card\").label(\"Tarjeta\").build()",
-                    "PaymentMethod.builder().id(\"transfer\").label(\"Transferencia\").build()")) +
-                    ").confirmLabel(\"Confirmar y pagar\").build()";
+                    use("PaymentMethod") + ".builder().id(\"card\").label(" + q(t("Tarjeta", "Card")) + ").build()",
+                    "PaymentMethod.builder().id(\"transfer\").label(" + q(t("Transferencia", "Bank transfer")) + ").build()")) +
+                    ").confirmLabel(" + q(t("Confirmar y pagar", "Confirm and pay")) + ").build()";
             case "pricingTable" -> use("PricingTable") + ".builder().plans(" + listOf(List.of(
-                    use("PricingPlan") + ".builder().id(\"basic\").name(\"Básico\").price(\"9 €\").period(\"mes\").features(List.of(\"Una cosa\")).ctaLabel(\"Elegir\").build()",
-                    "PricingPlan.builder().id(\"pro\").name(\"Pro\").price(\"29 €\").period(\"mes\").featured(true).features(List.of(\"Una cosa\", \"Otra cosa\")).ctaLabel(\"Elegir\").build()")) + ").build()";
+                    use("PricingPlan") + ".builder().id(\"basic\").name(" + q(t("Básico", "Basic")) + ").price(\"9 €\").period(" + q(t("mes", "month")) +
+                    ").features(List.of(" + q(t("Una cosa", "One thing")) + ")).ctaLabel(" + q(t("Elegir", "Choose")) + ").build()",
+                    "PricingPlan.builder().id(\"pro\").name(\"Pro\").price(\"29 €\").period(" + q(t("mes", "month")) +
+                    ").featured(true).features(List.of(" + q(t("Una cosa", "One thing")) + ", " + q(t("Otra cosa", "Another thing")) +
+                    ")).ctaLabel(" + q(t("Elegir", "Choose")) + ").build()")) + ").build()";
             case "processMonitor" -> use("ProcessMonitor") + ".builder().items(" + listOf(List.of(
-                    use("ProcessItem") + ".builder().id(\"p1\").name(\"Nóminas\").ok(12).warnings(0).errors(0).status(\"ok\").build()",
-                    "ProcessItem.builder().id(\"p2\").name(\"Facturación\").ok(9).warnings(2).errors(0).status(\"warn\").build()")) + ").build()";
+                    use("ProcessItem") + ".builder().id(\"p1\").name(" + q(t("Nóminas", "Payroll")) + ").ok(12).warnings(0).errors(0).status(\"ok\").build()",
+                    "ProcessItem.builder().id(\"p2\").name(" + q(t("Facturación", "Billing")) + ").ok(9).warnings(2).errors(0).status(\"warn\").build()")) + ").build()";
             case "resourceGrid" -> use("ResourceGrid") + ".builder().columns(3).items(" + listOf(List.of(
-                    use("ResourceItem") + ".builder().id(\"s1\").title(\"Estándar\").statusLabel(\"disponible\").build()",
-                    "ResourceItem.builder().id(\"s2\").title(\"Superior\").statusLabel(\"disponible\").recommended(true).build()",
-                    "ResourceItem.builder().id(\"s3\").title(\"Suite\").statusLabel(\"disponible\").build()")) + ").build()";
+                    use("ResourceItem") + ".builder().id(\"s1\").title(" + q(t("Estándar", "Standard")) + ").statusLabel(" + q(t("disponible", "available")) + ").build()",
+                    "ResourceItem.builder().id(\"s2\").title(\"Superior\").statusLabel(" + q(t("disponible", "available")) + ").recommended(true).build()",
+                    "ResourceItem.builder().id(\"s3\").title(\"Suite\").statusLabel(" + q(t("disponible", "available")) + ").build()")) + ").build()";
             case "taskQueue" -> use("TaskQueue") + ".builder().groups(" + listOf(List.of(
-                    use("QueueGroup") + ".builder().label(" + q(or(n.title(), "Pendientes")) + ").items(" + listOf(List.of(
-                    use("QueueItem") + ".builder().id(\"t1\").title(\"Revisar contrato\").build()",
-                    "QueueItem.builder().id(\"t2\").title(\"Llamar al cliente\").build()")) + ").build()")) + ").build()";
+                    use("QueueGroup") + ".builder().label(" + q(or(n.title(), t("Pendientes", "Pending"))) + ").items(" + listOf(List.of(
+                    use("QueueItem") + ".builder().id(\"t1\").title(" + q(t("Revisar contrato", "Review contract")) + ").build()",
+                    "QueueItem.builder().id(\"t2\").title(" + q(t("Llamar al cliente", "Call the customer")) + ").build()")) + ").build()")) + ").build()";
             case "ledger" -> use("Ledger") + ".builder().currency(\"€\").totalLabel(\"Total\").total(265.0).lines(" + listOf(List.of(
-                    use("LedgerLine") + ".builder().concept(\"Habitación\").amount(240.0).build()",
+                    use("LedgerLine") + ".builder().concept(" + q(t("Habitación", "Room")) + ").amount(240.0).build()",
                     "LedgerLine.builder().concept(\"Spa\").amount(25.0).build()")) + ").build()";
             case "chat" -> n.params() != null && n.params().get("sseUrl") != null
                     ? use("Chat") + ".builder().sseUrl(" + q(n.params().get("sseUrl")) + ")" +
                         (n.params().get("uploadUrl") != null ? ".uploadUrl(" + q(n.params().get("uploadUrl")) + ")" : "") + ".build()"
                     : use("EmptyState") + ".builder().icon(\"💬\").title(\"Chat\").description(" +
-                        q("El chat necesita su URL SSE: añade el parámetro sseUrl al nodo") + ").build()";
-            case "markdown" -> use("Markdown") + ".builder().markdown(" + q(or(n.text(), "# Título\\n\\nTexto con **negritas**.")) + ").build()";
-            case "breadcrumbs" -> use("Breadcrumbs") + ".builder().currentItemText(" + q(or(n.title(), "Aquí")) +
-                    ").breadcrumbs(" + listOf(List.of("new " + use("Breadcrumb") + "(\"Inicio\", \"/\")")) + ").build()";
+                        q(t("El chat necesita su URL SSE: añade el parámetro sseUrl al nodo", "The chat needs its SSE URL: add the sseUrl parameter to the node")) + ").build()";
+            case "markdown" -> use("Markdown") + ".builder().markdown(" + q(or(n.text(), t("# Título\\n\\nTexto con **negritas**.", "# Title\\n\\nText with **bold**."))) + ").build()";
+            case "breadcrumbs" -> use("Breadcrumbs") + ".builder().currentItemText(" + q(or(n.title(), t("Aquí", "Here"))) +
+                    ").breadcrumbs(" + listOf(List.of("new " + use("Breadcrumb") + "(" + q(t("Inicio", "Home")) + ", \"/\")")) + ").build()";
             // ---- interaction leaves ----
-            case "button" -> actionButton(or(n.label(), "Botón"), n.useCaseId(), n.mappingId(), null);
+            case "button" -> actionButton(or(n.label(), t("Botón", "Button")), n.useCaseId(), n.mappingId(), null);
             case "fab" -> actionButton("+", n.useCaseId(), n.mappingId(), "border-radius:50%;width:48px;height:48px;font-size:20px");
             case "filterBar" -> use("HorizontalLayout") + ".builder().spacing(true).content(" +
-                    listOf(List.of(button("Estado ▾"), button("Fecha ▾"), button("Tipo ▾"))) + ").build()";
+                    listOf(List.of(button(t("Estado ▾", "Status ▾")), button(t("Fecha ▾", "Date ▾")), button(t("Tipo ▾", "Type ▾")))) + ").build()";
             case "menuBar" -> use("HorizontalLayout") + ".builder().spacing(true).content(" +
-                    listOf(List.of(button("Inicio"), button("Opciones"))) + ").build()";
-            case "appContext" -> button(or(n.label(), "Contexto ▾"));
+                    listOf(List.of(button(t("Inicio", "Home")), button(t("Opciones", "Options")))) + ").build()";
+            case "appContext" -> button(or(n.label(), t("Contexto ▾", "Context ▾")));
             // ---- data-bound leaves: wired when the designer connected them ----
             case "form" -> form(n);
             case "field" -> standaloneField(n);
@@ -311,7 +344,7 @@ public final class ComponentTreeJava {
         return use("Form", "fluent") + ".builder().title(" + q(or(n.title(), or(n.label(), model.name()))) +
                 ").content(" + listOf(formFields) + ")" +
                 (actionId == null ? "" : ".buttons(" + listOf(List.of(
-                        use("Button") + ".builder().label(\"Guardar\").actionId(" + q(actionId) + ").build()")) + ")") +
+                        use("Button") + ".builder().label(" + q(t("Guardar", "Save")) + ").actionId(" + q(actionId) + ").build()")) + ")") +
                 ".build()";
     }
 
@@ -471,14 +504,14 @@ public final class ComponentTreeJava {
                             var queryService = queryServiceProvider == null ? null : queryServiceProvider.getIfAvailable();
                             if (queryService == null) {
                                 return new ListingData<>(new io.mateu.uidl.data.Page<>(searchText, pageable.size(), pageable.page(), 0, List.of()),
-                                        "Implementa %s en el módulo custom para alimentar este listado.");
+                                        %s);
                             }
                 %s
                             var filtered = searchText == null || searchText.isBlank()
                                     ? all
                                     : all.stream().filter(row -> String.valueOf(row).toLowerCase().contains(searchText.toLowerCase())).toList();
                             var items = filtered.stream().skip((long) pageable.page() * pageable.size()).limit(pageable.size()).toList();
-                            return new ListingData<>(new io.mateu.uidl.data.Page<>(searchText, pageable.size(), pageable.page(), filtered.size(), items), "Sin datos.");
+                            return new ListingData<>(new io.mateu.uidl.data.Page<>(searchText, pageable.size(), pageable.page(), filtered.size(), items), %s);
                         }
                 %s
                         @Override
@@ -500,8 +533,10 @@ public final class ComponentTreeJava {
                 qsType,
                 className, qsType,
                 rowType,
-                qsType,
+                q(t("Implementa " + qsType + " en el módulo custom para alimentar este listado.",
+                        "Implement " + qsType + " in the custom module to feed this listing.")),
                 fetch,
+                q(t("Sin datos.", "No data.")),
                 detailHandler,
                 title == null ? "" : ".title(" + q(title) + ")", crud,
                 listingExtras,
@@ -579,12 +614,16 @@ public final class ComponentTreeJava {
             cases.add("""
                                 case "%s" -> {
                                     if (%s == null) {
-                                        yield Message.warning("No hay implementación de %s en este servicio");
+                                        yield Message.warning(%s);
                                     }
                                     %s.handle(new %s(%s));
                                     // the toast, plus the event every wired listing refreshes on
-                                    yield List.of(Message.success("%s ejecutado"), UICommand.dispatchEvent("modux-data-changed"));
-                                }""".formatted(entry.getKey(), field, ucClass, field, cmdClass, args, cap(useCase.name())));
+                                    yield List.of(Message.success(%s), UICommand.dispatchEvent("modux-data-changed"));
+                                }""".formatted(entry.getKey(), field,
+                                q(t("No hay implementación de " + ucClass + " en este servicio",
+                                        "There is no implementation of " + ucClass + " in this service")),
+                                field, cmdClass, args,
+                                q(t(cap(useCase.name()) + " ejecutado", cap(useCase.name()) + " done"))));
         }
         return """
                     @Override
@@ -672,13 +711,14 @@ public final class ComponentTreeJava {
     /** The designer left this node unconnected: say exactly what is missing. */
     private String unwired(UiComponentNodeEntity n) {
         var what = switch (n.kind()) {
-            case "form" -> "asigna un model al formulario en el diseñador";
-            case "field" -> "asigna un campo del viewmodel en el diseñador";
-            default -> "asigna un query service y su operación en el diseñador";
+            case "form" -> t("asigna un model al formulario en el diseñador", "assign a model to the form in the designer");
+            case "field" -> t("asigna un campo del viewmodel en el diseñador", "assign a viewmodel field in the designer");
+            default -> t("asigna un query service y su operación en el diseñador",
+                    "assign a query service and its operation in the designer");
         };
         return use("EmptyState") + ".builder().icon(\"🧩\").title(" +
                 q(or(n.label(), or(n.title(), n.kind()))) +
-                ").description(" + q("Componente «" + n.kind() + "» sin datos: " + what) + ").build()";
+                ").description(" + q(t("Componente «" + n.kind() + "» sin datos: ", "Component «" + n.kind() + "» without data: ") + what) + ").build()";
     }
 
     private void bindingField(ModelFieldEntity f) {
@@ -753,13 +793,13 @@ public final class ComponentTreeJava {
     }
 
     private String metricCard(String title) {
-        return use("MetricCard") + ".builder().title(" + q(title) + ").value(\"1.234\").build()";
+        return use("MetricCard") + ".builder().title(" + q(title) + ").value(" + q(t("1.234", "1,234")) + ").build()";
     }
 
     private String progressSteps(List<UiComponentNodeEntity> kids) {
         var steps = new ArrayList<String>();
         var titles = kids.stream().map(c -> or(c.title(), or(c.label(), null))).filter(t -> t != null).toList();
-        if (titles.isEmpty()) titles = List.of("Paso 1", "Paso 2", "Paso 3");
+        if (titles.isEmpty()) titles = List.of(t("Paso 1", "Step 1"), t("Paso 2", "Step 2"), t("Paso 3", "Step 3"));
         for (var i = 0; i < titles.size(); i++) {
             var status = i == 0 ? "done" : i == 1 ? "current" : "upcoming";
             steps.add(use("Step") + ".builder().id(\"s" + (i + 1) + "\").title(" + q(titles.get(i)) + ").status(\"" + status + "\").build()");
@@ -782,7 +822,7 @@ public final class ComponentTreeJava {
     private String kanbanColumn(String id, String title, int cards) {
         var cardExprs = new ArrayList<String>();
         for (var i = 1; i <= cards; i++) {
-            cardExprs.add(use("KanbanCard") + ".builder().id(\"" + id + i + "\").title(\"Tarjeta " + i + "\").build()");
+            cardExprs.add(use("KanbanCard") + ".builder().id(\"" + id + i + "\").title(" + q(t("Tarjeta ", "Card ") + i) + ").build()");
         }
         return use("KanbanColumn") + ".builder().id(\"" + id + "\").title(" + q(title) + ").cards(" + listOf(cardExprs) + ").build()";
     }

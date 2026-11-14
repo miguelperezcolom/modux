@@ -3508,7 +3508,7 @@ public class GenerateCodeUseCase {
                     .filter(node -> page.id().equals(node.detailPageId()))
                     .filter(node -> node.queryServiceId() != null)
                     .findFirst().orElse(null);
-            var tree = ComponentTreeJava.of(page.content(), wiring, detailSource);
+            var tree = ComponentTreeJava.of(page.content(), wiring, detailSource, speaksSpanish(project));
             model.put("componentTree", tree.expression());
             model.put("treeImports", tree.imports());
             model.put("treeFields", tree.classFields());
