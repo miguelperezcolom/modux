@@ -190,23 +190,23 @@ ${req}    ${lbl}String ${field.name}Id;
 <#if hayValidaciones>
         // Model-declared validations (NotNull / NotBlank / NotEmpty) — fail legibly before
         // touching the use case.
-        var faltan = new java.util.ArrayList<String>();
+        var missing = new java.util.ArrayList<String>();
 <#list inputModel.fields as field>
 <#if field.basicType?? && field.basicType && field.validations?? && field.validations?has_content>
 <#list field.validations as v>
 <#assign lbl = ((field.label?? && field.label?has_content)?then(field.label, field.name))?j_string>
 <#if v.type == "NotNull">
-        if (${field.name} == null) faltan.add("${lbl}");
+        if (${field.name} == null) missing.add("${lbl}");
 <#elseif v.type == "NotBlank" || v.type == "NotEmpty">
 <#if !(field.type?? && (field.type == "integer" || field.type == "number" || field.type == "money" || field.type == "bool" || field.type == "date" || field.type == "time" || field.type == "dateTime"))>
-        if (${field.name} == null || ${field.name}.isBlank()) faltan.add("${lbl}");
+        if (${field.name} == null || ${field.name}.isBlank()) missing.add("${lbl}");
 </#if>
 </#if>
 </#list>
 </#if>
 </#list>
-        if (!faltan.isEmpty()) {
-            throw new IllegalArgumentException("Faltan datos obligatorios: " + String.join(", ", faltan));
+        if (!missing.isEmpty()) {
+            throw new IllegalArgumentException("<#if uiEs>Faltan datos obligatorios<#else>Missing required fields</#if>: " + String.join(", ", missing));
         }
 </#if>
 </#if>

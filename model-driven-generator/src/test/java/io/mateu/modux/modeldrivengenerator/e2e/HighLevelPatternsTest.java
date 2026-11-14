@@ -66,6 +66,23 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void a_form_field_naming_another_contexts_aggregate_picks_it_from_the_read_model_kept_here() throws Exception {
+        // comprar (Ventas) takes a conciertoId; Concierto lives in Catálogo, Ventas keeps ConciertoView
+        var page = read("ComprarPage.java");
+        assertTrue(page.contains("@io.mateu.uidl.annotations.Lookup(search = es.entradas.ventas.infra.in.ui.suppliers"
+                + ".ConciertoViewReadModelIdOptionsSupplier.class, label = es.entradas.ventas.infra.in.ui.suppliers"
+                + ".ConciertoViewReadModelIdLabelSupplier.class)"), page);
+        var options = read("ConciertoViewReadModelIdOptionsSupplier.java");
+        assertTrue(options.contains("@Service(\"ventasConciertoViewReadModelIdOptionsSupplier\")"), options);
+        // shown by its first text field, the artist, not by its id
+        assertTrue(options.contains("row.artista()"), options);
+        var label = read("ConciertoViewReadModelIdLabelSupplier.java");
+        assertTrue(label.contains("queryService.getById(String.valueOf(id))"), label);
+        // the Spanish model keeps its Spanish message for what is missing
+        assertTrue(page.contains("Faltan datos obligatorios"), page);
+    }
+
+    @Test
     void an_operation_that_takes_a_correlative_number_runs_in_one_transaction() throws Exception {
         // confirmar fills the purchase's localizador from a SEQUENCE, which needs the caller's transaction
         var useCase = read("ConfirmarCompraUseCase.java");

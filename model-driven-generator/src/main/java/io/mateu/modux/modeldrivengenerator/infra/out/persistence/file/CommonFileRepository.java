@@ -322,9 +322,13 @@ public class CommonFileRepository implements io.mateu.modux.modeldrivengenerator
             if (relations != null) relations.forEach(this::putTransient);
             if (externals != null) externals.forEach(this::putTransient);
             putTransient(project.toBuilder().contextMap(List.of()).externalSystems(List.of()).build());
-            log.info("migrated {} relation(s) and {} external system(s) out of project {}",
-                    relations == null ? 0 : relations.size(),
-                    externals == null ? 0 : externals.size(), project.id());
+            // Read-only callers (the Maven plugin) load the model on every run and never save it, so
+            // this is said on every run until the files change: say what to do, not "migrated".
+            log.info("project {} still nests {} relation(s) and {} external system(s): they are read as their own"
+                            + " elements; save the model from the editor, or move them to contextMapRelations/ and"
+                            + " externalSystems/, and this note goes away",
+                    project.id(), relations == null ? 0 : relations.size(),
+                    externals == null ? 0 : externals.size());
         }
         hoistLegacyDeployment();
     }

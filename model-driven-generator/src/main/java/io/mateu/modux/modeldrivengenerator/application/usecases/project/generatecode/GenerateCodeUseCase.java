@@ -1218,7 +1218,10 @@ public class GenerateCodeUseCase {
                 });
             }
             model.put("gridClasses", gridClasses);
-            model.put("lookups", lookupsOf(project, service, boundedContext));
+            var lookups = lookupsOf(project, service, boundedContext);
+            readModelLookupsOf(project, boundedContext, useCase, boundedContextDir, boundedContextPackageDir)
+                    .forEach(lookups::putIfAbsent);
+            model.put("lookups", lookups);
             model.put("enumOptions", enumOptionsOf(useCase));
 
             var templateFile = pageTemplateFile(useCase);
@@ -1294,6 +1297,59 @@ public class GenerateCodeUseCase {
                     .ifPresent(aggregate -> lookups.put(uncapitalize(aggregate.name()) + "Id", Map.of(
                             "suppliers", project.packageName() + "." + boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "")
                                     + ".infra.in.ui.suppliers." + aggregate.name())));
+        }
+        return lookups;
+    }
+
+    /**
+     * The input fields of a use case that name an aggregate of ANOTHER context ({@code concertId} in
+     * Sales, Concert living in Catalog) which this context keeps a read model of: the form picks one
+     * from that read model, shown by its first text field, instead of asking for an id. The
+     * suppliers are generated here, next to the page; a name clash with an aggregate of the context
+     * itself is left to that aggregate's own lookup ({@link #lookupsOf}).
+     */
+    private Map<String, Map<String, String>> readModelLookupsOf(ProjectEntity project, BoundedContextEntity boundedContext,
+                                                               UseCaseEntity useCase, String boundedContextDir,
+                                                               String boundedContextPackageDir) {
+        var lookups = new HashMap<String, Map<String, String>>();
+        if (useCase.inputModelId() == null || useCase.inputModelId().isBlank()) return lookups;
+        var input = repository.findById(useCase.inputModelId(), ModelEntity.class).orElse(null);
+        if (input == null || input.fields() == null) return lookups;
+        var contextSlug = boundedContext.name().toLowerCase().replaceAll("[^a-z0-9]", "");
+        var basePackage = project.packageName() + "." + contextSlug;
+        for (var field : input.fields()) {
+            if (!field.basicType() || field.name() == null || !field.name().endsWith("Id") || field.name().equals("id")) continue;
+            var referenced = field.name().substring(0, field.name().length() - 2);
+            for (var rmId : boundedContext.readModelIds() != null ? boundedContext.readModelIds() : List.<String>of()) {
+                var rm = repository.findById(rmId, ReadModelEntity.class).orElse(null);
+                if (rm == null || rm.aggregateId() == null) continue;
+                var aggregate = repository.findById(rm.aggregateId(), AggregateEntity.class).orElse(null);
+                if (aggregate == null || !aggregate.name().equalsIgnoreCase(referenced)) continue;
+                var labelAccessor = repository.findById(rm.modelId(), ModelEntity.class)
+                        .map(m -> m.fields() == null ? List.<ModelFieldEntity>of() : m.fields()).orElse(List.of()).stream()
+                        .filter(f -> f.basicType() && f.type() != null && "string".equals(f.type().name()) && !"id".equals(f.name()))
+                        .map(ModelFieldEntity::name)
+                        .findFirst().orElse("id");
+                var className = toTypeName(rm.name()).replaceAll("ReadModel$", "") + "ReadModel";
+                var supplierPackage = basePackage + ".infra.in.ui.suppliers";
+                var supplierModel = new HashMap<String, Object>();
+                supplierModel.put("supplierPackage", supplierPackage);
+                supplierModel.put("className", className);
+                // two contexts of one service may keep a view of the same name: the bean name says whose
+                supplierModel.put("beanPrefix", contextSlug + className);
+                supplierModel.put("queryService", basePackage + ".application.query." + className + "QueryService");
+                supplierModel.put("queryServiceSimple", className + "QueryService");
+                supplierModel.put("labelAccessor", labelAccessor);
+                supplierModel.put("aggregateName", aggregate.name());
+                supplierModel.put("readModelName", rm.name());
+                supplierModel.put("fieldName", field.name());
+                var dir = "src/main/java/" + boundedContextPackageDir + "/infra/in/ui/suppliers/";
+                createDir(boundedContextDir, dir);
+                createFile(boundedContextDir, supplierModel, "readmodel-options-supplier.ftl", dir + className + "IdOptionsSupplier.java");
+                createFile(boundedContextDir, supplierModel, "readmodel-label-supplier.ftl", dir + className + "IdLabelSupplier.java");
+                lookups.put(field.name(), Map.of("suppliers", supplierPackage + "." + className));
+                break;
+            }
         }
         return lookups;
     }
