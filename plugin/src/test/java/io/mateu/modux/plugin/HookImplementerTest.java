@@ -37,6 +37,22 @@ class HookImplementerTest {
     }
 
     @Test
+    void a_hook_scaffolded_in_english_is_pending_too() throws Exception {
+        // what aggregate-operation-default.ftl scaffolds for a project that does not speak Spanish
+        var english = "class D { void execute() { throw new UnsupportedOperationException(\n"
+                + "    \"Operation «withdraw» of Book is not implemented yet: An AVAILABLE book becomes WITHDRAWN.\"); } }";
+        var hook = hook("D.java", english);
+        var written = implementer("===FILE: x/D.java\nclass D { void execute() { } }\n===END", "exit 0").implementAll(dir.resolve("out"));
+        assertEquals(List.of(hook), written);
+        assertEquals("class D { void execute() { } }", Files.readString(hook));
+        // the use-case step and domain-service scaffolds say it the same way
+        assertTrue(HookImplementer.PENDING.matcher("\"«reserve» (Checkout) is not implemented yet\"").find());
+        assertTrue(HookImplementer.PENDING.matcher("\"«price» of Pricing is not implemented yet\"").find());
+        // a developer's own message is not a scaffold
+        assertFalse(HookImplementer.PENDING.matcher("throw new IllegalStateException(\"Refunds are not implemented yet\");").find());
+    }
+
+    @Test
     void leaves_implemented_hooks_alone() throws Exception {
         var done = hook("Done.java", "class Done { }");
         var written = implementer("nothing", "exit 0").implementAll(dir.resolve("out"));
