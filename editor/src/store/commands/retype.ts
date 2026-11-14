@@ -22,6 +22,7 @@
 
 import { asList, type Element, type ModelStore } from '../store.js';
 import { CommandError, type Handler } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 interface Retype {
   /** Store bucket. */
@@ -35,14 +36,14 @@ interface Retype {
 
 /** The closed list: every type that can be changed, keyed by the name commands use. */
 export const RETYPES: Record<string, Retype> = {
-  aggregate: { type: 'aggregates', family: 'structure', label: 'Agregado' },
-  entity: { type: 'entities', family: 'structure', label: 'Entidad' },
-  'value-object': { type: 'valueObjects', family: 'structure', label: 'Value object' },
-  'domain-event': { type: 'domainEvents', family: 'event', label: 'Evento de dominio' },
-  'application-event': { type: 'applicationEvents', family: 'event', label: 'Evento de aplicación' },
-  'integration-event': { type: 'integrationEvents', family: 'event', label: 'Evento de integración' },
-  'use-case': { type: 'useCases', family: 'behavior', label: 'Caso de uso', policy: false },
-  policy: { type: 'useCases', family: 'behavior', label: 'Policy', policy: true },
+  aggregate: { type: 'aggregates', family: 'structure', get label() { return t('store.retype.type.aggregate'); } },
+  entity: { type: 'entities', family: 'structure', get label() { return t('store.retype.type.entity'); } },
+  'value-object': { type: 'valueObjects', family: 'structure', get label() { return t('store.retype.type.valueObject'); } },
+  'domain-event': { type: 'domainEvents', family: 'event', get label() { return t('store.retype.type.domainEvent'); } },
+  'application-event': { type: 'applicationEvents', family: 'event', get label() { return t('store.retype.type.applicationEvent'); } },
+  'integration-event': { type: 'integrationEvents', family: 'event', get label() { return t('store.retype.type.integrationEvent'); } },
+  'use-case': { type: 'useCases', family: 'behavior', get label() { return t('store.retype.type.useCase'); }, policy: false },
+  policy: { type: 'useCases', family: 'behavior', get label() { return t('store.retype.type.policy'); }, policy: true },
 };
 
 /** What `from` can be turned into (same family, not itself). */
@@ -86,12 +87,12 @@ export const RETYPE_COMMANDS: Record<string, Handler> = {
     const id = String(command.id ?? '');
     const from = RETYPES[String(command.from ?? '')];
     const to = RETYPES[String(command.to ?? '')];
-    if (!from || !to) throw new CommandError(`No se puede cambiar de «${command.from}» a «${command.to}»`);
+    if (!from || !to) throw new CommandError(t('store.retype.unknownTypes', { from: String(command.from), to: String(command.to) }));
     if (from.family !== to.family || from === to) {
-      throw new CommandError(`Un ${from.label.toLowerCase()} no se puede convertir en ${to.label.toLowerCase()}`);
+      throw new CommandError(t('store.retype.incompatible', { from: from.label.toLowerCase(), to: to.label.toLowerCase() }));
     }
     const element = store.get(from.type, id);
-    if (!element) throw new CommandError(`Elemento desconocido: ${from.type}/${id}`);
+    if (!element) throw new CommandError(t('store.unknown.element', { id: `${from.type}/${id}` }));
 
     // Same bucket (use case ↔ policy): it is a flag.
     if (from.type === to.type) {
@@ -101,14 +102,14 @@ export const RETYPE_COMMANDS: Record<string, Handler> = {
 
     const blockers = references(store, id, from.type);
     if (blockers.length) {
-      const shown = blockers.slice(0, 5).join(', ') + (blockers.length > 5 ? ` y ${blockers.length - 5} más` : '');
-      throw new CommandError(`No se puede cambiar el tipo de «${name(element)}»: lo referencian ${shown}. Quita esas referencias primero.`);
+      const shown = blockers.slice(0, 5).join(', ') + (blockers.length > 5 ? t('store.retype.andMore', { count: blockers.length - 5 }) : '');
+      throw new CommandError(t('store.retype.referenced', { name: name(element), refs: shown }));
     }
     const lost = Object.entries(element)
       .filter(([k, v]) => Array.isArray(v) && v.length > 0 && !SHARED[to.family].includes(k) && !(k in FRESH[to.type]()))
       .map(([k]) => k);
     if (lost.length) {
-      throw new CommandError(`No se puede cambiar el tipo de «${name(element)}»: perdería ${lost.join(', ')}. Vacíalo primero.`);
+      throw new CommandError(t('store.retype.wouldLose', { name: name(element), fields: lost.join(', ') }));
     }
 
     // Where it lives now, read before the move.

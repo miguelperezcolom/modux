@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/index.js';
 import { apply, applyAll, CommandError, unsupported } from '../apply.js';
 import { asList, ModelStore } from '../store.js';
+
+beforeAll(() => setLanguage('es'));
 
 /** Read a list field the way consuming code does: absent and empty are one thing. */
 const list = (store: ModelStore, type: string, id: string, field: string) =>

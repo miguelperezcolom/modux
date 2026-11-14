@@ -9,6 +9,7 @@
 
 import { nested, type Element, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler, remove } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 export const FLOW_COMMANDS: Record<string, Handler> = {
   'add-flow': add({
@@ -79,7 +80,7 @@ export const FLOW_COMMANDS: Record<string, Handler> = {
     const process = requireProcess(store, command.processId);
     const steps = nested(process.steps);
     const step = steps.find((s) => s.id === command.id);
-    if (!step) throw new CommandError(`Paso desconocido: ${command.id}`);
+    if (!step) throw new CommandError(t('store.unknown.step', { id: command.id }));
     const rest = steps.filter((s) => s.id !== command.id);
     store.patch('processes', process.id, {
       steps: spliceAfter(rest, step, command.afterStepId as string | undefined, 0),
@@ -114,7 +115,7 @@ function spliceAfter(
 
 function requireProcess(store: ModelStore, id: unknown): Element {
   const process = store.get('processes', String(id));
-  if (!process) throw new CommandError(`Proceso desconocido: ${id}`);
+  if (!process) throw new CommandError(t('store.unknown.process', { id: String(id) }));
   return process;
 }
 

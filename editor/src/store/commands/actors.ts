@@ -9,6 +9,7 @@
 
 import { asList, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler, remove } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 /** Which list on the actor a target belongs in, by what the target turns out to be. */
 const USE_TARGETS: { type: string; list: string }[] = [
@@ -29,11 +30,11 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
       (Array.isArray(p.steps) ? (p.steps as Record<string, unknown>[]) : [])
         .some((step) => step.roleId === id || step.escalationRoleId === id));
     if (inProcess) {
-      throw new CommandError(`El actor ${id} participa en procesos; desasígnalo primero`);
+      throw new CommandError(t('store.actor.removeInProcesses', { id }));
     }
     const inUseCase = store.all('useCases').some((uc) => asList(uc.allowedRoles).includes(id));
     if (inUseCase) {
-      throw new CommandError(`El actor ${id} está permitido en casos de uso; desasígnalo primero`);
+      throw new CommandError(t('store.actor.removeAllowedInUseCases', { id }));
     }
     store.remove('roles', id);
   },
@@ -45,7 +46,7 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
     const kind = USE_TARGETS.find((t) => store.has(t.type, target));
     if (!kind) {
       throw new CommandError(
-        `Un actor solo usa casos de uso o query services; destino desconocido: ${target}`);
+        t('store.actor.invalidUseTarget', { target }));
     }
     store.addToList('roles', actor.id, kind.list, target);
   },
@@ -64,7 +65,7 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
     const actor = requireActor(store, command.sourceId);
     const target = String(command.targetId);
     if (!store.has('externalSystems', target)) {
-      throw new CommandError(`Sistema externo desconocido: ${target}`);
+      throw new CommandError(t('store.unknown.externalSystem', { id: target }));
     }
     store.addToList('roles', actor.id, 'externalSystemIds', target);
   },
@@ -89,10 +90,10 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
    */
   'add-view-member': (store, command) => {
     const view = store.get('views', String(command.id));
-    if (!view) throw new CommandError(`Vista desconocida: ${command.id}`);
+    if (!view) throw new CommandError(t('store.unknown.view', { id: command.id }));
     if (view.kind === 'COMPUTED') {
       throw new CommandError(
-        `La vista ${view.name ?? view.id} es computada; sus miembros se derivan del seed`);
+        t('store.view.computedMembers', { name: String(view.name ?? view.id) }));
     }
     store.addToList('views', view.id, 'memberIds', String(command.targetId));
   },
@@ -111,7 +112,7 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
   'add-module-element': (store, command) => {
     const moduleId = String(command.id);
     const module = store.get('modules', moduleId);
-    if (!module) throw new CommandError(`Módulo desconocido: ${moduleId}`);
+    if (!module) throw new CommandError(t('store.unknown.module', { id: moduleId }));
     const elementId = String(command.elementId);
     for (const sibling of store.all('modules')) {
       if (sibling.id === moduleId) continue;
@@ -123,7 +124,7 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
 
   'remove-module-element': (store, command) => {
     const moduleId = String(command.id);
-    if (!store.has('modules', moduleId)) throw new CommandError(`Módulo desconocido: ${moduleId}`);
+    if (!store.has('modules', moduleId)) throw new CommandError(t('store.unknown.module', { id: moduleId }));
     store.removeFromList('modules', moduleId, 'elementIds', String(command.elementId));
   },
 
@@ -131,8 +132,8 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
 
   'add-service-url': (store, command) => {
     const serviceId = String(command.serviceId);
-    if (!store.has('services', serviceId)) throw new CommandError(`Servicio desconocido: ${serviceId}`);
-    if (!store.has('urls', String(command.id))) throw new CommandError(`URL desconocida: ${command.id}`);
+    if (!store.has('services', serviceId)) throw new CommandError(t('store.unknown.service', { id: serviceId }));
+    if (!store.has('urls', String(command.id))) throw new CommandError(t('store.unknown.url', { id: command.id }));
     store.addToList('services', serviceId, 'urlIds', String(command.id));
   },
 
@@ -143,7 +144,7 @@ export const ACTOR_COMMANDS: Record<string, Handler> = {
 
 function requireActor(store: ModelStore, id: unknown) {
   const actor = store.get('roles', String(id));
-  if (!actor) throw new CommandError(`Actor desconocido: ${id}`);
+  if (!actor) throw new CommandError(t('store.unknown.actor', { id: String(id) }));
   return actor;
 }
 

@@ -13,6 +13,7 @@ import { asList, nested, type Element, type ModelStore } from '../store.js';
 import { CommandError, type Handler } from '../spec.js';
 import { findUnboundedLoop, memberGateways, workflowOf } from '../workflow-graph.js';
 import { blank, mustGet } from './models.js';
+import { t, type MessageKey } from '../../i18n/index.js';
 
 /** The semantics each gateway kind admits. */
 const SEMANTICS: Record<string, string[]> = {
@@ -118,7 +119,7 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
     if (from.id === to.id) return;
     const id = String(command.id);
     const moving = nested(from.steps).find((s) => s.id === id);
-    if (!moving) throw new CommandError(`Paso desconocido: ${id}`);
+    if (!moving) throw new CommandError(t('store.unknown.step', { id: id }));
 
     store.patch('workflows', from.id, {
       steps: nested(from.steps)
@@ -138,10 +139,10 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
   },
 
   /** Who works the task. A step with a role is a human step; clearing it makes it a system one. */
-  'set-workflow-step-role': stepRef('roleId', 'roles', 'Rol'),
+  'set-workflow-step-role': stepRef('roleId', 'roles', 'store.kind.role'),
 
   /** The page the forms engine renders as the task's form. */
-  'set-workflow-step-form': stepRef('formPageId', 'pages', 'Página'),
+  'set-workflow-step-form': stepRef('formPageId', 'pages', 'store.kind.page'),
 
   // ---- dependencies --------------------------------------------------------
 
@@ -149,10 +150,10 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
     const workflow = requireWorkflow(store, command.workflowId);
     const id = String(command.id);
     const dependsOn = String(command.dependsOnStepId);
-    if (id === dependsOn) throw new CommandError('Un paso no puede depender de sí mismo');
+    if (id === dependsOn) throw new CommandError(t('store.workflow.stepDependsOnSelf'));
     const steps = nested(workflow.steps);
     if (!steps.some((s) => s.id === dependsOn)) {
-      throw new CommandError(`Paso desconocido: ${dependsOn}`);
+      throw new CommandError(t('store.unknown.step', { id: dependsOn }));
     }
     const candidate = steps.map((s) => (s.id === id
       && !asList(s.dependsOnStepIds).includes(dependsOn)
@@ -201,10 +202,10 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
 
   /** ALL/ANY for a join, PARALLEL/EXCLUSIVE for a split. Nothing goes back to the default. */
   'set-gateway-semantics': (store, command) => {
-    const gateway = mustGet(store, 'workflowGateways', command.id, 'Gateway');
+    const gateway = mustGet(store, 'workflowGateways', command.id, 'store.kind.gateway');
     const semantics = blank(command.type) ? null : String(command.type);
     if (semantics && !SEMANTICS[String(gateway.type)]?.includes(semantics)) {
-      throw new CommandError(`Semántica inválida para un ${gateway.type}: ${semantics}`);
+      throw new CommandError(t('store.workflow.invalidSemantics', { type: String(gateway.type), semantics }));
     }
     store.patch('workflowGateways', gateway.id, { semantics });
   },
@@ -214,13 +215,13 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
    * every branch, so a condition on one would say nothing.
    */
   'set-gateway-branch-condition': (store, command) => {
-    const gateway = mustGet(store, 'workflowGateways', command.id, 'Gateway');
+    const gateway = mustGet(store, 'workflowGateways', command.id, 'store.kind.gateway');
     if (gateway.type !== 'SPLIT' || gateway.semantics !== 'EXCLUSIVE') {
-      throw new CommandError('Las condiciones por rama son del split EXCLUSIVO');
+      throw new CommandError(t('store.workflow.branchConditionsOnlyExclusive'));
     }
     const target = String(command.targetId);
     if (!asList(gateway.targetIds).includes(target)) {
-      throw new CommandError(`Esa rama no sale de este split: ${target}`);
+      throw new CommandError(t('store.workflow.branchNotFromSplit', { target }));
     }
     const kept = nested(gateway.branchConditions).filter((c) => c.targetId !== target);
     const expression = typeof command.text === 'string' ? command.text.trim() : '';
@@ -246,8 +247,7 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
     const sourceWorkflow = workflowOf(store, sourceId);
     const targetWorkflow = targetIsWorkflow ? undefined : workflowOf(store, targetId);
     if (sourceWorkflow && targetWorkflow && sourceWorkflow !== targetWorkflow) {
-      throw new CommandError('Los dos extremos ya pertenecen a workflows distintos:'
-        + ' a otro workflow solo se llega apuntando al workflow');
+      throw new CommandError(t('store.workflow.endpointsInDifferentWorkflows'));
     }
     // a hand-off leaves this workflow (a sink) and cannot close a loop; every other link adds
     // one unconditioned edge, so check it before drawing
@@ -258,11 +258,11 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
     if (targetGateway) {
       if (targetGateway.type === 'SPLIT' && asList(targetGateway.sourceIds).length
         && !asList(targetGateway.sourceIds).includes(sourceId)) {
-        throw new CommandError('Un split solo tiene UNA entrada');
+        throw new CommandError(t('store.workflow.splitSingleInput'));
       }
       if (!sourceGateway && hasOutgoing(store, sourceId)) {
         throw new CommandError(
-          'Ese nodo ya fluye hacia otro sitio: un paso o workflow solo sale a UN nodo');
+          t('store.workflow.nodeAlreadyFlows'));
       }
       if (sourceGateway) linkFromGateway(store, sourceGateway, targetId);
       store.addToList('workflowGateways', targetGateway.id, 'sourceIds', sourceId);
@@ -275,9 +275,9 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
     if (targetIsWorkflow) {
       const workflow = store.all('workflows')
         .find((wf) => nested(wf.steps).some((s) => s.id === sourceId));
-      if (!workflow) throw new CommandError(`Paso desconocido: ${sourceId}`);
+      if (!workflow) throw new CommandError(t('store.unknown.step', { id: sourceId }));
       if (hasOutgoing(store, sourceId)) {
-        throw new CommandError('Ese paso ya fluye hacia otro sitio: un paso solo sale a UN nodo');
+        throw new CommandError(t('store.workflow.stepAlreadyFlows'));
       }
       store.patch('workflows', workflow.id, {
         steps: nested(workflow.steps).map((s) =>
@@ -285,7 +285,7 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
       });
       return;
     }
-    throw new CommandError('Ese enlace no involucra a un gateway ni a un workflow');
+    throw new CommandError(t('store.workflow.linkWithoutGatewayOrWorkflow'));
   },
 
   'remove-workflow-link': (store, command) => {
@@ -405,12 +405,12 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
 };
 
 /** Set a reference on one step of one workflow, checking the target exists. */
-function stepRef(field: string, type: string, label: string): Handler {
+function stepRef(field: string, type: string, label: MessageKey): Handler {
   return (store, command) => {
     const workflow = requireWorkflow(store, command.workflowId);
     const id = String(command.id);
     if (!nested(workflow.steps).some((s) => s.id === id)) {
-      throw new CommandError(`Paso desconocido: ${id}`);
+      throw new CommandError(t('store.unknown.step', { id: id }));
     }
     if (command.targetId) mustGet(store, type, command.targetId, label);
     store.patch('workflows', workflow.id, {
@@ -424,7 +424,7 @@ function stepRef(field: string, type: string, label: string): Handler {
 function linkFromGateway(store: ModelStore, gateway: Element, targetId: string): void {
   if (gateway.type === 'JOIN' && asList(gateway.targetIds).length
     && !asList(gateway.targetIds).includes(targetId)) {
-    throw new CommandError('Un join solo tiene UNA salida');
+    throw new CommandError(t('store.workflow.joinSingleOutput'));
   }
   store.addToList('workflowGateways', gateway.id, 'targetIds', targetId);
 }
@@ -461,7 +461,7 @@ const indexAfter = (steps: Element[], afterStepId: string) => {
 
 function requireWorkflow(store: ModelStore, id: unknown): Element {
   const workflow = store.get('workflows', String(id));
-  if (!workflow) throw new CommandError(`Workflow desconocido: ${id}`);
+  if (!workflow) throw new CommandError(t('store.unknown.workflow', { id: String(id) }));
   return workflow;
 }
 

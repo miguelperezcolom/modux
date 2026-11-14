@@ -5,6 +5,7 @@ import type { EditorLayout } from '../scene.js';
 import type { ModuxEditor } from '../modux-editor.js';
 import { MODUX_THEME } from '../theme.js';
 import '../modux-editor.js';
+import { LanguageController, t } from '../i18n/index.js';
 
 /**
  * REST-connected host wrapper. Use this element when embedding the editor in
@@ -16,6 +17,8 @@ import '../modux-editor.js';
 export class ModuxEditorConnected extends LitElement {
   /** Base URL of the editor API. */
   @property() base = '/modux/editor';
+
+  readonly _i18n = new LanguageController(this, { root: true });
 
   @state() private _model: ModuxModel | null = null;
   @state() private _layout: EditorLayout = {};
@@ -209,7 +212,7 @@ export class ModuxEditorConnected extends LitElement {
       // describes valid inverses, so it is discarded rather than misapplied.
       (this.renderRoot.querySelector('modux-editor') as ModuxEditor | null)?.clearHistory();
       this.showToast(
-        'El modelo ha cambiado fuera de este editor: recargado (historial de deshacer reiniciado)',
+        t('hosts.connected.reloadedExternally'),
         'info',
       );
     }
@@ -257,7 +260,7 @@ export class ModuxEditorConnected extends LitElement {
         });
         if (!res.ok) {
           // Rejections arrive as 400 + {message}; anything else gets a generic line.
-          let message = `El servidor rechazó el comando (${res.status})`;
+          let message = t('hosts.connected.commandRejected', { status: res.status });
           try {
             const body = await res.json();
             if (body?.message) message = body.message;
@@ -297,7 +300,7 @@ export class ModuxEditorConnected extends LitElement {
       return html`<div class="status error">modux editor: ${this._error}</div>`;
     }
     if (!this._model) {
-      return html`<div class="status">Cargando el modelo…</div>`;
+      return html`<div class="status">${t('hosts.loadingModel')}</div>`;
     }
     return html`
       <modux-editor

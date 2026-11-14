@@ -13,6 +13,7 @@
 import { nested, type Element, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler } from '../spec.js';
 import { blank, clearComponentField, mustGet } from './models.js';
+import { t, type MessageKey } from '../../i18n/index.js';
 
 /** Everything an identity provider can be wired to. */
 const IDP_HOLDERS = ['uiAdapters', 'boundedContexts', 'etlFlows'];
@@ -47,16 +48,16 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
 
   /** Federation: the external system publishing this IdP. Nothing means it is ours. */
   'set-idp-publisher': (store, command) => {
-    const idp = mustGet(store, 'identityProviders', command.id, 'IdP');
+    const idp = mustGet(store, 'identityProviders', command.id, 'store.kind.idp');
     const publisher = blank(command.targetId) ? null : String(command.targetId);
-    if (publisher) mustGet(store, 'externalSystems', publisher, 'Sistema externo');
+    if (publisher) mustGet(store, 'externalSystems', publisher, 'store.kind.externalSystem');
     store.patch('identityProviders', idp.id, { publishedByExternalSystemId: publisher });
   },
 
   /** Wires an app, a bounded context or an ETL flow to its IdP; nothing unwires it. */
   'set-identity-provider': (store, command) => {
     const idpId = blank(command.targetId) ? null : String(command.targetId);
-    if (idpId) mustGet(store, 'identityProviders', idpId, 'IdP');
+    if (idpId) mustGet(store, 'identityProviders', idpId, 'store.kind.idp');
     const id = String(command.id);
     for (const type of IDP_HOLDERS) {
       if (store.has(type, id)) {
@@ -65,7 +66,7 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
       }
     }
     throw new CommandError(
-      `El IdP se relaciona con apps, bounded contexts o flujos ETL: ${id}`);
+      t('store.platform.idpTarget', { id }));
   },
 
   // ---- notifications -------------------------------------------------------
@@ -87,17 +88,17 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
 
   /** What fires it — a domain event or an application event; nothing unpoints it. */
   'set-notification-event': (store, command) => {
-    const notification = mustGet(store, 'notifications', command.id, 'Notificación');
+    const notification = mustGet(store, 'notifications', command.id, 'store.kind.notification');
     const eventId = blank(command.targetId) ? null : String(command.targetId);
     if (eventId && !store.has('domainEvents', eventId) && !store.has('applicationEvents', eventId)) {
-      throw new CommandError(`Evento desconocido: ${eventId}`);
+      throw new CommandError(t('store.unknown.event', { id: eventId }));
     }
     store.patch('notifications', notification.id, { eventId });
   },
 
   'add-notification-recipient': (store, command) => {
-    const notification = mustGet(store, 'notifications', command.id, 'Notificación');
-    mustGet(store, 'roles', command.roleId, 'Actor');
+    const notification = mustGet(store, 'notifications', command.id, 'store.kind.notification');
+    mustGet(store, 'roles', command.roleId, 'store.kind.actor');
     store.addToList('notifications', notification.id, 'recipientRoleIds', String(command.roleId));
   },
 
@@ -123,14 +124,14 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
   },
 
   'set-document-model': (store, command) => {
-    const document = mustGet(store, 'documents', command.id, 'Documento');
+    const document = mustGet(store, 'documents', command.id, 'store.kind.document');
     const modelId = blank(command.modelId) ? null : String(command.modelId);
-    if (modelId) mustGet(store, 'models', modelId, 'Modelo');
+    if (modelId) mustGet(store, 'models', modelId, 'store.kind.model');
     store.patch('documents', document.id, { modelId });
   },
 
   'set-document-query': (store, command) => {
-    const document = mustGet(store, 'documents', command.id, 'Documento');
+    const document = mustGet(store, 'documents', command.id, 'store.kind.document');
     store.patch('documents', document.id, {
       queryServiceId: blank(command.queryServiceId) ? null : command.queryServiceId,
       queryOperationId: blank(command.queryOperationId) ? null : command.queryOperationId,
@@ -140,7 +141,7 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
   /** i18n: the locales the system speaks, and which one it falls back to. */
   'set-project-locales': (store, command) => {
     const project = store.all('projects')[0];
-    if (!project) throw new CommandError('No hay proyecto en el modelo');
+    if (!project) throw new CommandError(t('store.platform.noProject'));
     store.patch('projects', project.id, {
       locales: command.fieldIds ?? [],
       defaultLocale: command.label ?? null,
@@ -162,8 +163,8 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
 
   /** One step: a source to pull from, a transform, or a write. */
   'add-etl-step': (store, command) => {
-    const flow = mustGet(store, 'etlFlows', command.etlFlowId, 'Flujo ETL');
-    if (blank(command.stepType)) throw new CommandError('El paso ETL necesita un tipo');
+    const flow = mustGet(store, 'etlFlows', command.etlFlowId, 'store.kind.etlFlow');
+    if (blank(command.stepType)) throw new CommandError(t('store.platform.etlStepNeedsType'));
     const steps = nested(flow.steps);
     const id = String(command.id);
     if (steps.some((s) => s.id === id)) return;
@@ -207,7 +208,7 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
   },
 
   'add-group-button': (store, command) => {
-    const group = mustGet(store, 'buttonGroups', command.id, 'Grupo de botones');
+    const group = mustGet(store, 'buttonGroups', command.id, 'store.kind.buttonGroup');
     const buttons = nested(group.buttons);
     if (buttons.some((b) => b.id === command.itemId)) return;
     store.patch('buttonGroups', group.id, {
@@ -216,7 +217,7 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
   },
 
   'remove-group-button': (store, command) => {
-    const group = mustGet(store, 'buttonGroups', command.id, 'Grupo de botones');
+    const group = mustGet(store, 'buttonGroups', command.id, 'store.kind.buttonGroup');
     store.patch('buttonGroups', group.id, {
       buttons: nested(group.buttons).filter((b) => b.id !== command.itemId),
     });
@@ -224,7 +225,7 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
 
   /** What the button FIRES: a use case, or one API operation. Nothing clears it. */
   'set-group-button-target': (store, command) => {
-    const group = mustGet(store, 'buttonGroups', command.id, 'Grupo de botones');
+    const group = mustGet(store, 'buttonGroups', command.id, 'store.kind.buttonGroup');
     store.patch('buttonGroups', group.id, {
       buttons: nested(group.buttons).map((b) => (b.id === command.itemId ? {
         ...b,
@@ -238,14 +239,14 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
   },
 
   'add-group-subgroup': (store, command) => {
-    const group = mustGet(store, 'buttonGroups', command.id, 'Grupo de botones');
-    mustGet(store, 'buttonGroups', command.targetId, 'Grupo de botones');
+    const group = mustGet(store, 'buttonGroups', command.id, 'store.kind.buttonGroup');
+    mustGet(store, 'buttonGroups', command.targetId, 'store.kind.buttonGroup');
     if (group.id === command.targetId) return;
     store.addToList('buttonGroups', group.id, 'groupIds', String(command.targetId));
   },
 
   'remove-group-subgroup': (store, command) => {
-    const group = mustGet(store, 'buttonGroups', command.id, 'Grupo de botones');
+    const group = mustGet(store, 'buttonGroups', command.id, 'store.kind.buttonGroup');
     store.removeFromList('buttonGroups', group.id, 'groupIds', String(command.targetId));
   },
 
@@ -275,13 +276,13 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
     store.remove('customCodes', id);
   },
 
-  'set-mapping-custom-code': delegateTo('modelMappings', 'Mapeo'),
-  'set-transformation-custom-code': delegateTo('transformations', 'Transformación'),
-  'set-page-custom-code': delegateTo('pages', 'Página'),
+  'set-mapping-custom-code': delegateTo('modelMappings', 'store.kind.mapping'),
+  'set-transformation-custom-code': delegateTo('transformations', 'store.kind.transformation'),
+  'set-page-custom-code': delegateTo('pages', 'store.kind.page'),
 
   /** The step delegates to hand-written code — that is what makes it a Custom step. */
   'set-use-case-step-custom-code': (store, command) => {
-    const useCase = mustGet(store, 'useCases', command.useCaseId, 'Caso de uso');
+    const useCase = mustGet(store, 'useCases', command.useCaseId, 'store.kind.useCase');
     const customCodeId = codeRef(store, command);
     store.patch('useCases', useCase.id, {
       steps: nested(useCase.steps).map((s) => (s.id === command.id ? { ...s, customCodeId } : s)),
@@ -289,7 +290,7 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
   },
 
   'set-page-component-custom-code': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     const customCodeId = codeRef(store, command);
     const componentId = String(command.componentId);
     const walk = (nodes: Element[]): Element[] => nodes.map((node) => ({
@@ -303,18 +304,18 @@ export const PLATFORM_COMMANDS: Record<string, Handler> = {
 
   /** The code TOUCHES an element — free-form intent, for the map to draw the reach. */
   'add-custom-code-use': (store, command) => {
-    const code = mustGet(store, 'customCodes', command.id, 'Custom code');
+    const code = mustGet(store, 'customCodes', command.id, 'store.kind.customCode');
     store.addToList('customCodes', code.id, 'usedElementIds', String(command.elementId));
   },
 
   'remove-custom-code-use': (store, command) => {
-    const code = mustGet(store, 'customCodes', command.id, 'Custom code');
+    const code = mustGet(store, 'customCodes', command.id, 'store.kind.customCode');
     store.removeFromList('customCodes', code.id, 'usedElementIds', String(command.elementId));
   },
 };
 
 /** Wire one element to a piece of custom code; nothing unwires it. */
-function delegateTo(type: string, label: string): Handler {
+function delegateTo(type: string, label: MessageKey): Handler {
   return (store, command) => {
     const element = mustGet(store, type, command.id, label);
     store.patch(type, element.id, { customCodeId: codeRef(store, command) });
@@ -324,7 +325,7 @@ function delegateTo(type: string, label: string): Handler {
 /** The code being pointed at, checked to exist. Nothing means «unwire». */
 function codeRef(store: ModelStore, command: Record<string, any>): string | null {
   if (blank(command.targetId)) return null;
-  mustGet(store, 'customCodes', command.targetId, 'Custom code');
+  mustGet(store, 'customCodes', command.targetId, 'store.kind.customCode');
   return String(command.targetId);
 }
 

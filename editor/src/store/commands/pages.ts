@@ -14,6 +14,7 @@ import { asList, nested, type Element, type ModelStore } from '../store.js';
 import { byId, find, insert, insertUnder, remove, replace, type Node } from '../forest.js';
 import { CommandError, type Command, type Handler } from '../spec.js';
 import { blank, mustGet } from './models.js';
+import { t } from '../../i18n/index.js';
 
 /** A tabLayout is born with two tabs, so it is usable the moment it is dropped. */
 const TAB_LAYOUT = 'tabLayout';
@@ -32,7 +33,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
     });
     if (blank(command.appId)) return;
     // born reachable: the page hangs from the app's menu right away
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     const label = blank(command.menuLabel) ? command.name : command.menuLabel;
     store.patch('uiAdapters', app.id, {
       menuItems: [...menuOf(app), { id: `mi-${id}`, label, pageId: id }],
@@ -72,29 +73,29 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   },
 
   'rename-ui-page': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     store.patch('pages', page.id, { name: command.name });
   },
 
   'set-page-type': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     store.patch('pages', page.id, { type: command.pageType });
   },
 
   'set-page-route': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     store.patch('pages', page.id, { route: command.path });
   },
 
   'set-page-model': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
-    if (command.modelId) mustGet(store, 'models', command.modelId, 'Modelo');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
+    if (command.modelId) mustGet(store, 'models', command.modelId, 'store.kind.model');
     store.patch('pages', page.id, { modelId: command.modelId ?? null });
   },
 
   'set-page-listing': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
-    if (command.queryServiceId) mustGet(store, 'queryServices', command.queryServiceId, 'Query service');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
+    if (command.queryServiceId) mustGet(store, 'queryServices', command.queryServiceId, 'store.kind.queryService');
     store.patch('pages', page.id, { listingQueryServiceId: command.queryServiceId ?? null });
   },
 
@@ -117,7 +118,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
     }
     const parentId = String(command.parentComponentId);
     const parent = find(content, byId(parentId));
-    if (!parent) throw new CommandError(`Componente desconocido: ${parentId}`);
+    if (!parent) throw new CommandError(t('store.unknown.component', { id: parentId }));
     requireTabRules(kind, String(parent.kind));
     store.patch(type, el.id, {
       content: insertUnder(content, byId(parentId), node)!,
@@ -127,7 +128,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   'remove-page-component': (store, command) => {
     const { type, el } = contentHost(store, command);
     const pruned = remove(contentOf(el), byId(String(command.componentId)));
-    if (!pruned) throw new CommandError(`Componente desconocido: ${command.componentId}`);
+    if (!pruned) throw new CommandError(t('store.unknown.component', { id: command.componentId }));
     store.patch(type, el.id, { content: pruned });
   },
 
@@ -139,11 +140,11 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   'set-page-component': (store, command) => {
     const host = contentHost(store, command);
     for (const [field, type, label] of [
-      ['useCaseId', 'useCases', 'Caso de uso'],
-      ['modelId', 'models', 'Modelo'],
-      ['mappingId', 'modelMappings', 'Mapeo'],
-      ['queryServiceId', 'queryServices', 'Query service'],
-      ['detailPageId', 'pages', 'Página de detalle'],
+      ['useCaseId', 'useCases', 'store.kind.useCase'],
+      ['modelId', 'models', 'store.kind.model'],
+      ['mappingId', 'modelMappings', 'store.kind.mapping'],
+      ['queryServiceId', 'queryServices', 'store.kind.queryService'],
+      ['detailPageId', 'pages', 'store.kind.detailPage'],
     ] as const) {
       if (command[field]) mustGet(store, type, command[field], label);
     }
@@ -162,7 +163,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
       colspan: command.colspan ?? null,
       detailPageId: command.detailPageId ?? null,
     }));
-    if (!updated) throw new CommandError(`Componente desconocido: ${command.componentId}`);
+    if (!updated) throw new CommandError(t('store.unknown.component', { id: command.componentId }));
     store.patch(host.type, host.el.id, { content: updated });
   },
 
@@ -171,12 +172,12 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
     const content = contentOf(el);
     const componentId = String(command.componentId);
     const node = find(content, byId(componentId));
-    if (!node) throw new CommandError(`Componente desconocido: ${componentId}`);
+    if (!node) throw new CommandError(t('store.unknown.component', { id: componentId }));
 
     const toParentId = blank(command.parentComponentId) ? null : String(command.parentComponentId);
     if (toParentId && find([node], byId(toParentId))) {
       throw new CommandError(
-        `Un componente no puede moverse dentro de sí mismo: ${componentId}`);
+        t('store.page.componentIntoItself', { id: componentId }));
     }
     const pruned = remove(content, byId(componentId))!;
     const before = blank(command.beforeComponentId)
@@ -188,7 +189,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
       return;
     }
     const parent = find(pruned, byId(toParentId));
-    if (!parent) throw new CommandError(`Componente desconocido: ${toParentId}`);
+    if (!parent) throw new CommandError(t('store.unknown.component', { id: toParentId }));
     requireTabRules(String(node.kind), String(parent.kind));
     store.patch(type, el.id, {
       content: insertUnder(pruned, byId(toParentId), node, before)!,
@@ -199,8 +200,8 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
 
   /** A button fires a use case; its label defaults to the use case's own name. */
   'add-page-button': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
-    const useCase = mustGet(store, 'useCases', command.useCaseId, 'Caso de uso');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
+    const useCase = mustGet(store, 'useCases', command.useCaseId, 'store.kind.useCase');
     const bar = String(command.type).toLowerCase() === 'bottom' ? 'bottomBar' : 'toolbar';
     store.patch('pages', page.id, {
       [bar]: [...nested(page[bar]), {
@@ -222,8 +223,8 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   },
 
   'set-page-button': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
-    if (command.mappingId) mustGet(store, 'modelMappings', command.mappingId, 'Mapeo');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
+    if (command.mappingId) mustGet(store, 'modelMappings', command.mappingId, 'store.kind.mapping');
     const edit = (buttons: Element[]) => buttons.map((b) => (b.useCaseId === command.useCaseId
       ? {
         ...b,
@@ -238,14 +239,14 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   },
 
   'add-page-bar-group': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
-    mustGet(store, 'buttonGroups', command.id, 'Grupo de botones');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
+    mustGet(store, 'buttonGroups', command.id, 'store.kind.buttonGroup');
     const bar = command.bar === 'toolbar' ? 'toolbarGroupIds' : 'bottomBarGroupIds';
     store.addToList('pages', page.id, bar, String(command.id));
   },
 
   'remove-page-bar-group': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     for (const bar of ['toolbarGroupIds', 'bottomBarGroupIds']) {
       store.removeFromList('pages', page.id, bar, String(command.id));
     }
@@ -258,7 +259,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
    * an override, so one is created on first touch and merged on later ones.
    */
   'set-page-field-config': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     const configs = nested(page.fieldConfigs);
     const fieldId = String(command.fieldId);
     const previous = configs.find((c) => c.fieldId === fieldId);
@@ -284,7 +285,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
    * with no config yet gets an empty one, because otherwise it could not hold a position.
    */
   'set-page-field-order': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     const byField = new Map(nested(page.fieldConfigs).map((c) => [String(c.fieldId), c]));
     store.patch('pages', page.id, {
       fieldConfigs: asList(command.fieldIds).map((id) => byField.get(id) ?? { fieldId: id }),
@@ -295,14 +296,14 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
 
   /** A step, mapped to the page implementing it or bare — a stage named before it is built. */
   'add-page-wizard-step': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     const steps = nested(page.wizardSteps);
     const targetId = blank(command.targetId) ? null : String(command.targetId);
     let mapped: Element | undefined;
     if (targetId) {
-      mapped = mustGet(store, 'pages', targetId, 'Página');
+      mapped = mustGet(store, 'pages', targetId, 'store.kind.page');
       if (mapped.id === page.id) {
-        throw new CommandError('Un wizard no puede contenerse a sí mismo');
+        throw new CommandError(t('store.page.wizardContainsSelf'));
       }
       if (steps.some((s) => s.pageId === targetId)) return;
     }
@@ -319,15 +320,15 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   },
 
   'set-wizard-step-page': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     const targetId = blank(command.targetId) ? null : String(command.targetId);
     if (targetId) {
-      if (targetId === page.id) throw new CommandError('Un wizard no puede contenerse a sí mismo');
-      mustGet(store, 'pages', targetId, 'Página');
+      if (targetId === page.id) throw new CommandError(t('store.page.wizardContainsSelf'));
+      mustGet(store, 'pages', targetId, 'store.kind.page');
     }
     const steps = nested(page.wizardSteps);
     if (!steps.some((s) => s.key === command.itemId)) {
-      throw new CommandError(`Paso de wizard desconocido: ${command.itemId}`);
+      throw new CommandError(t('store.unknown.wizardStep', { id: command.itemId }));
     }
     store.patch('pages', page.id, {
       wizardSteps: steps.map((s) => (s.key === command.itemId ? { ...s, pageId: targetId } : s)),
@@ -335,17 +336,17 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
   },
 
   'remove-page-wizard-step': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     store.patch('pages', page.id, {
       wizardSteps: nested(page.wizardSteps).filter((s) => s.key !== command.targetId),
     });
   },
 
   'move-page-wizard-step': (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     const steps = nested(page.wizardSteps) as Node[];
     const moving = steps.find((s) => s.key === command.targetId);
-    if (!moving) throw new CommandError(`Paso de wizard desconocido: ${command.targetId}`);
+    if (!moving) throw new CommandError(t('store.unknown.wizardStep', { id: command.targetId }));
     const rest = steps.filter((s) => s.key !== command.targetId);
     const before = blank(command.beforeItemId)
       ? undefined : (s: Node) => s.key === command.beforeItemId;
@@ -356,14 +357,14 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
 /** CRUD detail/create: a page or an app, and setting one clears the other. */
 function crudTarget(pageField: string, appField: string): Handler {
   return (store, command) => {
-    const page = mustGet(store, 'pages', command.pageId, 'Página');
+    const page = mustGet(store, 'pages', command.pageId, 'store.kind.page');
     if (String(page.type ?? '').toUpperCase() !== 'CRUD') {
-      throw new CommandError('Solo un CRUD tiene detalle y formulario de alta');
+      throw new CommandError(t('store.page.detailOnlyCrud'));
     }
     const targetPage = blank(command.targetId) ? null : String(command.targetId);
     const targetApp = blank(command.toAppId) ? null : String(command.toAppId);
-    if (targetPage) mustGet(store, 'pages', targetPage, 'Página');
-    if (targetApp) mustGet(store, 'uiAdapters', targetApp, 'App de UI');
+    if (targetPage) mustGet(store, 'pages', targetPage, 'store.kind.page');
+    if (targetApp) mustGet(store, 'uiAdapters', targetApp, 'store.kind.uiApp');
     store.patch('pages', page.id, {
       [pageField]: targetApp ? null : targetPage,
       [appField]: targetApp,
@@ -385,10 +386,10 @@ function newComponent(id: string, kind: string): Node {
 /** tab ↔ tabLayout go together: neither makes sense without the other. */
 function requireTabRules(kind: string, parentKind: string | undefined): void {
   if (parentKind === TAB_LAYOUT && kind !== TAB) {
-    throw new CommandError('Un tabLayout solo admite pestañas');
+    throw new CommandError(t('store.page.tabLayoutOnlyTabs'));
   }
   if (kind === TAB && parentKind !== TAB_LAYOUT) {
-    throw new CommandError('Una pestaña solo puede colgar de un tabLayout');
+    throw new CommandError(t('store.page.tabOnlyInTabLayout'));
   }
 }
 
@@ -401,8 +402,8 @@ const menuOf = (app: Element) => nested(app.menuItems) as Node[];
  */
 function contentHost(store: ModelStore, command: Command): { type: string; el: Element } {
   return !blank(command.mockupId)
-    ? { type: 'mockups', el: mustGet(store, 'mockups', command.mockupId, 'Mockup') }
-    : { type: 'pages', el: mustGet(store, 'pages', command.pageId, 'Página') };
+    ? { type: 'mockups', el: mustGet(store, 'mockups', command.mockupId, 'store.kind.mockup') }
+    : { type: 'pages', el: mustGet(store, 'pages', command.pageId, 'store.kind.page') };
 }
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */

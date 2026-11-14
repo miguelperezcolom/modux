@@ -10,6 +10,7 @@
  */
 
 import { asList, nested, type Element, type ModelStore } from './store.js';
+import { t } from '../i18n/index.js';
 
 /** An edge of the flow graph, and whether taking it depends on a condition. */
 interface Edge {
@@ -102,9 +103,7 @@ export function findUnboundedLoop(
     if (!isCycle(component, adjacency)) continue;
     if (hasConditionedExit(component, adjacency)) continue;
     const names = [...component].map((id) => labels.get(id) ?? id).sort();
-    return `Bucle infinito: el ciclo ${names.join(' → ')} no tiene salida condicionada.`
-      + ' Un bucle solo es válido si al menos una rama que sale del ciclo está guardada por la'
-      + ' condición de un split EXCLUSIVO.';
+    return t('store.workflow.unboundedLoop', { cycle: names.join(' → ') });
   }
   return undefined;
 }

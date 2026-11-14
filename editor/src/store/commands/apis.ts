@@ -9,6 +9,7 @@
 
 import { asList, nested, type Element, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 /** Every consumer relationship an API can be on the receiving end of. */
 const API_CONSUMERS: { type: string; list: string }[] = [
@@ -32,13 +33,11 @@ export const API_COMMANDS: Record<string, Handler> = {
     const dependant = store.all('externalSystems')
       .find((x) => asList(x.dependsOnApiIds).includes(id));
     if (dependant) {
-      throw new CommandError(`La API ${id} tiene sistemas externos que dependen de ella;`
-        + ' quita esas dependencias primero');
+      throw new CommandError(t('store.api.removeHasDependants', { id }));
     }
     const proxy = store.all('proxyApis').find((p) => p.targetApiId === id);
     if (proxy) {
-      throw new CommandError(`La API ${id} tiene proxies que apuntan a ella;`
-        + ' quita esos proxies primero');
+      throw new CommandError(t('store.api.removeHasProxies', { id }));
     }
     // gateways and agents let go of the API and of every operation leaving with it
     const leaving = new Set(nested(api.operations).map((o) => o.id));
@@ -80,11 +79,11 @@ export const API_COMMANDS: Record<string, Handler> = {
     const api = requireApi(store, command.apiId);
     const useCaseId = command.targetUseCaseId as string | undefined;
     if (useCaseId && !store.has('useCases', useCaseId)) {
-      throw new CommandError(`Caso de uso desconocido: ${useCaseId}`);
+      throw new CommandError(t('store.unknown.useCase', { id: useCaseId }));
     }
     const contextId = command.boundedContextId as string | undefined;
     if (contextId && !store.has('boundedContexts', contextId)) {
-      throw new CommandError(`Bounded context desconocido: ${contextId}`);
+      throw new CommandError(t('store.unknown.boundedContext', { id: contextId }));
     }
     const id = String(command.id);
     store.patch('apis', api.id, {
@@ -101,7 +100,7 @@ export const API_COMMANDS: Record<string, Handler> = {
     const target = command.targetId as string | undefined;
     const publisher = target && target.trim() ? target : null;
     if (publisher && !store.has('externalSystems', publisher)) {
-      throw new CommandError(`Sistema externo desconocido: ${publisher}`);
+      throw new CommandError(t('store.unknown.externalSystem', { id: publisher }));
     }
     const id = String(command.id);
     for (const type of ['apis', 'proxyApis']) {
@@ -110,7 +109,7 @@ export const API_COMMANDS: Record<string, Handler> = {
         return;
       }
     }
-    throw new CommandError(`API desconocida: ${id}`);
+    throw new CommandError(t('store.unknown.api', { id: id }));
   },
 
   'add-proxy-api': (store, command) => {
@@ -118,11 +117,11 @@ export const API_COMMANDS: Record<string, Handler> = {
     if (store.has('proxyApis', id)) return;
     const targetApiId = optional(command.targetId);
     if (targetApiId && !store.has('apis', targetApiId)) {
-      throw new CommandError(`API desconocida: ${targetApiId}`);
+      throw new CommandError(t('store.unknown.api', { id: targetApiId }));
     }
     const host = optional(command.boundedContextId);
     if (host && !store.has('externalSystems', host)) {
-      throw new CommandError(`Sistema externo desconocido: ${host}`);
+      throw new CommandError(t('store.unknown.externalSystem', { id: host }));
     }
     store.put('proxyApis', {
       id,
@@ -144,8 +143,7 @@ export const API_COMMANDS: Record<string, Handler> = {
     const dependedOn = store.all('externalSystems')
       .some((x) => asList(x.dependsOnApiIds).includes(id));
     if (dependedOn && !proxy.targetApiId) {
-      throw new CommandError(`El proxy ${id} tiene sistemas externos que dependen de él;`
-        + ' quita esas dependencias primero');
+      throw new CommandError(t('store.api.removeProxyHasDependants', { id }));
     }
     if (dependedOn) repointApiDependencies(store, id, String(proxy.targetApiId), null);
     store.remove('proxyApis', id);
@@ -154,13 +152,13 @@ export const API_COMMANDS: Record<string, Handler> = {
   'set-proxy-target': (store, command) => {
     const id = String(command.id);
     const proxy = store.get('proxyApis', id);
-    if (!proxy) throw new CommandError(`Proxy desconocido: ${id}`);
+    if (!proxy) throw new CommandError(t('store.unknown.proxy', { id: id }));
     const target = optional(command.targetId);
     if (!target) {
       store.patch('proxyApis', id, { targetApiId: null });
       return;
     }
-    if (!store.has('apis', target)) throw new CommandError(`API desconocida: ${target}`);
+    if (!store.has('apis', target)) throw new CommandError(t('store.unknown.api', { id: target }));
     store.patch('proxyApis', id, { targetApiId: target });
     repointApiDependencies(store, target, id, proxy.publishedByExternalSystemId as string | null);
   },
@@ -204,7 +202,7 @@ function detachOperations(store: ModelStore, leaving: Set<string>): void {
 
 function requireApi(store: ModelStore, id: unknown): Element {
   const api = store.get('apis', String(id));
-  if (!api) throw new CommandError(`API desconocida: ${id}`);
+  if (!api) throw new CommandError(t('store.unknown.api', { id: String(id) }));
   return api;
 }
 

@@ -1,11 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/index.js';
 import { apply, CommandError } from '../apply.js';
 import { retypeTargets } from '../commands/retype.js';
 import { migrate } from '../legacy.js';
 import { ModelStore, type Element } from '../store.js';
+
+beforeAll(() => setLanguage('es'));
 
 const retype = (store: ModelStore, id: string, from: string, to: string) =>
   apply(store, { kind: 'change-element-type', id, from, to });

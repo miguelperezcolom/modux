@@ -21,6 +21,7 @@ import {
   type IdeFileSystem,
 } from './ide-fs.js';
 import '../modux-editor.js';
+import { LanguageController, t } from '../i18n/index.js';
 
 /**
  * The view document — now SELF-CONTAINED: it carries its own members and geometry, so a view is
@@ -63,6 +64,8 @@ export class ModuxEditorIde extends LitElement {
     modux-editor { height: 100%; }
   `;
 
+  readonly _i18n = new LanguageController(this, { root: true });
+
   @state() private model: ModuxModel | null = null;
   @state() private layout: EditorLayout = {};
   @state() private error: string | null = null;
@@ -89,7 +92,7 @@ export class ModuxEditorIde extends LitElement {
   private async load(): Promise<void> {
     const bridge = hostBridge();
     if (!bridge) {
-      this.error = 'Sin puente con el IDE: este componente solo funciona dentro del plugin.';
+      this.error = t('hosts.ide.noBridge');
       return;
     }
     this.fs = ideFileSystem(bridge);
@@ -117,7 +120,7 @@ export class ModuxEditorIde extends LitElement {
       // loaded and one that never got here look the same from the IDE log
       console.info(`modux: vista abierta — corte=${this.doc.viewId ?? '(todo)'} — ${summary(this.store)}`);
     } catch (e) {
-      this.error = `No se pudo abrir la vista: ${message(e)}`;
+      this.error = t('hosts.ide.openViewFailed', { message: message(e) });
       console.error(`modux: no se pudo abrir la vista: ${message(e)}`);
     }
   }
@@ -127,8 +130,7 @@ export class ModuxEditorIde extends LitElement {
     this.model = project(this.store);
     const missing = unprojectedTypes(this.store);
     this.notice = missing.length
-      ? `Este modelo tiene elementos que el editor todavía no dibuja: ${missing.join(', ')}. `
-        + 'Se conservan intactos en disco.'
+      ? t('hosts.ide.unprojectedTypes', { types: missing.join(', ') })
       : null;
   }
 
@@ -182,12 +184,11 @@ export class ModuxEditorIde extends LitElement {
     if (command.kind !== 'add-project-reference') return command;
     const bridge = hostBridge();
     const coordinate = (command.referencedProject ?? {}) as { gitUrl?: string; path?: string };
-    if (!bridge) throw new CommandError('Sin puente con el IDE');
+    if (!bridge) throw new CommandError(t('hosts.ide.noBridgeShort'));
     const root = await resolveProject(bridge, coordinate);
     if (!root) {
       throw new CommandError(
-        `No encuentro el modelo de ${coordinate.gitUrl ?? coordinate.path}. Clónalo al lado de`
-        + ' este repositorio, o dale un path a la referencia.');
+        t('hosts.ide.referencedModelNotFound', { project: coordinate.gitUrl ?? coordinate.path }));
     }
     const other = await loadTree(readOnlyFileSystem(bridge, root), ROOT);
     const fallback = root.split('/').filter(Boolean).at(-1) ?? 'proyecto';
@@ -263,7 +264,7 @@ export class ModuxEditorIde extends LitElement {
       this.dirty = false;
       void bridge({ op: 'setModified', modified: false });
     } catch (e) {
-      this.error = `No se pudo guardar: ${message(e)}`;
+      this.error = t('hosts.ide.saveFailed', { message: message(e) });
     }
   }
 
@@ -298,13 +299,13 @@ export class ModuxEditorIde extends LitElement {
       this.refresh();
       this.markDirty();
     } catch (e) {
-      this.error = e instanceof CommandError ? e.message : `No se pudo aplicar: ${message(e)}`;
+      this.error = e instanceof CommandError ? e.message : t('hosts.ide.applyFailed', { message: message(e) });
     }
   }
 
   override render() {
     if (!this.model) {
-      return html`<div class="banner">${this.error ?? 'Cargando el modelo…'}</div>`;
+      return html`<div class="banner">${this.error ?? t('hosts.loadingModel')}</div>`;
     }
     return html`
       ${this.error ? html`<div class="banner" role="alert">${this.error}</div>` : nothing}

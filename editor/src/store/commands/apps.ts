@@ -15,6 +15,7 @@ import {
 } from '../forest.js';
 import { CommandError, type Handler } from '../spec.js';
 import { blank, mustGet } from './models.js';
+import { t, type MessageKey } from '../../i18n/index.js';
 
 /** Everything a menu entry can point at. Setting one clears the rest. */
 const TARGETS = [
@@ -34,7 +35,7 @@ export const APP_COMMANDS: Record<string, Handler> = {
     });
     if (blank(command.boundedContextId)) return;
     // born inside a context: it owns the app from the start
-    mustGet(store, 'boundedContexts', command.boundedContextId, 'Bounded context');
+    mustGet(store, 'boundedContexts', command.boundedContextId, 'store.kind.boundedContext');
     store.addToList('boundedContexts', String(command.boundedContextId), 'uiAdapterIds', id);
   },
 
@@ -68,33 +69,32 @@ export const APP_COMMANDS: Record<string, Handler> = {
   },
 
   'set-app-model': (store, command) => {
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
-    if (!blank(command.modelId)) mustGet(store, 'models', command.modelId, 'Modelo');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
+    if (!blank(command.modelId)) mustGet(store, 'models', command.modelId, 'store.kind.model');
     store.patch('uiAdapters', app.id, {
       modelId: blank(command.modelId) ? null : command.modelId,
     });
   },
 
   'set-app-header-page': (store, command) => {
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     const pageId = blank(command.pageId) ? null : String(command.pageId);
-    if (pageId) mustGet(store, 'pages', pageId, 'Página');
+    if (pageId) mustGet(store, 'pages', pageId, 'store.kind.page');
     store.patch('uiAdapters', app.id, { headerPageId: pageId });
   },
 
   /** What the app opens first — a page, or another app. Only a plain APP has a home. */
   'set-app-home-page': (store, command) => {
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     if (app.appType !== 'APP') {
-      throw new CommandError('Solo las apps normales tienen home: el maestro-detalle es cabecera'
-        + ' y pestañas, y el orquestador solo enseña páginas hijas');
+      throw new CommandError(t('store.app.homeOnlyNormalApps'));
     }
     const pageId = blank(command.pageId) ? null : String(command.pageId);
     const toAppId = blank(command.toAppId) ? null : String(command.toAppId);
-    if (pageId) mustGet(store, 'pages', pageId, 'Página');
+    if (pageId) mustGet(store, 'pages', pageId, 'store.kind.page');
     if (toAppId) {
-      if (toAppId === app.id) throw new CommandError('Una app no puede ser su propia home');
-      mustGet(store, 'uiAdapters', toAppId, 'App de UI');
+      if (toAppId === app.id) throw new CommandError(t('store.app.homeIsSelf'));
+      mustGet(store, 'uiAdapters', toAppId, 'store.kind.uiApp');
     }
     store.patch('uiAdapters', app.id, {
       homePageId: toAppId ? null : pageId,
@@ -108,7 +108,7 @@ export const APP_COMMANDS: Record<string, Handler> = {
   // ---- menu entries --------------------------------------------------------
 
   'add-menu-item': (store, command) => {
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     const items = menuOf(app);
     const entry: Node = {
       id: blank(command.itemId)
@@ -126,7 +126,7 @@ export const APP_COMMANDS: Record<string, Handler> = {
     const placed = insertUnder(items, parent, entry);
     if (!placed) {
       throw new CommandError(
-        `Entrada de menú desconocida: ${command.parentId ?? command.parentLabel}`);
+        t('store.unknown.menuItem', { id: command.parentId ?? command.parentLabel }));
     }
     store.patch('uiAdapters', app.id, {
       menuItems: replace(placed, parent, cleared)!,
@@ -142,20 +142,19 @@ export const APP_COMMANDS: Record<string, Handler> = {
     if (pruned) store.patch('uiAdapters', app.id, { menuItems: pruned });
   },
 
-  'set-menu-page': menuTarget('pageId', 'pageId', 'pages', 'Página'),
-  'set-menu-app': menuTarget('uiAdapterId', 'toAppId', 'uiAdapters', 'App de UI'),
-  'set-menu-use-case': menuTarget('useCaseId', 'useCaseId', 'useCases', 'Caso de uso'),
-  'set-menu-aggregate': menuTarget('aggregateId', 'aggregateId', 'aggregates', 'Agregado'),
+  'set-menu-page': menuTarget('pageId', 'pageId', 'pages', 'store.kind.page'),
+  'set-menu-app': menuTarget('uiAdapterId', 'toAppId', 'uiAdapters', 'store.kind.uiApp'),
+  'set-menu-use-case': menuTarget('useCaseId', 'useCaseId', 'useCases', 'store.kind.useCase'),
+  'set-menu-aggregate': menuTarget('aggregateId', 'aggregateId', 'aggregates', 'store.kind.aggregate'),
 
   /** A query OPERATION, so both halves travel together — the service alone opens nothing. */
   'set-menu-query-operation': (store, command) => {
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     if (command.queryOperationId) {
-      const service = mustGet(store, 'queryServices', command.queryServiceId, 'Query service');
+      const service = mustGet(store, 'queryServices', command.queryServiceId, 'store.kind.queryService');
       const known = nested(service.operations).some((op) => op.id === command.queryOperationId);
       if (!known) {
-        throw new CommandError(`Operación de query desconocida: ${command.queryOperationId}`
-          + ` en ${command.queryServiceId}`);
+        throw new CommandError(t('store.unknown.queryOperation', { operation: command.queryOperationId, service: command.queryServiceId }));
       }
     }
     retarget(store, app, command, {
@@ -169,17 +168,17 @@ export const APP_COMMANDS: Record<string, Handler> = {
    * (which nests it), to the root (which promotes it), and into a slot.
    */
   'move-menu-item': (store, command) => {
-    const source = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
-    const target = mustGet(store, 'uiAdapters', command.toAppId, 'App de UI');
+    const source = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
+    const target = mustGet(store, 'uiAdapters', command.toAppId, 'store.kind.uiApp');
     const matcher = matcherFor(command.itemId, command.label);
-    if (!matcher) throw new CommandError('move-menu-item: falta la entrada a mover');
+    if (!matcher) throw new CommandError(t('store.menu.moveMissingItem'));
     const entry = find(menuOf(source), matcher);
     if (!entry) {
-      throw new CommandError(`Entrada de menú desconocida: ${command.itemId ?? command.label}`);
+      throw new CommandError(t('store.unknown.menuItem', { id: command.itemId ?? command.label }));
     }
     const parentId = blank(command.parentId) ? null : String(command.parentId);
     if (parentId && find([entry], (n) => n.id === parentId)) {
-      throw new CommandError('Una opción no puede moverse dentro de sí misma');
+      throw new CommandError(t('store.menu.moveIntoItself'));
     }
     const pruned = remove(menuOf(source), matcher) ?? menuOf(source);
     store.patch('uiAdapters', source.id, { menuItems: pruned });
@@ -192,15 +191,15 @@ export const APP_COMMANDS: Record<string, Handler> = {
     const placed = parentId
       ? insertUnder(items, (n) => n.id === parentId, entry, before)
       : insert(items, entry, before);
-    if (!placed) throw new CommandError(`Entrada de menú desconocida: ${parentId}`);
+    if (!placed) throw new CommandError(t('store.unknown.menuItem', { id: parentId }));
     store.patch('uiAdapters', into.id, { menuItems: placed });
   },
 
   // ---- who opens the app ---------------------------------------------------
 
   'add-actor-app': (store, command) => {
-    const actor = mustGet(store, 'roles', command.actorId, 'Actor');
-    mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const actor = mustGet(store, 'roles', command.actorId, 'store.kind.actor');
+    mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     store.addToList('roles', actor.id, 'uiAdapterIds', String(command.appId));
   },
 
@@ -212,20 +211,20 @@ export const APP_COMMANDS: Record<string, Handler> = {
 /** VIEW_EDITOR: the read-only view and the edit view. Only that app type has them. */
 function viewOrEdit(field: string): Handler {
   return (store, command) => {
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     if (app.appType !== 'VIEW_EDITOR') {
-      throw new CommandError('Solo un vista-editor tiene vista y edición');
+      throw new CommandError(t('store.app.viewEditOnlyViewEditor'));
     }
     const pageId = blank(command.pageId) ? null : String(command.pageId);
-    if (pageId) mustGet(store, 'pages', pageId, 'Página');
+    if (pageId) mustGet(store, 'pages', pageId, 'store.kind.page');
     store.patch('uiAdapters', app.id, { [field]: pageId });
   };
 }
 
 /** Point an entry at one kind of thing, clearing whatever else it pointed at. */
-function menuTarget(field: string, from: string, type: string, label: string): Handler {
+function menuTarget(field: string, from: string, type: string, label: MessageKey): Handler {
   return (store, command) => {
-    const app = mustGet(store, 'uiAdapters', command.appId, 'App de UI');
+    const app = mustGet(store, 'uiAdapters', command.appId, 'store.kind.uiApp');
     const value = (command as Record<string, unknown>)[from];
     if (value) mustGet(store, type, value, label);
     retarget(store, app, command, { [field]: value ?? null });
@@ -240,17 +239,17 @@ function retarget(
   store: ModelStore, app: Element, command: Record<string, any>, target: Record<string, unknown>,
 ): void {
   const matcher = matcherFor(command.itemId, command.label);
-  if (!matcher) throw new CommandError('Falta la entrada de menú');
+  if (!matcher) throw new CommandError(t('store.menu.missingItem'));
   const updated = replace(menuOf(app), matcher, (item) => {
     const next = { ...cleared(item), ...target };
     const links = TARGETS.some((f) => next[f] != null);
     if (links && childrenOf(item).length) {
-      throw new CommandError(`La entrada «${item.label}» tiene submenú: no puede abrir nada`);
+      throw new CommandError(t('store.menu.hasSubmenu', { label: String(item.label) }));
     }
     return next;
   });
   if (!updated) {
-    throw new CommandError(`Entrada de menú desconocida: ${command.itemId ?? command.label}`);
+    throw new CommandError(t('store.unknown.menuItem', { id: command.itemId ?? command.label }));
   }
   store.patch('uiAdapters', app.id, { menuItems: updated });
 }

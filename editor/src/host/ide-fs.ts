@@ -7,6 +7,7 @@
  */
 
 import type { FileSystem } from '../store/tree.js';
+import { t } from '../i18n/index.js';
 
 /** What the IDE exposes on the page. Requests are plain JSON, replies are values. */
 export interface Bridge {
@@ -43,7 +44,7 @@ export async function resolveProject(
  */
 export function readOnlyFileSystem(bridge: Bridge, root: string): FileSystem {
   const refuse = () => {
-    throw new Error('El modelo de otro proyecto se lee, no se escribe');
+    throw new Error(t('hosts.ideFs.readOnlyReference'));
   };
   return {
     list: async (dir) => (await bridge({ op: 'list', path: dir, root })) as string[],

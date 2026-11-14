@@ -16,6 +16,7 @@ import {
   referenceElement, referenceIdFor, type ProjectSnapshot,
 } from '../project-snapshot.js';
 import { CommandError, type Handler } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 /** The nested surfaces a system carries, and what refuses to let go of each. */
 const INBOUND = 'INBOUND';
@@ -26,7 +27,7 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     if (store.has('externalSystems', id)) return;
     const parent = command.parentId as string | undefined;
     if (parent && !store.has('externalSystems', parent)) {
-      throw new CommandError(`El sistema externo padre ${parent} no existe`);
+      throw new CommandError(t('store.external.parentNotFound', { id: parent }));
     }
     store.put('externalSystems', {
       id,
@@ -45,20 +46,18 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     if (!system) return;
 
     if (store.all('externalSystems').some((x) => x.parentExternalSystemId === id)) {
-      throw new CommandError(`El sistema externo ${id} tiene subsistemas; bórralos primero`);
+      throw new CommandError(t('store.external.removeHasSubsystems', { id }));
     }
     if (store.all('flows').some((f) => f.targetBoundedContextId === id)) {
-      throw new CommandError(`El sistema externo ${id} es destino de flows; bórralos primero`);
+      throw new CommandError(t('store.external.removeIsFlowTarget', { id }));
     }
     if (store.all('roles').some((r) => asList(r.externalSystemIds).includes(id))) {
-      throw new CommandError(`El sistema externo ${id} tiene actores que dependen de él;`
-        + ' quita esas dependencias primero');
+      throw new CommandError(t('store.external.removeHasDependantActors', { id }));
     }
     const leaning = store.all('externalSystems').some((x) =>
       asList(x.dependsOnExternalSystemIds).includes(id) || asList(x.cqrsExternalSystemIds).includes(id));
     if (leaning) {
-      throw new CommandError(`El sistema externo ${id} tiene sistemas externos que dependen de él;`
-        + ' quita esas dependencias primero');
+      throw new CommandError(t('store.external.removeHasDependantSystems', { id }));
     }
 
     detachMcpServers(store, new Set(nested(system.mcpServers).map((s) => s.id)));
@@ -79,17 +78,16 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
   'set-external-system-parent': (store, command) => {
     const id = String(command.id);
     if (!store.has('externalSystems', id)) {
-      throw new CommandError(`El sistema externo ${id} no existe`);
+      throw new CommandError(t('store.external.notFound', { id }));
     }
     const parent = (command.parentId as string | undefined) ?? null;
     if (parent) {
       if (!store.has('externalSystems', parent)) {
-        throw new CommandError(`El sistema externo padre ${parent} no existe`);
+        throw new CommandError(t('store.external.parentNotFound', { id: parent }));
       }
       for (let cursor: string | null = parent; cursor; ) {
         if (cursor === id) {
-          throw new CommandError(`El sistema ${parent} vive dentro de ${id}`
-            + ' — anidarlos en círculo no tiene sentido');
+          throw new CommandError(t('store.external.circularNesting', { parent, id }));
         }
         cursor = (store.get('externalSystems', cursor)?.parentExternalSystemId as string) ?? null;
       }
@@ -110,8 +108,7 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     const called = store.all('useCases').some((uc) =>
       nested(uc.steps).some((step) => step.externalUseCaseId === id));
     if (called) {
-      throw new CommandError(`El caso de uso externo ${id} lo llaman casos de uso;`
-        + ' quita esas llamadas primero');
+      throw new CommandError(t('store.external.removeUseCaseIsCalled', { id }));
     }
     removeNestedSurface(store, 'useCases', id);
   },
@@ -122,7 +119,7 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     const id = String(command.id);
     const polled = store.all('projections').some((p) => p.externalTableId === id);
     if (polled) {
-      throw new CommandError(`La tabla ${id} la proyectan proyecciones; bórralas primero`);
+      throw new CommandError(t('store.external.removeTableIsProjected', { id }));
     }
     store.removeFromAllLists('rags', 'sourceExternalTableIds', id);
     removeNestedSurface(store, 'tables', id);
@@ -148,12 +145,12 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     const external = requireSystem(store, command.sourceId);
     const useCaseId = String(command.targetId);
     if (!store.has('useCases', useCaseId)) {
-      throw new CommandError(`Caso de uso desconocido: ${useCaseId}`);
+      throw new CommandError(t('store.unknown.useCase', { id: useCaseId }));
     }
     const context = store.findByListMember('boundedContexts', 'useCaseIds', useCaseId);
     if (!context) {
       throw new CommandError(
-        `El caso de uso ${useCaseId} no pertenece a ningún bounded context`);
+        t('store.external.useCaseWithoutContext', { id: useCaseId }));
     }
     const acls = nested(context.acls);
     const existing = acls.find((a) =>
@@ -202,12 +199,12 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
   /** One of OUR use cases calls an operation of theirs — a step in our pipeline. */
   'add-external-uc-call': (store, command) => {
     const source = store.get('useCases', String(command.sourceId));
-    if (!source) throw new CommandError(`Caso de uso desconocido: ${command.sourceId}`);
+    if (!source) throw new CommandError(t('store.unknown.useCase', { id: command.sourceId }));
     const targetId = String(command.targetId);
     const target = store.all('externalSystems')
       .flatMap((x) => nested(x.useCases))
       .find((u) => u.id === targetId);
-    if (!target) throw new CommandError(`Caso de uso externo desconocido: ${targetId}`);
+    if (!target) throw new CommandError(t('store.unknown.externalUseCase', { id: targetId }));
     const steps = nested(source.steps);
     if (steps.some((step) => step.externalUseCaseId === targetId)) return;
     // like a call to one of ours: before the logic that reads its answer — mirrors EditorApiController
@@ -239,18 +236,18 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     const sourceId = String(command.sourceId);
     const targetId = String(command.targetId);
     if (sourceId === targetId) {
-      throw new CommandError('Un sistema externo no puede depender de sí mismo');
+      throw new CommandError(t('store.external.dependsOnSelf'));
     }
     const source = requireSystem(store, sourceId);
     const cqrs = command.type === 'CQRS';
 
     if (store.has('apis', targetId) || store.has('proxyApis', targetId)) {
-      if (cqrs) throw new CommandError('La relación CQRS se establece entre sistemas externos');
+      if (cqrs) throw new CommandError(t('store.external.cqrsBetweenExternals'));
       store.addToList('externalSystems', source.id, 'dependsOnApiIds', targetId);
       return;
     }
     if (!store.has('externalSystems', targetId)) {
-      throw new CommandError(`Sistema externo desconocido: ${targetId}`);
+      throw new CommandError(t('store.unknown.externalSystem', { id: targetId }));
     }
     const [into, outOf] = cqrs
       ? ['cqrsExternalSystemIds', 'dependsOnExternalSystemIds']
@@ -272,11 +269,11 @@ export const EXTERNAL_COMMANDS: Record<string, Handler> = {
     const coordinate = command.referencedProject as Record<string, unknown> | undefined;
     if (!coordinate || (!coordinate.gitUrl && !coordinate.path)) {
       throw new CommandError(
-        'Para referenciar otro proyecto hace falta su URL git o el path a su modelo');
+        t('store.external.referenceNeedsCoordinate'));
     }
     const snapshot = command.snapshot as ProjectSnapshot | undefined;
     if (!snapshot) {
-      throw new CommandError('No se pudo leer el proyecto referenciado: sin datos que copiar');
+      throw new CommandError(t('store.external.referenceUnreadable'));
     }
     const id = blank(command.id) ? referenceIdFor(coordinate) : String(command.id);
     store.put('externalSystems', referenceElement(id, snapshot, coordinate));
@@ -340,7 +337,7 @@ function stripPairDependency(store: ModelStore, id: string, other: string): void
 
 function requireSystem(store: ModelStore, id: unknown): Element {
   const system = store.get('externalSystems', String(id));
-  if (!system) throw new CommandError(`Sistema externo desconocido: ${id}`);
+  if (!system) throw new CommandError(t('store.unknown.externalSystem', { id: String(id) }));
   return system;
 }
 

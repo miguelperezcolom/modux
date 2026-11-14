@@ -11,10 +11,11 @@
 
 import { nested, type Element, type ModelStore } from '../store.js';
 import { CommandError, type Handler } from '../spec.js';
+import { t, type MessageKey } from '../../i18n/index.js';
 
-const mustGet = (store: ModelStore, type: string, id: unknown, label: string): Element => {
+const mustGet = (store: ModelStore, type: string, id: unknown, label: MessageKey): Element => {
   const el = store.get(type, id == null ? undefined : String(id));
-  if (!el) throw new CommandError(`${label} desconocido: ${id}`);
+  if (!el) throw new CommandError(t('store.error.unknownKind', { kind: t(label), id: String(id) }));
   return el;
 };
 
@@ -24,19 +25,19 @@ const INVARIANT_OWNERS = ['aggregates', 'valueObjects', 'entities'];
 /** Move a loose element into its parent's nested array by element type. */
 function graft(store: ModelStore, id: string, name: string, elementType: string, ownerId: string): void {
   if (elementType === 'operation') {
-    const agg = mustGet(store, 'aggregates', ownerId, 'Agregado');
+    const agg = mustGet(store, 'aggregates', ownerId, 'store.kind.aggregate');
     const ops = nested(agg.operations);
     if (!ops.some((o) => o.id === id)) {
       store.patch('aggregates', agg.id, { operations: [...ops, { id, name, type: 'CUSTOM' }] });
     }
   } else if (elementType === 'use-case-step') {
-    const uc = mustGet(store, 'useCases', ownerId, 'Caso de uso');
+    const uc = mustGet(store, 'useCases', ownerId, 'store.kind.useCase');
     const steps = nested(uc.steps);
     if (!steps.some((s) => s.id === id)) {
       store.patch('useCases', uc.id, { steps: [...steps, { id, name, type: 'Custom' }] });
     }
   } else if (elementType === 'field') {
-    const model = mustGet(store, 'models', ownerId, 'Modelo');
+    const model = mustGet(store, 'models', ownerId, 'store.kind.model');
     const fields = nested(model.fields);
     if (!fields.some((f) => f.id === id)) {
       store.patch('models', model.id, {
@@ -46,7 +47,7 @@ function graft(store: ModelStore, id: string, name: string, elementType: string,
   } else if (elementType === 'invariant') {
     // Polymorphic owner: an aggregate, value object or entity.
     const ownerType = INVARIANT_OWNERS.find((t) => store.has(t, ownerId));
-    if (!ownerType) throw new CommandError(`El invariante debe caer sobre un agregado, value object o entidad`);
+    if (!ownerType) throw new CommandError(t('store.loose.invariantOwner'));
     const owner = store.get(ownerType, ownerId)!;
     const invs = nested(owner.invariants);
     if (!invs.some((i) => i.id === id)) {
@@ -63,19 +64,19 @@ function graft(store: ModelStore, id: string, name: string, elementType: string,
       store.put('readModels', { id, name, boundedContextId: ownerId, aggregateId: null });
       store.addToList('boundedContexts', ownerId, 'readModelIds', id);
     } else {
-      throw new CommandError('El read model debe caer sobre un contexto o un agregado');
+      throw new CommandError(t('store.loose.readModelOwner'));
     }
   } else if (elementType === 'external-table') {
-    const ext = mustGet(store, 'externalSystems', ownerId, 'Sistema externo');
+    const ext = mustGet(store, 'externalSystems', ownerId, 'store.kind.externalSystem');
     const tables = nested(ext.tables);
     if (!tables.some((t) => t.id === id)) {
       store.patch('externalSystems', ext.id, { tables: [...tables, { id, name }] });
     }
   } else if (elementType === 'integration-event') {
-    mustGet(store, 'boundedContexts', ownerId, 'Contexto');
+    mustGet(store, 'boundedContexts', ownerId, 'store.kind.context');
     store.put('integrationEvents', { id, name, boundedContextId: ownerId });
   } else {
-    throw new CommandError(`Tipo suelto desconocido: ${elementType}`);
+    throw new CommandError(t('store.unknown.looseType', { id: elementType }));
   }
 }
 
@@ -97,7 +98,7 @@ export const LOOSE_COMMANDS: Record<string, Handler> = {
   /** Compose a loose element into a parent: graft it into the parent's nested array, drop the loose. */
   'adopt-loose-element': (store, command) => {
     const id = String(command.id);
-    const loose = mustGet(store, 'looseElements', id, 'Elemento suelto');
+    const loose = mustGet(store, 'looseElements', id, 'store.kind.looseElement');
     graft(store, id, String(loose.name ?? ''), String(loose.elementType), String(command.ownerId));
     store.remove('looseElements', id);
   },

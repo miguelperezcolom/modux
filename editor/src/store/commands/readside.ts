@@ -10,6 +10,7 @@
 
 import { nested, type Element, type ModelStore } from '../store.js';
 import { add, CommandError, type Handler, remove } from '../spec.js';
+import { t } from '../../i18n/index.js';
 
 export const READSIDE_COMMANDS: Record<string, Handler> = {
   'add-query-service': add({
@@ -23,8 +24,7 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
     const consumed = store.all('useCases').some((uc) =>
       nested(uc.steps).some((step) => step.queryServiceId === id));
     if (consumed) {
-      throw new CommandError(`El query service ${id} lo consumen casos de uso;`
-        + ' quita esas llamadas primero');
+      throw new CommandError(t('store.readside.removeQueryServiceConsumed', { id }));
     }
     store.removeFromAllLists('roles', 'allowedQueryServiceIds', id);
     store.removeFromAllLists('aiAgents', 'allowedQueryServiceIds', id);
@@ -58,13 +58,13 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
       }
       if (!holder) {
         throw new CommandError(
-          `El read model ${target} no pertenece a ningún bounded context`);
+          t('store.readside.readModelWithoutContext', { id: target }));
       }
       owner = holder;
     } else {
       const context = store.get('boundedContexts', String(command.boundedContextId));
       if (!context) {
-        throw new CommandError(`Bounded context desconocido: ${command.boundedContextId}`);
+        throw new CommandError(t('store.unknown.boundedContext', { id: command.boundedContextId }));
       }
       owner = context;
       readModelId = `rm-${id.replace(/^proj-/, '')}`;
@@ -99,8 +99,7 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
     const updated = store.all('subscriptions').some((s) =>
       nested(s.actions).some((action) => action.projectionId === id));
     if (updated) {
-      throw new CommandError(`La proyección ${id} la actualizan subscriptions;`
-        + ' quita esas acciones primero');
+      throw new CommandError(t('store.readside.removeProjectionUpdated', { id }));
     }
     store.removeFromAllLists('boundedContexts', 'projectionIds', id);
     store.remove('projections', id);
@@ -129,11 +128,11 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
   'set-scheduled-trigger-target': (store, command) => {
     const id = String(command.id);
     if (!store.has('scheduledTriggers', id)) {
-      throw new CommandError(`Disparador desconocido: ${id}`);
+      throw new CommandError(t('store.unknown.trigger', { id: id }));
     }
     const target = command.targetUseCaseId as string | undefined;
     if (target && !store.has('useCases', target)) {
-      throw new CommandError(`Caso de uso desconocido: ${target}`);
+      throw new CommandError(t('store.unknown.useCase', { id: target }));
     }
     store.patch('scheduledTriggers', id, { useCaseId: target ?? null });
   },
@@ -141,10 +140,10 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
   /** When the trigger fires: a Spring cron (six fields, seconds first). */
   'set-scheduled-trigger-cron': (store, command) => {
     const id = String(command.id);
-    if (!store.has('scheduledTriggers', id)) throw new CommandError(`Disparador desconocido: ${id}`);
+    if (!store.has('scheduledTriggers', id)) throw new CommandError(t('store.unknown.trigger', { id: id }));
     const cron = String(command.cronExpression ?? '').trim();
     if (cron.split(/\s+/).length !== 6) {
-      throw new CommandError(`«${cron}» no es un cron de Spring: lleva seis campos (segundo minuto hora día mes día-semana)`);
+      throw new CommandError(t('store.readside.invalidCron', { cron }));
     }
     store.patch('scheduledTriggers', id, { cronExpression: cron });
   },
@@ -154,14 +153,14 @@ export const READSIDE_COMMANDS: Record<string, Handler> = {
 function resolveSource(store: ModelStore, command: Record<string, any>): Element | undefined {
   if (command.aggregateId) {
     const aggregate = store.get('aggregates', String(command.aggregateId));
-    if (!aggregate) throw new CommandError(`Agregado desconocido: ${command.aggregateId}`);
+    if (!aggregate) throw new CommandError(t('store.unknown.aggregate', { id: command.aggregateId }));
     return aggregate;
   }
   if (command.externalUseCaseId) {
     const known = store.all('externalSystems')
       .some((x) => nested(x.useCases).some((u) => u.id === command.externalUseCaseId));
     if (!known) {
-      throw new CommandError(`Operación externa desconocida: ${command.externalUseCaseId}`);
+      throw new CommandError(t('store.unknown.externalOperation', { id: command.externalUseCaseId }));
     }
     return undefined;
   }
@@ -172,10 +171,10 @@ function resolveSource(store: ModelStore, command: Record<string, any>): Element
       .some((x) => nested(x.tables).some((t) => t.id === command.externalTableId))
       || store.all('looseElements')
         .some((e) => e.id === command.externalTableId && e.elementType === 'external-table');
-    if (!known) throw new CommandError(`Tabla externa desconocida: ${command.externalTableId}`);
+    if (!known) throw new CommandError(t('store.unknown.externalTable', { id: command.externalTableId }));
     return undefined;
   }
-  throw new CommandError('La proyección necesita una fuente: agregado, operación externa o tabla');
+  throw new CommandError(t('store.readside.projectionNeedsSource'));
 }
 
 /** Element shapes this block creates, for the schema-defaults check in tests. */

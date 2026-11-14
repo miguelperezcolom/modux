@@ -10,13 +10,14 @@
 
 import { nested, type Element, type ModelStore } from '../store.js';
 import { CommandError, type Handler } from '../spec.js';
+import { t, type MessageKey } from '../../i18n/index.js';
 
 /** Step types that stand for «this use case reaches into that aggregate». */
 const AGGREGATE_STEPS = ['CallAggregateOperation', 'SaveAggregate'];
 
 export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
   'add-operation': (store, command) => {
-    const aggregate = mustGet(store, 'aggregates', command.aggregateId, 'Agregado');
+    const aggregate = mustGet(store, 'aggregates', command.aggregateId, 'store.kind.aggregate');
     const id = String(command.id);
     const operations = nested(aggregate.operations);
     if (operations.some((o) => o.id === id)) return;
@@ -29,7 +30,7 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
   'set-operation-intent': (store, command) => {
     const id = String(command.id);
     const owner = store.findOwner(['aggregates'], 'operations', id);
-    if (!owner) throw new CommandError(`Operación desconocida: ${id}`);
+    if (!owner) throw new CommandError(t('store.unknown.operation', { id: id }));
     const text = String(command.intent ?? '').trim();
     store.patch(owner.type, owner.element.id, {
       operations: nested(owner.element.operations).map((o) => (o.id === id ? { ...o, intent: text || null } : o)),
@@ -56,8 +57,7 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
       const event = store.get('applicationEvents', targetId)!;
       const useCase = store.get('useCases', String(command.sourceId));
       if (!useCase) {
-        throw new CommandError('Solo los casos de uso emiten eventos de aplicación;'
-          + ` emisor desconocido: ${command.sourceId}`);
+        throw new CommandError(t('store.behavior.applicationEventEmitter', { id: command.sourceId }));
       }
       const steps = nested(useCase.steps);
       if (steps.some((step) => step.applicationEventId === targetId)) return;
@@ -72,7 +72,7 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
       return;
     }
     const event = store.get('domainEvents', targetId);
-    if (!event) throw new CommandError(`Evento de dominio desconocido: ${targetId}`);
+    if (!event) throw new CommandError(t('store.unknown.domainEvent', { id: targetId }));
     // A use case publishes a domain event as one of its steps (as the CRUD trio does): the
     // event carries what the use case decided, so it goes out after the steps before it.
     const publisher = store.get('useCases', String(command.sourceId));
@@ -105,7 +105,7 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
       return;
     }
     const event = store.get('domainEvents', targetId);
-    if (!event) throw new CommandError(`Evento de dominio desconocido: ${targetId}`);
+    if (!event) throw new CommandError(t('store.unknown.domainEvent', { id: targetId }));
     const publisher = store.get('useCases', String(command.sourceId));
     if (publisher) {
       store.patch('useCases', publisher.id, {
@@ -124,8 +124,8 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
 
   /** A use case reaches into an aggregate. Wired to its only operation when there is just one. */
   'add-aggregate-call': (store, command) => {
-    const useCase = mustGet(store, 'useCases', command.sourceId, 'Caso de uso');
-    const aggregate = mustGet(store, 'aggregates', command.targetId, 'Agregado');
+    const useCase = mustGet(store, 'useCases', command.sourceId, 'store.kind.useCase');
+    const aggregate = mustGet(store, 'aggregates', command.targetId, 'store.kind.aggregate');
     const steps = nested(useCase.steps);
     const already = steps.some((step) =>
       AGGREGATE_STEPS.includes(String(step.type)) && step.aggregateId === aggregate.id);
@@ -153,10 +153,10 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
   },
 
   'add-use-case-call': (store, command) => {
-    const source = mustGet(store, 'useCases', command.sourceId, 'Caso de uso');
-    const target = mustGet(store, 'useCases', command.targetId, 'Caso de uso');
+    const source = mustGet(store, 'useCases', command.sourceId, 'store.kind.useCase');
+    const target = mustGet(store, 'useCases', command.targetId, 'store.kind.useCase');
     if (source.id === target.id) {
-      throw new CommandError('Un caso de uso no puede invocarse a sí mismo');
+      throw new CommandError(t('store.behavior.useCaseCallsSelf'));
     }
     const steps = nested(source.steps);
     if (steps.some((step) => step.type === 'CallUseCase' && step.useCaseId === target.id)) return;
@@ -183,8 +183,8 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
   },
 
   'add-query-call': (store, command) => {
-    const source = mustGet(store, 'useCases', command.sourceId, 'Caso de uso');
-    const target = mustGet(store, 'queryServices', command.targetId, 'Query service');
+    const source = mustGet(store, 'useCases', command.sourceId, 'store.kind.useCase');
+    const target = mustGet(store, 'queryServices', command.targetId, 'store.kind.queryService');
     const steps = nested(source.steps);
     if (steps.some((step) => step.queryServiceId === target.id)) return;
     store.patch('useCases', source.id, {
@@ -206,7 +206,7 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
   },
 
   'add-use-case-step': (store, command) => {
-    const useCase = mustGet(store, 'useCases', command.useCaseId, 'Caso de uso');
+    const useCase = mustGet(store, 'useCases', command.useCaseId, 'store.kind.useCase');
     const id = String(command.id);
     const steps = nested(useCase.steps);
     if (steps.some((step) => step.id === id)) return;
@@ -219,7 +219,7 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
 
   /** What a custom step has to do: the spec of its hook in the developer-owned module. */
   'set-use-case-step-intent': (store, command) => {
-    const useCase = mustGet(store, 'useCases', command.useCaseId, 'Caso de uso');
+    const useCase = mustGet(store, 'useCases', command.useCaseId, 'store.kind.useCase');
     const text = String(command.intent ?? '').trim();
     store.patch('useCases', useCase.id, {
       steps: nested(useCase.steps).map((step) =>
@@ -229,7 +229,7 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
 
   /** Order is meaningful within a use case: move a step up (-1) or down (+1). */
   'move-use-case-step': (store, command) => {
-    const useCase = mustGet(store, 'useCases', command.useCaseId, 'Caso de uso');
+    const useCase = mustGet(store, 'useCases', command.useCaseId, 'store.kind.useCase');
     const steps = [...nested(useCase.steps)];
     const from = steps.findIndex((step) => step.id === command.stepId);
     const to = from + Number(command.delta ?? 0);
@@ -241,12 +241,12 @@ export const BEHAVIOR_COMMANDS: Record<string, Handler> = {
 
   /** The use case's contract: what it takes, what it returns, whether it answers over REST. */
   'set-use-case-contract': (store, command) => {
-    const useCase = mustGet(store, 'useCases', command.id, 'Caso de uso');
+    const useCase = mustGet(store, 'useCases', command.id, 'store.kind.useCase');
     const patch: Record<string, unknown> = {};
     for (const key of ['inputModelId', 'outputModelId'] as const) {
       if (!(key in command)) continue;
       const modelId = command[key] ? String(command[key]) : null;
-      if (modelId && !store.has('models', modelId)) throw new CommandError(`Modelo desconocido: ${modelId}`);
+      if (modelId && !store.has('models', modelId)) throw new CommandError(t('store.unknown.model', { id: modelId }));
       patch[key] = modelId;
     }
     if ('exposedAsRest' in command) patch.exposedAsRest = command.exposedAsRest === true;
@@ -309,13 +309,12 @@ function findEmitter(store: ModelStore, id: string): { type: string; element: El
     const element = store.get(type, id);
     if (element) return { type, element };
   }
-  throw new CommandError('Solo agregados y servicios de dominio emiten eventos de dominio;'
-    + ` emisor desconocido: ${id}`);
+  throw new CommandError(t('store.behavior.domainEventEmitter', { id }));
 }
 
-function mustGet(store: ModelStore, type: string, id: unknown, label: string): Element {
+function mustGet(store: ModelStore, type: string, id: unknown, label: MessageKey): Element {
   const element = store.get(type, String(id));
-  if (!element) throw new CommandError(`${label} desconocido: ${id}`);
+  if (!element) throw new CommandError(t('store.error.unknownKind', { kind: t(label), id: String(id) }));
   return element;
 }
 
