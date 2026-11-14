@@ -23,7 +23,7 @@ to a canvas with the **view selector** at the top-left (see [Pick a view](#pick-
 
 - **Zoom** with the mouse wheel; **pan** by holding **space** and dragging (or drag
   the background where a view allows it).
-- **⌖ Ajustar** fits the whole diagram to the window.
+- **⌖ Fit** fits the whole diagram to the window.
 - The **minimap** (bottom-right) shows the entire scene — click or drag it to recenter.
 - **⛶ (or `F`)** takes the diagram fullscreen; **Esc** (or `F` again) leaves.
 - **Hover a node** to spotlight its neighbourhood: the node, everything one edge away
@@ -47,16 +47,16 @@ on the same model:
 
 | To work on… | Choose |
 |---|---|
-| The whole landscape, contexts and their relations | **Mapa del sistema** |
-| Services, modules and infrastructure | **Distribución** |
-| Aggregates, entities and references | **Agregados** |
+| The whole landscape, contexts and their relations | **System map** |
+| Services, modules and infrastructure | **Distribution** |
+| Aggregates, entities and references | **Aggregates** |
 | A flow's pipeline | **Flows** |
 | A [workflow](/manual/workflows/) and its steps | **Workflows** |
 | Apps, pages and their wiring | **UI** |
-| Data models and their [mappings](/manual/model-mappings/) | **Mapeados** |
+| Data models and their [mappings](/manual/model-mappings/) | **Mappings** |
 | ETL integrations | **Integraciones** |
 | The causal narrative (read-only) | **EventStorming** |
-| UML sequences | **Secuencias** |
+| UML sequences | **Sequences** |
 
 Each view keeps **its own sheet** — positions and per-element expansion are
 remembered per view. See the [reference](/manual/graphical-editor/#views) for exactly
@@ -64,7 +64,7 @@ what each one shows.
 
 ## Read the system map
 
-On **Mapa del sistema** every element starts as a **chip**. Click its **chevron** to
+On **System map** every element starts as a **chip**. Click its **chevron** to
 expand it: its children arrive as free boxes tied back by a grey **composition edge**
 (filled diamond on the owner's side), cascading down to API operations. Strategic
 relations are solid lines with DDD abbreviations; flows are dashed. A relation whose
@@ -79,14 +79,14 @@ This is the heart of the editor. A few gestures cover most editing:
 - **Add an element** — drag it from the **palette** onto the canvas. Dropping it *on*
   another element nests it where that makes sense (a page dropped on an app hangs from
   its menu, an aggregate on a context belongs to it).
-- **Connect two elements** — select a node and drag its **blue handle** (the «asa») onto
+- **Connect two elements** — select a node and drag its **blue handle** onto
   the target; on the map you then **pick the relation type**. Many nodes offer extra,
-  colour-coded handles for typed links (an app's *home*, a CRUD page's *detalle*/*nuevo*…).
+  colour-coded handles for typed links (an app's *home*, a CRUD page's *detail*/*new*…).
 - **Rename** — press **`F2`** (or double-click the label on views where that edits text).
 - **Retype a relation** — **double-click its label** to change the relation type.
-- **Delete** — select and press **`Supr`**. It removes the relation, or the empty
+- **Delete** — select and press **`Del`**. It removes the relation, or the empty
   element, with the usual integrity guards; deleting never silently loses wiring.
-- **Undo / redo** — **`Ctrl+Z`** / **`Ctrl+Shift+Z`**, or the **Deshacer / Rehacer**
+- **Undo / redo** — **`Ctrl+Z`** / **`Ctrl+Shift+Z`**, or the **Undo / Redo**
   buttons. Model changes and node moves share one history.
 
 Press **`?`** at any time for the full shortcut list; the toolbar's footer also spells
@@ -103,12 +103,12 @@ out the gestures for the current view.
   diagram stays put. With nothing selected it re-lays the whole view.
 - **A model with no geometry yet** (written by hand, or from a spec) needs none of this:
   the first time you open a view of it, it comes already laid out the same way.
-- **↻ Líneas** re-routes the **lines only**, on the current node positions — the
+- **↻ Lines** re-routes the **lines only**, on the current node positions — the
   companion for when you've placed the nodes yourself and just the lines look stale
   (e.g. after dragging a box). It moves nothing; it redraws each edge clean and
   orthogonal, and leaves them *live* so they follow later drags. A selection scopes it
   to that node's lines.
-- **↔ Alinear / ↕ Alinear** line up the selected nodes (two or more): **↔** puts them
+- **↔ Align / ↕ Align** line up the selected nodes (two or more): **↔** puts them
   on a shared row (same height), **↕** on a shared column (same vertical). They snap to
   the selection's centre so the group moves the least, and their lines re-route clean.
 - Lines route around the boxes on their own as you drag; a line you **drag** splits into
@@ -122,16 +122,16 @@ you care about:
 
 1. **Select** what the view should contain — a **single click** picks one element,
    **Shift+click** adds more, or **shift+drag** the background to rubber-band a region.
-2. A **⊞ Vista (N)** button appears in the toolbar — N is how many catalog members your
+2. A **⊞ View (N)** button appears in the toolbar — N is how many catalog members your
    selection maps to (a pure edge or note maps to none, and makes no view).
 3. Type a **name** and press **Enter** (or click the button). The view is created and
    **opened**, seeded with the sheet you were looking at.
 
-With no selection at all, **⊞ Vista** captures everything currently on screen instead.
+With no selection at all, **⊞ View** captures everything currently on screen instead.
 
 Switch views with the **Vista:** selector; «todo el modelo» returns to the full model.
 A view scopes the canvas to its members — relations and flows show when both endpoints
-are in, entities follow their aggregates. Maintain membership from the **☰ Árbol**
+are in, entities follow their aggregates. Maintain membership from the **☰ Tree**
 (tick elements in/out — it never deletes anything). Full details in
 [Views & Large Models](/manual/views-and-large-models/).
 
@@ -145,7 +145,7 @@ action, a model for the viewmodel, a query for the listing. See [Pages](/manual/
 
 ## Trace a scenario
 
-The **Secuencias** view draws UML sequence diagrams over the catalog. Either **derive**
+The **Sequences** view draws UML sequence diagrams over the catalog. Either **derive**
 an ephemeral one from an entry point (a use case, API operation or event) and 📌 pin it,
 or author one by hand: drop participants and drag lifeline → lifeline to draw messages.
 A message with no mechanism behind it shows an amber warning with a **✨ materialize**

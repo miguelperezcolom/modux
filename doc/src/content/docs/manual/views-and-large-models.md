@@ -112,7 +112,7 @@ spanning three contexts).
 ## Creating curated views from the canvas
 
 The [Graphical Editor](/manual/graphical-editor/) can create CURATED views directly:
-shift+click (or rubber-band) a set of elements on any diagram and press **⊞ Vista** —
+shift+click (or rubber-band) a set of elements on any diagram and press **⊞ View** —
 the selection becomes the view's members. The editor's **Vista:** selector then scopes
 the canvas to any curated view, which doubles as a quick visual check of what a slice
 contains before generating it.
@@ -121,14 +121,14 @@ With a view active the canvas scopes to the members — including the strategic/
 pieces (actors, AI agents, MCP gateways, RAGs, APIs) — and also **maintains** the
 view, always editing `memberIds` and never the elements themselves:
 
-- **«☰ Árbol»** opens the **catalog tree**: the whole project grouped by kind, with a
+- **«☰ Tree»** opens the **catalog tree**: the whole project grouped by kind, with a
   membership checkbox per element (aggregates nested under their context; greyed rows
   ride in implicitly through their container). Checking adds the element to the view,
   unchecking takes it out — the element stays in the project, and both are undoable.
 - the **«Añadir a la vista…»** search box offers every catalog element not yet in the
   view (contexts, external systems, aggregates, flows, processes, workflows, actors,
   agents, gateways, RAGs, APIs) — pick one and **＋ Añadir** incorporates it;
-- pressing **Supr on a member** opens a picker: *¿Eliminar del modelo, o solo quitar
-  de la vista?* — the second option only edits the view's `memberIds`, never the
+- pressing **Del on a member** opens a picker: *Delete …, or only remove it from the
+  view?* — the second option only edits the view's `memberIds`, never the
   element itself. Computed views reject member edits (their members derive from the
   seed).
