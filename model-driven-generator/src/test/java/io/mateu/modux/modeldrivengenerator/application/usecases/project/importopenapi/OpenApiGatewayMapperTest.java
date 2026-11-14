@@ -144,6 +144,47 @@ class OpenApiGatewayMapperTest {
     }
 
     @Test
+    void the_default_error_response_is_not_the_output_of_an_operation_that_declares_success() {
+        var spec = """
+                openapi: 3.0.0
+                info: { title: Pets, version: 1.0.0 }
+                paths:
+                  /pets:
+                    post:
+                      operationId: createPets
+                      responses:
+                        '201':
+                          description: Null response
+                        default:
+                          description: unexpected error
+                          content:
+                            application/json:
+                              schema:
+                                $ref: '#/components/schemas/Error'
+                  /pets/{id}:
+                    get:
+                      operationId: anything
+                      responses:
+                        default:
+                          description: whatever it answers
+                          content:
+                            application/json:
+                              schema:
+                                $ref: '#/components/schemas/Error'
+                components:
+                  schemas:
+                    Error:
+                      type: object
+                      properties:
+                        message: { type: string }
+                """;
+        var result = OpenApiGatewayMapper.map(new OpenAPIParser().readContents(spec, null, null).getOpenAPI());
+        assertEquals(null, op(result.operations(), "createPets").outputModelId());
+        // with no success code declared, `default` is all the contract says about the answer
+        assertEquals(model(result.models(), "Error").id(), op(result.operations(), "anything").outputModelId());
+    }
+
+    @Test
     void captures_path_query_header_and_cookie_parameters() {
         var getPet = op(map().operations(), "getPet");
         assertEquals(4, getPet.parameters().size());
