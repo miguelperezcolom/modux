@@ -2,7 +2,7 @@
 # Encodes the rendered master (build/master.mp4, from render-animated.mjs) for YouTube:
 #   build/modux-promo-1080p.mp4   opening + master, H.264 1080p30, CRF 18, faststart, no audio track
 #   build/modux-promo-thumbnail.jpg  1280x720 thumbnail
-# The video is published on YouTube and embedded on the home page; nothing here goes in the repo.
+# Published at https://youtu.be/t6kp5AkKsN4 and embedded on the home page; nothing here goes in the repo.
 # OUT=<dir> also copies both files there.
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
