@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.application.usecases.${aggregate.name?lower_case}.update;
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 
@@ -37,7 +38,7 @@ public class Update${aggregate.name}UseCase {
         // ${aggregate.name} changes through its operations, each one with its rules: a generic
         // update would overwrite the whole state and skip them.
         throw ${project.packageName}.application.BusinessRuleException.conflict(
-                "${aggregate.name} no se edita directamente: usa <#list aggregate.operations as op>«${op.name}»<#sep>, </#sep></#list>");
+                "${aggregate.name} <#if uiEs>no se edita directamente: usa<#else>is not edited directly: use</#if> <#list aggregate.operations as op>«${op.name}»<#sep>, </#sep></#list>");
 <#else>
         var entity = repository.findById(new ${aggregate.name}Id(Long.valueOf(command.id()))).orElseThrow();
         entity.update(

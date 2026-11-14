@@ -1,3 +1,4 @@
+<#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#-- the lifecycle's state field and how a state is written / read in Java -->
 <#assign lcField = "">
@@ -123,7 +124,7 @@ public void update(
 // only editable while <#list aggregate.lifecycle.editableStates as st>${st}<#sep> or </#sep></#list>: after that, only its operations change it
 if (!java.util.Set.of(<#list aggregate.lifecycle.editableStates as st>"${st}"<#sep>, </#sep></#list>).contains(${stateText("this")})) {
     throw ${project.packageName}.application.BusinessRuleException.conflict(
-            "${aggregate.name} no se puede modificar en estado " + ${stateText("this")});
+            "${aggregate.name} <#if uiEs>no se puede modificar en estado<#else>cannot be changed in state</#if> " + ${stateText("this")});
 }
 </#if>
 <#list safeFields as field>
@@ -314,7 +315,7 @@ ${aggregate.name}.this.id = id;
         var stateBefore = ${stateText("this")};
         if (!java.util.Set.of(<#list operation.transitions as t>"${t.from}"<#sep>, </#sep></#list>).contains(stateBefore)) {
             throw ${project.packageName}.application.BusinessRuleException.conflict(
-                    "No se puede ${operation.name?uncap_first} en estado " + stateBefore);
+                    "<#if uiEs>No se puede ${operation.name?uncap_first} en estado<#else>Cannot ${operation.name?uncap_first} in state</#if> " + stateBefore);
         }
 </#if>
 </#macro>
