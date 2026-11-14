@@ -1,0 +1,16 @@
+modux is an open-source, model-driven generator for enterprise systems in Java (DDD, hexagonal architecture, Spring Boot). In three minutes: a concert-ticket system modelled in YAML, generated, deployed and running — then changed through its model.
+
+Everything on screen is real: the modux editor, the output of mvn modux:generate / ai-complete / deploy, the generated code, and the system running. ai-complete is opt-in and uses the AI tool on your own machine. The card gateway is a demo mock.
+
+0:00 How much of your system is actually the business?
+0:23 Production adds the rest
+0:37 Model the business
+1:01 One command generates the system
+1:20 Two zones: the business logic is yours
+1:45 Deploy, and it runs: a concert, a purchase, a declined card
+2:34 History, emails, dashboard
+2:46 Change the model, the code follows
+
+Docs: https://modux.mateu.io
+Code: https://github.com/miguelperezcolom/modux (MIT)
+Series: modux in N minutes — one aspect of modux per episode.

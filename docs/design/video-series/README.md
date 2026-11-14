@@ -171,3 +171,20 @@ El propietario delegó las preguntas abiertas; quedan así:
    montaje EN/ES) sobre el del promo.
 4. Piloto 1 (con Mateu 3.0-beta.68 y modux apuntando a ella) → revisión del propietario → subida tras su OK.
 5. Piloto 2, y el resto en el orden de la tabla.
+
+## Publicados
+
+Lista: [modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U) (pública; EN y ES en la misma
+lista, ordenada por inclusión). Cada vídeo lleva subtítulos EN y ES, título y descripción en los dos idiomas.
+
+| # | EN | ES | Docs |
+|---|---|---|---|
+| 1 | [modux in 3 minutes](https://youtu.be/36YZd8HI0bk) (3:22) | [modux en 3 minutos](https://youtu.be/bhxzFJl-W58) | `getting-started/introduction` |
+| 2 | [From one aggregate to a running app](https://youtu.be/xqIx8CE_-KE) (2:08) | [De un agregado a una aplicación](https://youtu.be/8zNfZ23hKx8) | `getting-started/quick-start` |
+
+Lo que los pilotos destaparon en modux (arreglado en 0.6.6 salvo lo marcado): el proyecto Compose compartido
+entre sistemas, la URL que imprime `deploy`, los modelos sueltos en el mapa del sistema, `modux/` en IntelliJ,
+los importadores, el HLA en español; pendiente: el sistema generado no trae `.gitignore` (su `target/` acaba en
+git), el listado CRUD no se refresca solo cuando cambia el estado (hay que buscar otra vez), los nombres internos
+de los eventos de estado siguen en español en proyectos ingleses (`ConcertBorrado`), y Mateu avisa de un campo
+`final` en el view model generado.

@@ -23,3 +23,30 @@ export async function menu(film, hand, page, top, item) {
 }
 
 export const visible = (page, text, opts = {}) => async () => (await page.getByText(text, { exact: true, ...opts }).count()) > 0;
+
+/**
+ * Off camera, until the system has moved purchases to `status` (`count` of them): the bank answers
+ * after PAYGATE_DELAY and the payment's event reaches Sales through the outbox, which takes longer
+ * than filming wants to show. Asked to the system's own database, the source of truth.
+ */
+export async function waitStatus(status, count = 1, timeout = 180) {
+  const { execFileSync } = await import('node:child_process');
+  const t0 = Date.now();
+  for (;;) {
+    let n = 0;
+    try {
+      n = Number(execFileSync('docker', ['exec', 'tickets-postgres-1', 'psql', '-U', 'user_app', '-d', 'sales', '-tAc',
+        `select count(*) from purchase_entity where col_status = '${status}'`]).toString().trim());
+    } catch { n = 0; }
+    if (n >= count) return;
+    if (Date.now() - t0 > timeout * 1000) throw new Error(`no ${count} ${status} purchase(s) after ${timeout}s`);
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
+
+/** Holds the mock bank (paygate.py): no charge is answered while the hold file exists. */
+export const HOLD = '/tmp/paygate.hold';
+export async function holdBank(on) {
+  const fs = await import('node:fs');
+  if (on) fs.writeFileSync(HOLD, 'filming'); else fs.rmSync(HOLD, { force: true });
+}

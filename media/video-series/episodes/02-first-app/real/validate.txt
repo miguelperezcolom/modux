@@ -1,5 +1,4 @@
-[INFO]   from pom.xml
 [INFO] Modux: model is consistent, no dangling references.
 [INFO] Modux: model checked — 0 error(s), 0 warning(s)
 [INFO] BUILD SUCCESS
-[INFO] Total time:  1.185 s
+[INFO] Total time:  0.987 s

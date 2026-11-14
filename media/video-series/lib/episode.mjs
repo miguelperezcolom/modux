@@ -75,7 +75,14 @@ async function renderScene(scene, seconds, still) {
     const shot = await open({ scale: scene.scale ?? 1.5 });
     const film = new Film(shot.page, out);
     const hand = new Hand(film);
-    await mod.default({ film, hand, page: shot.page, context: shot.context, scene: data(scene), seconds, epDir });
+    try {
+      await mod.default({ film, hand, page: shot.page, context: shot.context, scene: data(scene), seconds, epDir });
+    } catch (e) {
+      // the last thing the camera saw, to see why
+      if (film.last) writeFileSync(join(build, `failed-${scene.id}.png`), film.last);
+      writeFileSync(join(build, `failed-${scene.id}-now.png`), await shot.page.screenshot());
+      throw e;
+    }
     await film.padTo(Math.max(seconds, film.seconds));
     const s = await film.end();
     await shot.context.close();
@@ -109,6 +116,12 @@ function assemble(t) {
   const starts = {}; let at = 0;
   for (const s of ep.scenes) { starts[s.id] = at; at += probe(join(build, 'scenes', `${s.id}.mp4`)); }
   const total = at;
+  // a voice longer than its scene would run into the next one: refuse to assemble
+  for (const s of ep.scenes) for (const lang of LANGS) {
+    const need = (t[lang][s.id]?.duration ?? 0) + LEAD;
+    const have = probe(join(build, 'scenes', `${s.id}.mp4`));
+    if (t[lang][s.id] && need > have + 0.05) throw new Error(`${s.id} (${lang}): the narration needs ${need.toFixed(2)}s, the scene lasts ${have.toFixed(2)}s — render it again`);
+  }
   writeFileSync(list, ep.scenes.map((s) => `file '${join(build, 'scenes', `${s.id}.mp4`)}'`).join('\n'));
   const video = join(build, 'video.mp4');
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', video]);

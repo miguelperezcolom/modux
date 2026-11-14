@@ -8,8 +8,8 @@ export default async function ({ film, hand, page }) {
   await film.settle(async () => (await page.locator('vaadin-grid').count()) > 0, { after: 2.4 });
   // the email the customer got: Mailpit catches everything the system sends
   await page.goto('http://localhost:8025/');
-  await film.settle(async () => (await page.getByText(/Your purchase/).count()) > 0, { after: 0.4 });
-  await hand.click(page.getByText(/Your purchase/).first(), { move: 0.6 });
+  await film.settle(async () => (await page.getByText('Your purchase 1').count()) > 0, { after: 0.4 });
+  await hand.click(page.getByText('Your purchase 1').first(), { move: 0.6 });
   await film.settle(async () => (await page.locator('iframe').count()) > 0, { after: 2.0 });
   // management's dashboard
   await page.context().clearCookies();

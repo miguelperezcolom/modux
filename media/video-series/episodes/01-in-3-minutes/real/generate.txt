@@ -1,4 +1,4 @@
 [INFO] Modux: generating 'tickets' from modux → system
 [INFO] Modux: model checked — 0 error(s), 0 warning(s)
 [INFO] BUILD SUCCESS
-[INFO] Total time:  2.735 s
+[INFO] Total time:  5.799 s

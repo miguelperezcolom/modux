@@ -75,7 +75,7 @@ export class Hand {
   }
 
   /** Type into the focused element, one key every `perKey` seconds. */
-  async type(text, perKey = 0.06) {
+  async type(text, perKey = 0.035) {
     const every = Math.max(1, Math.round(perKey * FPS));
     for (const ch of text) {
       await this.page.keyboard.type(ch);
