@@ -4,22 +4,28 @@
  * `modux-canvas`. NOT wired to the store — handcrafted geometry on purpose.
  */
 import type { Scene } from '../scene.js';
+import { t, type MessageKey } from '../i18n/index.js';
 
 /** ArchiMate-ish pastel fills, mapped to modux concept groups (the "layers"). */
 export const LAYER = {
-  context:      { fill: '#F5DEAA', stroke: '#C9A85E', name: 'Estratégico' },
-  domain:       { fill: '#B5FFFF', stroke: '#5AA9A9', name: 'Dominio' },
-  event:        { fill: '#FFE3B5', stroke: '#D69A3E', name: 'Eventos' },
-  behavior:     { fill: '#FFFFB5', stroke: '#C9C05E', name: 'Comportamiento' },
-  orchestration:{ fill: '#EDE9FE', stroke: '#7C3AED', name: 'Orquestación' },
-  api:          { fill: '#E0E7FF', stroke: '#4F46E5', name: 'Integración' },
-  external:     { fill: '#F1F5F9', stroke: '#64748B', name: 'Externo' },
-  ai:           { fill: '#F3E8FF', stroke: '#9333EA', name: 'IA' },
-  ui:           { fill: '#CCFBF1', stroke: '#0D9488', name: 'UI' },
-  tech:         { fill: '#DCFCE7', stroke: '#16A34A', name: 'Módulos' },
-} as const;
+  context:      { fill: '#F5DEAA', stroke: '#C9A85E', nameKey: 'archi.layer.context' },
+  domain:       { fill: '#B5FFFF', stroke: '#5AA9A9', nameKey: 'archi.layer.domain' },
+  event:        { fill: '#FFE3B5', stroke: '#D69A3E', nameKey: 'archi.layer.event' },
+  behavior:     { fill: '#FFFFB5', stroke: '#C9C05E', nameKey: 'archi.layer.behavior' },
+  orchestration:{ fill: '#EDE9FE', stroke: '#7C3AED', nameKey: 'archi.layer.orchestration' },
+  api:          { fill: '#E0E7FF', stroke: '#4F46E5', nameKey: 'archi.layer.api' },
+  external:     { fill: '#F1F5F9', stroke: '#64748B', nameKey: 'archi.layer.external' },
+  ai:           { fill: '#F3E8FF', stroke: '#9333EA', nameKey: 'archi.layer.ai' },
+  ui:           { fill: '#CCFBF1', stroke: '#0D9488', nameKey: 'archi.layer.ui' },
+  tech:         { fill: '#DCFCE7', stroke: '#16A34A', nameKey: 'archi.layer.tech' },
+} as const satisfies Record<string, { fill: string; stroke: string; nameKey: MessageKey }>;
 
 export type LayerKey = keyof typeof LAYER;
+
+/** The display name of a layer, in the current language. */
+export function layerName(key: LayerKey): string {
+  return t(LAYER[key].nameKey);
+}
 
 /** One row of the model tree (left panel). Mirrors the scene node ids. */
 export interface TreeNode {

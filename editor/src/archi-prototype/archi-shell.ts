@@ -18,60 +18,95 @@ import { snapValue } from '../snap.js';
 
 /** SPIKE: a free-form view is just which model elements it shows and where. */
 type ViewMembers = { members: { id: string; x: number; y: number; w: number; h: number; fill?: string }[] };
-import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, type LayerKey } from './example-scene.js';
-import { validRelations, canDraw, REL_NOTATION, REL_TYPES, type RelOption } from './magic.js';
+import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, layerName, type LayerKey } from './example-scene.js';
+import { validRelations, canDraw, REL_NOTATION, REL_TYPES, relLabel, type RelOption } from './magic.js';
 import { connectionOptions, type GestureHost } from '../gestures.js';
+import { LanguageController, t, type MessageKey } from '../i18n/index.js';
 
 /** A meaning the traced line can take in the model (from the editor's gesture vocabulary). */
 interface ConnectOption { id: string; label: string; hint: string; apply(): void }
 
-interface ElementTool { kind: string; label: string; layer: LayerKey; w: number; h: number; container?: boolean; group: string; }
+/**
+ * A palette tool. `defaultName` is the name a freshly minted model element gets — model content,
+ * so it is not translated; what the palette shows comes from `toolLabel()`.
+ */
+interface ElementTool { kind: string; defaultName: string; layer: LayerKey; w: number; h: number; container?: boolean; group: PaletteGroup; }
 /** Element palette groups, in display order — new (high-level) groups slot in here. */
-const ELEMENT_GROUPS = ['Estratégico', 'Dominio', 'Comportamiento', 'Orquestación', 'Integración', 'Externo', 'IA', 'UI', 'Despliegue', 'Módulos', 'Otros'];
+const ELEMENT_GROUPS = ['strategic', 'domain', 'behavior', 'orchestration', 'integration', 'external', 'ai', 'ui', 'deployment', 'modules', 'other'] as const;
+type PaletteGroup = (typeof ELEMENT_GROUPS)[number] | 'extras';
+const PALETTE_GROUP_KEY: Record<PaletteGroup, MessageKey> = {
+  strategic: 'archi.group.strategic', domain: 'archi.group.domain', behavior: 'archi.group.behavior',
+  orchestration: 'archi.group.orchestration', integration: 'archi.group.integration', external: 'archi.group.external',
+  ai: 'archi.group.ai', ui: 'archi.group.ui', deployment: 'archi.group.deployment', modules: 'archi.group.modules',
+  other: 'archi.group.other', extras: 'archi.group.extras',
+};
 const ELEMENT_TOOLS: ElementTool[] = [
-  { kind: 'component', label: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'Estratégico' },
-  { kind: 'aggregate', label: 'Agregado', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
-  { kind: 'entity', label: 'Entidad', layer: 'domain', w: 160, h: 66, group: 'Dominio' },
-  { kind: 'value-object', label: 'Value object', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
-  { kind: 'invariant', label: 'Invariante', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
-  { kind: 'read-model', label: 'Read model', layer: 'domain', w: 160, h: 56, group: 'Dominio' },
-  { kind: 'policy', label: 'Policy', layer: 'domain', w: 150, h: 56, group: 'Dominio' },
-  { kind: 'event', label: 'Evento', layer: 'event', w: 200, h: 62, group: 'Dominio' },
-  { kind: 'usecase', label: 'Caso de uso', layer: 'behavior', w: 160, h: 62, group: 'Comportamiento' },
-  { kind: 'service', label: 'Servicio', layer: 'behavior', w: 170, h: 50, group: 'Comportamiento' },
-  { kind: 'person', label: 'Actor', layer: 'behavior', w: 130, h: 74, group: 'Comportamiento' },
-  { kind: 'workflow', label: 'Workflow', layer: 'orchestration', w: 240, h: 130, container: true, group: 'Orquestación' },
-  { kind: 'workflow-step', label: 'Paso', layer: 'orchestration', w: 150, h: 56, group: 'Orquestación' },
-  { kind: 'etl-flow', label: 'Flujo ETL', layer: 'orchestration', w: 160, h: 56, group: 'Orquestación' },
-  { kind: 'api', label: 'API', layer: 'api', w: 160, h: 56, group: 'Integración' },
-  { kind: 'api-operation', label: 'Operación API', layer: 'api', w: 170, h: 52, group: 'Integración' },
-  { kind: 'proxy-api', label: 'Proxy API', layer: 'api', w: 160, h: 56, group: 'Integración' },
-  { kind: 'integration-event', label: 'Evento integración', layer: 'api', w: 200, h: 56, group: 'Integración' },
-  { kind: 'external-system', label: 'Sistema externo', layer: 'external', w: 220, h: 120, container: true, group: 'Externo' },
-  { kind: 'identity-provider', label: 'IdP', layer: 'external', w: 150, h: 56, group: 'Externo' },
-  { kind: 'ai-agent', label: 'Agente IA', layer: 'ai', w: 160, h: 60, group: 'IA' },
-  { kind: 'mcp-gateway', label: 'Gateway MCP', layer: 'ai', w: 170, h: 56, group: 'IA' },
-  { kind: 'rag', label: 'RAG', layer: 'ai', w: 140, h: 56, group: 'IA' },
-  { kind: 'ui-app', label: 'App UI', layer: 'ui', w: 240, h: 130, container: true, group: 'UI' },
-  { kind: 'page', label: 'Página', layer: 'ui', w: 150, h: 60, group: 'UI' },
-  { kind: 'menu-item', label: 'Menú', layer: 'ui', w: 140, h: 48, group: 'UI' },
-  { kind: 'deployment', label: 'Servicio (despliegue)', layer: 'tech', w: 280, h: 170, container: true, group: 'Despliegue' },
-  { kind: 'module', label: 'Módulo', layer: 'tech', w: 160, h: 60, group: 'Módulos' },
-  { kind: 'bff', label: 'BFF', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
-  { kind: 'acl', label: 'ACL', layer: 'tech', w: 150, h: 56, group: 'Módulos' },
-  { kind: 'api-gateway', label: 'API Gateway', layer: 'tech', w: 170, h: 56, group: 'Módulos' },
-  { kind: 'adapter', label: 'Adaptador', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
-  { kind: 'saga', label: 'Saga', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
-  { kind: 'projector', label: 'Projector', layer: 'tech', w: 160, h: 56, group: 'Módulos' },
-  { kind: 'scheduler', label: 'Scheduler', layer: 'tech', w: 150, h: 56, group: 'Módulos' },
-  { kind: 'junction', label: 'Junction', layer: 'behavior', w: 16, h: 16, group: 'Otros' },
+  { kind: 'component', defaultName: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'strategic' },
+  { kind: 'aggregate', defaultName: 'Agregado', layer: 'domain', w: 160, h: 66, group: 'domain' },
+  { kind: 'entity', defaultName: 'Entidad', layer: 'domain', w: 160, h: 66, group: 'domain' },
+  { kind: 'value-object', defaultName: 'Value object', layer: 'domain', w: 150, h: 56, group: 'domain' },
+  { kind: 'invariant', defaultName: 'Invariante', layer: 'domain', w: 150, h: 56, group: 'domain' },
+  { kind: 'read-model', defaultName: 'Read model', layer: 'domain', w: 160, h: 56, group: 'domain' },
+  { kind: 'policy', defaultName: 'Policy', layer: 'domain', w: 150, h: 56, group: 'domain' },
+  { kind: 'event', defaultName: 'Evento', layer: 'event', w: 200, h: 62, group: 'domain' },
+  { kind: 'usecase', defaultName: 'Caso de uso', layer: 'behavior', w: 160, h: 62, group: 'behavior' },
+  { kind: 'service', defaultName: 'Servicio', layer: 'behavior', w: 170, h: 50, group: 'behavior' },
+  { kind: 'person', defaultName: 'Actor', layer: 'behavior', w: 130, h: 74, group: 'behavior' },
+  { kind: 'workflow', defaultName: 'Workflow', layer: 'orchestration', w: 240, h: 130, container: true, group: 'orchestration' },
+  { kind: 'workflow-step', defaultName: 'Paso', layer: 'orchestration', w: 150, h: 56, group: 'orchestration' },
+  { kind: 'etl-flow', defaultName: 'Flujo ETL', layer: 'orchestration', w: 160, h: 56, group: 'orchestration' },
+  { kind: 'api', defaultName: 'API', layer: 'api', w: 160, h: 56, group: 'integration' },
+  { kind: 'api-operation', defaultName: 'Operación API', layer: 'api', w: 170, h: 52, group: 'integration' },
+  { kind: 'proxy-api', defaultName: 'Proxy API', layer: 'api', w: 160, h: 56, group: 'integration' },
+  { kind: 'integration-event', defaultName: 'Evento integración', layer: 'api', w: 200, h: 56, group: 'integration' },
+  { kind: 'external-system', defaultName: 'Sistema externo', layer: 'external', w: 220, h: 120, container: true, group: 'external' },
+  { kind: 'identity-provider', defaultName: 'IdP', layer: 'external', w: 150, h: 56, group: 'external' },
+  { kind: 'ai-agent', defaultName: 'Agente IA', layer: 'ai', w: 160, h: 60, group: 'ai' },
+  { kind: 'mcp-gateway', defaultName: 'Gateway MCP', layer: 'ai', w: 170, h: 56, group: 'ai' },
+  { kind: 'rag', defaultName: 'RAG', layer: 'ai', w: 140, h: 56, group: 'ai' },
+  { kind: 'ui-app', defaultName: 'App UI', layer: 'ui', w: 240, h: 130, container: true, group: 'ui' },
+  { kind: 'page', defaultName: 'Página', layer: 'ui', w: 150, h: 60, group: 'ui' },
+  { kind: 'menu-item', defaultName: 'Menú', layer: 'ui', w: 140, h: 48, group: 'ui' },
+  { kind: 'deployment', defaultName: 'Servicio (despliegue)', layer: 'tech', w: 280, h: 170, container: true, group: 'deployment' },
+  { kind: 'module', defaultName: 'Módulo', layer: 'tech', w: 160, h: 60, group: 'modules' },
+  { kind: 'bff', defaultName: 'BFF', layer: 'tech', w: 160, h: 56, group: 'modules' },
+  { kind: 'acl', defaultName: 'ACL', layer: 'tech', w: 150, h: 56, group: 'modules' },
+  { kind: 'api-gateway', defaultName: 'API Gateway', layer: 'tech', w: 170, h: 56, group: 'modules' },
+  { kind: 'adapter', defaultName: 'Adaptador', layer: 'tech', w: 160, h: 56, group: 'modules' },
+  { kind: 'saga', defaultName: 'Saga', layer: 'tech', w: 160, h: 56, group: 'modules' },
+  { kind: 'projector', defaultName: 'Projector', layer: 'tech', w: 160, h: 56, group: 'modules' },
+  { kind: 'scheduler', defaultName: 'Scheduler', layer: 'tech', w: 150, h: 56, group: 'modules' },
+  { kind: 'junction', defaultName: 'Junction', layer: 'behavior', w: 16, h: 16, group: 'other' },
 ];
 
 /** Non-ArchiMate extras (Archi's Note/Group section of the palette). */
 const EXTRA_TOOLS: ElementTool[] = [
-  { kind: 'group', label: 'Grupo', layer: 'context', w: 240, h: 150, container: true, group: 'Extras' },
-  { kind: 'note', label: 'Nota', layer: 'event', w: 160, h: 64, group: 'Extras' },
+  { kind: 'group', defaultName: 'Grupo', layer: 'context', w: 240, h: 150, container: true, group: 'extras' },
+  { kind: 'note', defaultName: 'Nota', layer: 'event', w: 160, h: 64, group: 'extras' },
 ];
+
+/** Palette kind → the message key of its palette label. */
+const TOOL_LABEL_KEY: Record<string, MessageKey> = {
+  component: 'archi.element.context', aggregate: 'archi.element.aggregate', entity: 'archi.element.entity',
+  'value-object': 'archi.element.valueObject', invariant: 'archi.element.invariant', 'read-model': 'archi.element.readModel',
+  policy: 'archi.element.policy', event: 'archi.element.event', usecase: 'archi.element.useCase',
+  service: 'archi.element.service', person: 'archi.element.actor', workflow: 'archi.element.workflow',
+  'workflow-step': 'archi.element.workflowStep', 'etl-flow': 'archi.element.etlFlow', api: 'archi.element.api',
+  'api-operation': 'archi.element.apiOperation', 'proxy-api': 'archi.element.proxyApi',
+  'integration-event': 'archi.element.integrationEvent', 'external-system': 'archi.element.externalSystem',
+  'identity-provider': 'archi.element.identityProvider', 'ai-agent': 'archi.element.aiAgent',
+  'mcp-gateway': 'archi.element.mcpGateway', rag: 'archi.element.rag', 'ui-app': 'archi.element.uiApp',
+  page: 'archi.element.page', 'menu-item': 'archi.element.menuItem', deployment: 'archi.element.deployment',
+  module: 'archi.element.module', bff: 'archi.element.bff', acl: 'archi.element.acl',
+  'api-gateway': 'archi.element.apiGateway', adapter: 'archi.element.adapter', saga: 'archi.element.saga',
+  projector: 'archi.element.projector', scheduler: 'archi.element.scheduler', junction: 'archi.element.junction',
+  group: 'archi.element.group', note: 'archi.element.note',
+};
+/** What the palette (and the hints and menus) call a tool, in the current language. */
+function toolLabel(el: ElementTool): string {
+  const key = TOOL_LABEL_KEY[el.kind];
+  return key ? t(key) : el.defaultName;
+}
 
 const KIND_LAYER: Record<string, LayerKey> = {
   component: 'context', area: 'context', system: 'context',
@@ -130,12 +165,17 @@ const BOUND_CREATE: Record<string, (id: string, name: string) => Record<string, 
 };
 
 /** Human label of a node kind, for the catalog tree — elements of different kinds often share a name. */
-const CATALOG_KIND_LABEL: Record<string, string> = {
-  ...Object.fromEntries(ELEMENT_TOOLS.map((t) => [t.kind, t.label])),
-  deployment: 'Servicio', service: 'Servicio de dominio', 'query-service': 'Query service', model: 'Modelo',
-  system: 'Sistema', projector: 'Proyección', saga: 'Saga', gateway: 'Gateway', subscription: 'Suscripción',
-  notification: 'Notificación', process: 'Proceso',
+const CATALOG_KIND_LABEL_KEY: Record<string, MessageKey> = {
+  ...TOOL_LABEL_KEY,
+  deployment: 'archi.kind.deployment', service: 'archi.kind.domainService', 'query-service': 'archi.kind.queryService',
+  model: 'archi.kind.model', system: 'archi.kind.system', projector: 'archi.kind.projection', saga: 'archi.kind.saga',
+  gateway: 'archi.kind.gateway', subscription: 'archi.kind.subscription', notification: 'archi.kind.notification',
+  process: 'archi.kind.process',
 };
+function catalogKindLabel(kind: string): string {
+  const key = CATALOG_KIND_LABEL_KEY[kind];
+  return key ? t(key) : kind;
+}
 
 /** Palette kind → store type, for a freshly minted element that is not in the projection yet. */
 const BOUND_CONTEXT_TYPE: Record<string, string> = {
@@ -189,6 +229,7 @@ type Tool =
 
 @customElement('archi-shell')
 export class ArchiShell extends LitElement {
+  readonly _i18n = new LanguageController(this, { root: true });
   @state() private scene: Scene = structuredClone(EXAMPLE_SCENE);
   /**
    * SPIKE (vista libre): el modelo es la fuente de verdad; la VISTA solo dice qué
@@ -566,7 +607,7 @@ export class ArchiShell extends LitElement {
     const ctx = this.contextAt(x, y, id);
     if (!ctx || entry?.ownerId === ctx.id) return;
     this.emit('modux-command', { command: { kind: 'set-element-context', type: contextType, id, boundedContextId: ctx.id } });
-    this.flash(`«${entry?.label ?? label ?? this.node(id)?.label ?? id}» pasa a «${ctx.label}»`);
+    this.flash(t('archi.toast.movedToContext', { element: entry?.label ?? label ?? this.node(id)?.label ?? id, context: ctx.label }));
   }
   /** A module dropped inside a service (deployment) box is deployed by it — and only by it. */
   private deployInto(id: string, x: number, y: number, label?: string) {
@@ -576,7 +617,7 @@ export class ArchiShell extends LitElement {
     const deployer = this.model?.services?.find((s) => (s.moduleIds ?? []).includes(id));
     if (deployer?.id === svc.id) return;
     this.emit('modux-command', { command: { kind: 'add-service-module', id: svc.id, targetId: id } });
-    this.flash(`«${label ?? id}» se despliega en «${svc.label}»`);
+    this.flash(t('archi.toast.deployedIn', { module: label ?? id, service: svc.label }));
   }
   /** The innermost bounded context of this view whose box holds the point. */
   private contextAt(x: number, y: number, excludeId?: string): SceneNode | undefined {
@@ -788,13 +829,13 @@ export class ArchiShell extends LitElement {
     } else if (d?.elementType === 'edge') { this.selectedId = d.id; this.selectedIds = []; this.ctx = null; }
   }
   /**
-   * Copiar formato (Archi's format painter): load the selected element's fill, then each click on
-   * another node applies it. The colour itself is chosen in Apariencia.
+   * Format painter (Archi's): load the selected element's fill, then each click on another node
+   * applies it. The colour itself is chosen in the Appearance tab.
    */
   private toggleFormatPainter() {
     if (this.painter !== null) { this.painter = null; return; }
     const n = this.selectedNode();
-    if (!n?.fill) { this.flash('Selecciona el elemento cuyo color quieres copiar (el color se elige en Apariencia)'); return; }
+    if (!n?.fill) { this.flash(t('archi.toast.formatPainterNeedsSelection')); return; }
     this.painter = n.fill;
   }
   private paintFill(id: string, fill: string) {
@@ -843,22 +884,22 @@ export class ArchiShell extends LitElement {
     const id = this.selectedId; const m = id ? this.metaOf(id) : { props: [] };
     return html`<div class="proptable">
       ${m.props.map((p, i) => html`<div class="proprow">
-        <input placeholder="clave" .value=${p.k} @input=${(e: Event) => this.setProp(i, 'k', (e.target as HTMLInputElement).value)} />
-        <input placeholder="valor" .value=${p.v} @input=${(e: Event) => this.setProp(i, 'v', (e.target as HTMLInputElement).value)} />
+        <input placeholder=${t('archi.props.keyPlaceholder')} .value=${p.k} @input=${(e: Event) => this.setProp(i, 'k', (e.target as HTMLInputElement).value)} />
+        <input placeholder=${t('archi.props.valuePlaceholder')} .value=${p.v} @input=${(e: Event) => this.setProp(i, 'v', (e.target as HTMLInputElement).value)} />
         <button class="del" @click=${() => this.removeProp(i)}>✕</button></div>`)}
-      <button class="addprop" @click=${() => this.addProp()}>+ Añadir propiedad</button></div>`;
+      <button class="addprop" @click=${() => this.addProp()}>${t('archi.props.addProperty')}</button></div>`;
   }
   private renderEdgeProps(edge: SceneEdge) {
-    const s = this.node(edge.sourceId), t = this.node(edge.targetId), m = this.metaOf(edge.id);
+    const s = this.node(edge.sourceId), tgt = this.node(edge.targetId), m = this.metaOf(edge.id);
     if (this.tab === 'properties') return this.renderPropsTable();
     if (this.tab === 'appearance')
-      return html`<div class="form"><label>Tipo de línea</label><div class="ro">${(REL_NOTATION[edge.kind]?.dashed ? 'discontinua' : 'sólida')}</div>
-        <label>Color</label><div class="ro">#5C5C5C (notación ArchiMate)</div></div>`;
+      return html`<div class="form"><label>${t('archi.props.lineStyle')}</label><div class="ro">${(REL_NOTATION[edge.kind]?.dashed ? t('archi.props.lineDashed') : t('archi.props.lineSolid'))}</div>
+        <label>${t('archi.props.color')}</label><div class="ro">${t('archi.props.archimateStroke')}</div></div>`;
     return html`<div class="form">
-      <label>Relación</label><div class="ro">${REL_NOTATION[edge.kind]?.label ?? edge.kind}</div>
-      <label>Origen</label><div class="ro">${s?.label ?? '—'}</div>
-      <label>Destino</label><div class="ro">${t?.label ?? '—'}</div>
-      <label>Documentación</label><textarea placeholder="Descripción de la relación…" .value=${m.doc} @input=${(e: Event) => this.setDoc((e.target as HTMLTextAreaElement).value)}></textarea></div>`;
+      <label>${t('archi.props.relation')}</label><div class="ro">${relLabel(edge.kind)}</div>
+      <label>${t('archi.props.source')}</label><div class="ro">${s?.label ?? '—'}</div>
+      <label>${t('archi.props.target')}</label><div class="ro">${tgt?.label ?? '—'}</div>
+      <label>${t('archi.props.documentation')}</label><textarea placeholder=${t('archi.props.relationDocPlaceholder')} .value=${m.doc} @input=${(e: Event) => this.setDoc((e.target as HTMLTextAreaElement).value)}></textarea></div>`;
   }
 
   // ---- canvas tool events --------------------------------------------------
@@ -866,7 +907,7 @@ export class ArchiShell extends LitElement {
     const d = (e as CustomEvent).detail as { nodeKind: string; w: number; h: number; x: number; y: number };
     const el = ELEMENT_TOOLS.find((x) => x.kind === d.nodeKind)
       ?? EXTRA_TOOLS.find((x) => x.kind === d.nodeKind)
-      ?? { kind: d.nodeKind, label: d.nodeKind, layer: 'domain', w: d.w, h: d.h } as ElementTool;
+      ?? { kind: d.nodeKind, defaultName: d.nodeKind, layer: 'domain', w: d.w, h: d.h } as ElementTool;
     this.commit();
     this.addNodeAt(el, d.x, d.y);
     if (!this.sticky) this.tool = { kind: 'select' };
@@ -884,14 +925,14 @@ export class ArchiShell extends LitElement {
       if (S === 'component' && T === 'component') cmd({ kind: 'add-relation', sourceId: src.id, targetId: tgt.id, type: 'CUSTOMER_SUPPLIER' });
       else if (S === 'scheduler' && (T === 'usecase' || T === 'policy')) {
         cmd({ kind: 'set-scheduled-trigger-target', id: src.id, targetUseCaseId: tgt.id });
-        this.flash(`«${src.label}» dispara «${tgt.label}»`);
+        this.flash(t('archi.toast.triggers', { source: src.label, target: tgt.label }));
       }
       else if (agg && mem) cmd({ kind: mem.kind === 'entity' ? 'set-entity-aggregate' : 'set-value-object-aggregate', id: mem.id, aggregateId: agg.id });
       else {
         // Everything else means what the editor's gesture vocabulary says it means — the same
         // rules the classic canvas applies (CRUD API, use case → aggregate, emissions, flows…).
         const options = connectionOptions(this.gestureHost(), src.id, tgt.id) as ConnectOption[];
-        if (!options.length) this.flash(`No sé conectar «${src.label}» con «${tgt.label}»`);
+        if (!options.length) this.flash(t('archi.toast.cannotConnect', { source: src.label, target: tgt.label }));
         else if (options.length === 1) this.applyConnect(options[0], src, tgt);
         else { this.connectMenu = { x: d.x, y: d.y, src, tgt, options }; return; }
       }
@@ -900,7 +941,7 @@ export class ArchiShell extends LitElement {
     }
     if (d.rel === null) {
       const opts = validRelations(src.kind, tgt.kind);
-      if (!opts.length) { this.flash(`No hay ninguna relación válida entre «${src.label}» y «${tgt.label}»`); this.afterConnect(); return; }
+      if (!opts.length) { this.flash(t('archi.toast.noValidRelation', { source: src.label, target: tgt.label })); this.afterConnect(); return; }
       this.menu = { x: d.x, y: d.y, src, tgt, opts }; // pending pick — reset on pickFromMenu
     } else {
       const dir = canDraw(d.rel, src.kind, tgt.kind);
@@ -911,7 +952,7 @@ export class ArchiShell extends LitElement {
   private onRejected = (e: Event) => {
     const d = (e as CustomEvent).detail as { sourceId: string; targetId: string; rel: string };
     const src = this.node(d.sourceId), tgt = this.node(d.targetId);
-    this.flash(`«${REL_NOTATION[d.rel]?.label ?? d.rel}» no es válida entre «${src?.label}» y «${tgt?.label}»`);
+    this.flash(t('archi.toast.relationNotValid', { relation: relLabel(d.rel), source: src?.label, target: tgt?.label }));
     this.afterConnect();
   };
   private onConnectEmpty = (e: Event) => {
@@ -923,7 +964,8 @@ export class ArchiShell extends LitElement {
   private addNodeAt(el: ElementTool, x: number, y: number): SceneNode {
     if (this.bound) {
       const id = `${el.kind}-${Date.now()}`;
-      const name = el.label;
+      // the default name is model content: it is persisted, so it is not translated
+      const name = el.defaultName;
       const build = BOUND_CREATE[el.kind];
       if (build) {
         this.emit('modux-command', { command: build(id, name) });
@@ -934,14 +976,14 @@ export class ArchiShell extends LitElement {
         this.adoptIntoContext(id, x, y, name);
         this.select(id);
       } else {
-        this.flash(`«${el.label}» necesita un contenedor o aún no se puede crear suelto`);
+        this.flash(t('archi.toast.cannotCreateStandalone', { element: toolLabel(el) }));
       }
       return { id, label: name, kind: el.kind, symbol: el.kind, x, y, w: el.w, h: el.h } as SceneNode;
     }
     const lay = LAYER[el.layer];
     const isGroup = el.kind === 'group';
     const n: SceneNode = {
-      id: `${el.kind}-${++this.seq}`, label: el.label, kind: el.kind, symbol: ARCHIMATE_SYMBOL[el.kind] ?? el.kind,
+      id: `${el.kind}-${++this.seq}`, label: toolLabel(el), kind: el.kind, symbol: ARCHIMATE_SYMBOL[el.kind] ?? el.kind,
       x, y, w: el.w, h: el.h,
       fill: el.kind === 'note' ? '#FEF9C3' : isGroup ? '#F8FAFC' : lay.fill, stroke: lay.stroke,
       ...(el.container ? { container: true, collapsible: true } : {}),
@@ -953,9 +995,9 @@ export class ArchiShell extends LitElement {
   }
 
   private addEdge(rel: string, a: SceneNode, b: SceneNode) {
-    if (this.bound) return; // SPIKE: edición de relaciones aún no cableada al modelo
+    if (this.bound) return; // SPIKE: relation editing is not wired to the model yet
     const note = REL_NOTATION[rel] ?? {};
-    const edge = { id: `edge-${++this.seq}`, sourceId: a.id, targetId: b.id, kind: rel, ...note } as SceneEdge;
+    const edge = { id: `edge-${++this.seq}`, sourceId: a.id, targetId: b.id, kind: rel, label: relLabel(rel), ...note } as SceneEdge;
     this.scene = { ...this.scene, edges: [...this.scene.edges, edge] };
   }
 
@@ -1015,19 +1057,19 @@ export class ArchiShell extends LitElement {
       const items = entries.filter((e) => kindLayer(e.kind) === fk).sort((a, b) => a.label.localeCompare(b.label));
       if (!items.length) return nothing;
       const shown = items.filter((e) => here.has(e.id)).length;
-      return this.folder(fk, LAYER[fk].name, items.map((e) => this.catalogRow(e, here.has(e.id))), `${shown}/${items.length}`);
+      return this.folder(fk, layerName(fk), items.map((e) => this.catalogRow(e, here.has(e.id))), `${shown}/${items.length}`);
     })}${this.renderTreeRelations(q)}`;
   }
   private catalogRow(e: CatalogEntry, inView: boolean): TemplateResult {
     const sw = LAYER[kindLayer(e.kind)];
     const sel = this.selectedIds.includes(e.id) || this.selectedId === e.id;
     return html`<div class="row child ${inView ? '' : 'absent'} ${sel ? 'sel' : ''}"
-         title=${inView ? e.label : `${e.label} — arrastra al lienzo (o doble click) para añadirlo a la vista`}
+         title=${inView ? e.label : t('archi.tree.addToViewHint', { name: e.label })}
          @pointerdown=${(ev: PointerEvent) => this.beginCatalogDrag(e, inView, ev)}
          @dblclick=${() => { if (!inView) this.addCatalogMember(e); }}>
       <span class="twisty"></span>
       <span class="swatch" style="background:${sw.fill};border-color:${sw.stroke}"></span>
-      <span class="lbl">${e.label}</span><span class="kindtag">${CATALOG_KIND_LABEL[e.kind] ?? e.kind}</span>
+      <span class="lbl">${e.label}</span><span class="kindtag">${catalogKindLabel(e.kind)}</span>
       ${inView ? nothing : html`<span class="add">＋</span>`}</div>`;
   }
   /** Pointer-based, like the palette drag — native DnD hangs inside JCEF. */
@@ -1094,7 +1136,7 @@ export class ArchiShell extends LitElement {
           .filter((n) => !q || n.label.toLowerCase().includes(q))
           .sort((a, b) => a.label.localeCompare(b.label));
         if (!nodes.length) return nothing;
-        return this.folder(fk, LAYER[fk].name, nodes.map((n) => this.treeRow(n)), nodes.length);
+        return this.folder(fk, layerName(fk), nodes.map((n) => this.treeRow(n)), nodes.length);
       })}
       ${this.renderTreeRelations(q)}`;
   }
@@ -1103,13 +1145,13 @@ export class ArchiShell extends LitElement {
     const edges = this.scene.edges
       .map((e) => ({ e, s: this.node(e.sourceId), t: this.node(e.targetId) }))
       .filter(({ s, t }) => s && t)
-      .map(({ e, s, t }) => ({ e, text: `${s!.label} — ${REL_NOTATION[e.kind]?.label ?? e.kind} → ${t!.label}` }))
+      .map(({ e, s, t: tgt }) => ({ e, text: `${s!.label} — ${relLabel(e.kind)} → ${tgt!.label}` }))
       .filter(({ text }) => !q || text.toLowerCase().includes(q));
     if (q && !edges.length) return nothing;
     const rows = edges.map(({ e, text }) => html`<div class="row child ${this.selectedId === e.id ? 'sel' : ''}"
         @click=${() => { this.selectedId = e.id; this.selectedIds = []; }}>
       <span class="twisty"></span><span class="rel-ic">╱</span><span class="lbl">${text}</span></div>`);
-    return this.folder('rel', 'Relaciones', rows, edges.length);
+    return this.folder('rel', t('archi.tree.relations'), rows, edges.length);
   }
 
   // ---- palette -------------------------------------------------------------
@@ -1151,8 +1193,9 @@ export class ArchiShell extends LitElement {
     // Pointer-based drag, NOT the HTML5 draggable API: native drag-and-drop hangs inside JCEF
     // (the drag grabs the pointer and never releases, freezing the view). A tap arms the place
     // tool (click-on-canvas to drop); a real drag drops the element where the pointer is released.
-    return html`<div class="pitem ${on ? 'on' : ''}" title=${el.label}
-      @pointerdown=${(e: PointerEvent) => this.beginPaletteDrag(el, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${el.label}</span></div>`;
+    const label = toolLabel(el);
+    return html`<div class="pitem ${on ? 'on' : ''}" title=${label}
+      @pointerdown=${(e: PointerEvent) => this.beginPaletteDrag(el, e)}>${this.elIcon(el.kind === 'group' ? 'area' : el.kind)}<span class="lbl">${label}</span></div>`;
   }
   private beginPaletteDrag(el: ElementTool, e: PointerEvent) {
     if (e.button !== 0) return;
@@ -1183,37 +1226,38 @@ export class ArchiShell extends LitElement {
   private renderPalette() {
     const magicOn = this.tool.kind === 'connect' && this.tool.rel === null;
     return html`
-      <div class="pgroup">Herramientas</div>
+      <div class="pgroup">${t('archi.palette.tools')}</div>
       <div class="pgrid">
-        <div class="pitem ${this.tool.kind === 'select' ? 'on' : ''}" @click=${() => this.resetTool()}><span class="sw" style="background:#94a3b8"></span><span class="lbl">Seleccionar</span></div>
-        <div class="pitem ${magicOn ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel: null }, e)}><span class="sw" style="background:#7c3aed"></span><span class="lbl">Conector mágico ✦</span></div>
+        <div class="pitem ${this.tool.kind === 'select' ? 'on' : ''}" @click=${() => this.resetTool()}><span class="sw" style="background:#94a3b8"></span><span class="lbl">${t('archi.tool.select')}</span></div>
+        <div class="pitem ${magicOn ? 'on' : ''}" @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel: null }, e)}><span class="sw" style="background:#7c3aed"></span><span class="lbl">${t('archi.tool.magicConnector')}</span></div>
       </div>
 
-      ${this.palGroup('rel', 'Relaciones', REL_TYPES.map((rel) => {
+      ${this.palGroup('rel', t('archi.palette.relations'), REL_TYPES.map((rel) => {
         const on = this.tool.kind === 'connect' && this.tool.rel === rel;
-        return html`<div class="pitem ${on ? 'on' : ''}" title=${REL_NOTATION[rel]?.label ?? rel} @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.relPreview(rel)}<span class="lbl">${REL_NOTATION[rel]?.label ?? rel}</span></div>`;
+        const label = relLabel(rel);
+        return html`<div class="pitem ${on ? 'on' : ''}" title=${label} @click=${(e: MouseEvent) => this.pickTool({ kind: 'connect', rel }, e)}>${this.relPreview(rel)}<span class="lbl">${label}</span></div>`;
       }))}
 
       ${ELEMENT_GROUPS.map((g, i) => {
         const items = ELEMENT_TOOLS.filter((el) => el.group === g);
-        return items.length ? this.palGroup('el:' + g, g, items.map((el) => this.elItem(el)), i === 0 ? 'Shift = fija' : '') : nothing;
+        return items.length ? this.palGroup('el:' + g, t(PALETTE_GROUP_KEY[g]), items.map((el) => this.elItem(el)), i === 0 ? t('archi.palette.stickyHint') : '') : nothing;
       })}
 
-      ${this.palGroup('extras', 'Extras', EXTRA_TOOLS.map((el) => this.elItem(el)))}
+      ${this.palGroup('extras', t(PALETTE_GROUP_KEY.extras), EXTRA_TOOLS.map((el) => this.elItem(el)))}
     `;
   }
 
   // ---- properties ----------------------------------------------------------
   /** SPIKE: properties bound to the real model (aggregates view). */
   /**
-   * The «Tipo» field: read-only, or — for the closed list of convertible types — a picker of what
+   * The Type field: read-only, or — for the closed list of convertible types — a picker of what
    * it can become. The model refuses (and says why) when something still points at the element.
    */
   private typeField(id: string, fallback: string) {
     const entry = this.catalogById().get(id);
     const from = entry ? retypeKey(entry) : undefined;
     const targets = from ? retypeTargets(from) : [];
-    if (!from || !targets.length) return html`<label>Tipo</label><div class="ro">${fallback}</div>`;
+    if (!from || !targets.length) return html`<label>${t('archi.props.type')}</label><div class="ro">${fallback}</div>`;
     const change = (e: Event) => {
       const select = e.target as HTMLSelectElement, to = select.value;
       // Show the CURRENT type until the model says otherwise: a refused change (banner) leaves it as
@@ -1221,8 +1265,8 @@ export class ArchiShell extends LitElement {
       select.value = from;
       if (to !== from) this.emit('modux-command', { command: { kind: 'change-element-type', id, from, to } });
     };
-    return html`<label>Tipo</label>
-      <select .value=${from} @change=${change} title="Cambiar el tipo conserva id, nombre y lo común; se bloquea si algo lo referencia">
+    return html`<label>${t('archi.props.type')}</label>
+      <select .value=${from} @change=${change} title=${t('archi.props.changeTypeHint')}>
         ${/* fixed family order: options must not be reordered in place, or the select's value
             (set before its children update) would end up on the wrong one after a change */ ''}
         ${Object.keys(RETYPES).filter((k) => k === from || targets.includes(k))
@@ -1237,8 +1281,8 @@ export class ArchiShell extends LitElement {
     if (!type) return nothing;
     const set = (e: Event) => this.emit('modux-command', { command: {
       kind: 'set-element-description', type, id, description: (e.target as HTMLTextAreaElement).value } });
-    return html`<label>Descripción</label>
-      <textarea placeholder="Qué es, en lenguaje del dominio…" .value=${this.model?.descriptions?.[id] ?? ''} @change=${set}></textarea>`;
+    return html`<label>${t('archi.props.description')}</label>
+      <textarea placeholder=${t('archi.props.descriptionPlaceholder')} .value=${this.model?.descriptions?.[id] ?? ''} @change=${set}></textarea>`;
   }
   private cmd(command: unknown) { this.emit('modux-command', { command }); }
   /** The fields of a model: what an aggregate's state, a command or a result is made of. */
@@ -1247,15 +1291,16 @@ export class ArchiShell extends LitElement {
     if (!model) return nothing;
     const set = (fieldId: string, name: string, type: string) =>
       this.cmd({ kind: 'set-model-field', modelId, fieldId, name, type });
-    return html`<div class="sec"><span>Campos</span><button @click=${() => this.cmd({
-        kind: 'add-model-field', modelId, fieldId: `f-${Date.now()}`, name: `campo${(model.fields?.length ?? 0) + 1}`, type: 'string' })}>+ campo</button></div>
+    // the default field name is model content: it is persisted, so it is not translated
+    return html`<div class="sec"><span>${t('archi.props.fields')}</span><button @click=${() => this.cmd({
+        kind: 'add-model-field', modelId, fieldId: `f-${Date.now()}`, name: `campo${(model.fields?.length ?? 0) + 1}`, type: 'string' })}>${t('archi.props.addField')}</button></div>
       ${(model.fields ?? []).map((f) => html`<div class="rowx">
         <input .value=${f.name} @change=${(e: Event) => set(f.id, (e.target as HTMLInputElement).value, f.type ?? 'string')} />
         <select @change=${(e: Event) => set(f.id, f.name, (e.target as HTMLSelectElement).value)}>
-          ${FIELD_TYPES.map((t) => html`<option value=${t} ?selected=${t === (f.type ?? 'string')}>${t}</option>`)}
+          ${FIELD_TYPES.map((ft) => html`<option value=${ft} ?selected=${ft === (f.type ?? 'string')}>${ft}</option>`)}
         </select>
-        <button title="Quitar campo" @click=${() => this.cmd({ kind: 'remove-model-field', modelId, fieldId: f.id })}>✕</button></div>`)}
-      ${model.fields?.length ? nothing : html`<div class="hintx">Sin campos todavía.</div>`}`;
+        <button title=${t('archi.props.removeField')} @click=${() => this.cmd({ kind: 'remove-model-field', modelId, fieldId: f.id })}>✕</button></div>`)}
+      ${model.fields?.length ? nothing : html`<div class="hintx">${t('archi.props.noFields')}</div>`}`;
   }
   /** Named rules of an aggregate; their code goes in its Invariants hook (custom module). */
   private renderInvariants(aggregateId: string, invariants: { id: string; name: string }[]) {
@@ -1265,10 +1310,10 @@ export class ArchiShell extends LitElement {
       this.cmd({ kind: 'add-invariant', ownerId: aggregateId, id: `inv-${Date.now()}`, name });
       input.value = '';
     };
-    return html`<div class="sec"><span>Invariantes</span></div>
+    return html`<div class="sec"><span>${t('archi.props.invariants')}</span></div>
       ${invariants.map((i) => html`<div class="rowx" style="grid-template-columns:1fr auto"><div class="ro">${i.name}</div>
-        <button title="Quitar invariante" @click=${() => this.cmd({ kind: 'remove-invariant', id: i.id })}>✕</button></div>`)}
-      <div class="rowx" style="grid-template-columns:1fr auto"><input id="new-invariant" placeholder="Nueva regla, p. ej. IsbnObligatorio" @keydown=${(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') nameIt(); }} />
+        <button title=${t('archi.props.removeInvariant')} @click=${() => this.cmd({ kind: 'remove-invariant', id: i.id })}>✕</button></div>`)}
+      <div class="rowx" style="grid-template-columns:1fr auto"><input id="new-invariant" placeholder=${t('archi.props.newInvariantPlaceholder')} @keydown=${(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') nameIt(); }} />
         <button @click=${nameIt}>+</button></div>`;
   }
   /** What an aggregate can do: named operations whose body is a hook in the custom module. */
@@ -1279,13 +1324,13 @@ export class ArchiShell extends LitElement {
       this.cmd({ kind: 'add-operation', aggregateId, id: `op-${Date.now()}`, name });
       input.value = '';
     };
-    return html`<div class="sec"><span>Operaciones</span></div>
+    return html`<div class="sec"><span>${t('archi.props.operations')}</span></div>
       ${operations.map((o) => html`<div class="rowx" style="grid-template-columns:1fr auto">
         <input .value=${o.name} @change=${(e: Event) => this.cmd({ kind: 'rename-element', type: 'operation', id: o.id, name: (e.target as HTMLInputElement).value })} />
-        <button title="Quitar operación" @click=${() => this.cmd({ kind: 'remove-operation', id: o.id })}>✕</button>
-        <textarea placeholder="Qué hace (se convierte en el gancho a implementar)…" .value=${o.intent ?? ''}
+        <button title=${t('archi.props.removeOperation')} @click=${() => this.cmd({ kind: 'remove-operation', id: o.id })}>✕</button>
+        <textarea placeholder=${t('archi.props.operationIntentPlaceholder')} .value=${o.intent ?? ''}
           @change=${(e: Event) => this.cmd({ kind: 'set-operation-intent', id: o.id, intent: (e.target as HTMLTextAreaElement).value })}></textarea></div>`)}
-      <div class="rowx" style="grid-template-columns:1fr auto"><input id="new-operation" placeholder="Nueva operación, p. ej. retirar" @keydown=${(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') add(); }} />
+      <div class="rowx" style="grid-template-columns:1fr auto"><input id="new-operation" placeholder=${t('archi.props.newOperationPlaceholder')} @keydown=${(e: KeyboardEvent) => { e.stopPropagation(); if (e.key === 'Enter') add(); }} />
         <button @click=${add}>+</button></div>`;
   }
   /** A use case's contract and pipeline: what it takes, what it returns, what it does. */
@@ -1297,46 +1342,48 @@ export class ArchiShell extends LitElement {
     const pick = (key: 'inputModelId' | 'outputModelId', current: string | undefined, suffix: string, label: string) => html`
       <label>${label}</label>
       <span class="colorrow"><select style="flex:1" @change=${(e: Event) => this.cmd({ kind: 'set-use-case-contract', id, [key]: (e.target as HTMLSelectElement).value || null })}>
-        <option value="" ?selected=${!current}>— ninguno —</option>
+        <option value="" ?selected=${!current}>${t('archi.props.none')}</option>
         ${models.map((x) => html`<option value=${x.id} ?selected=${x.id === current}>${x.name}</option>`)}
       </select>
       ${current
-        ? html`<button class="addprop" style="margin:0" title="Editar sus campos" @click=${() => this.select(current)}>Campos</button>`
-        : html`<button class="addprop" style="margin:0" title="Crear un modelo nuevo y editar sus campos" @click=${() => {
+        ? html`<button class="addprop" style="margin:0" title=${t('archi.useCase.editFields')} @click=${() => this.select(current)}>${t('archi.props.fields')}</button>`
+        : html`<button class="addprop" style="margin:0" title=${t('archi.useCase.createModelHint')} @click=${() => {
             const modelId = `model-${id}-${suffix}`;
             this.cmd({ kind: 'add-model', id: modelId, name: `${uc.name}${suffix === 'in' ? 'Input' : 'Result'}` });
             this.cmd({ kind: 'set-use-case-contract', id, [key]: modelId });
             this.select(modelId);
-          }}>Crear</button>`}</span>`;
+          }}>${t('archi.useCase.create')}</button>`}</span>`;
     const steps = uc.steps ?? [];
-    return html`${pick('inputModelId', uc.inputModelId, 'in', 'Entrada')}${pick('outputModelId', uc.outputModelId, 'out', 'Resultado')}
+    // the default step name is model content: it is persisted, so it is not translated
+    return html`${pick('inputModelId', uc.inputModelId, 'in', t('archi.useCase.input'))}${pick('outputModelId', uc.outputModelId, 'out', t('archi.useCase.result'))}
       <label>REST</label>
-      <label class="check"><input type="checkbox" .checked=${uc.exposedAsRest === true} @change=${(e: Event) => this.cmd({ kind: 'set-use-case-contract', id, exposedAsRest: (e.target as HTMLInputElement).checked })} /> Expuesto (POST /v1/${uc.name.toLowerCase()})</label>
-      <div class="sec"><span>Pasos</span><button @click=${() => this.cmd({ kind: 'add-use-case-step', useCaseId: id, id: `step-${Date.now()}`, name: `paso${steps.length + 1}` })}>+ paso custom</button></div>
+      <label class="check"><input type="checkbox" .checked=${uc.exposedAsRest === true} @change=${(e: Event) => this.cmd({ kind: 'set-use-case-contract', id, exposedAsRest: (e.target as HTMLInputElement).checked })} /> ${t('archi.useCase.exposed', { path: uc.name.toLowerCase() })}</label>
+      <div class="sec"><span>${t('archi.useCase.steps')}</span><button @click=${() => this.cmd({ kind: 'add-use-case-step', useCaseId: id, id: `step-${Date.now()}`, name: `paso${steps.length + 1}` })}>${t('archi.useCase.addCustomStep')}</button></div>
       ${steps.map((st, i) => html`<div class="rowx step">
         <div class="ro">${st.name ?? st.id}<span class="kind">${st.type ?? ''}</span></div>
-        <button title="Subir" ?disabled=${i === 0} @click=${() => this.cmd({ kind: 'move-use-case-step', useCaseId: id, stepId: st.id, delta: -1 })}>↑</button>
-        <button title="Bajar" ?disabled=${i === steps.length - 1} @click=${() => this.cmd({ kind: 'move-use-case-step', useCaseId: id, stepId: st.id, delta: 1 })}>↓</button>
-        <button title="Quitar paso" @click=${() => this.cmd({ kind: 'remove-use-case-step', useCaseId: id, id: st.id })}>✕</button>
-        ${st.type === 'Custom' ? html`<textarea placeholder="Qué tiene que hacer (se convierte en el gancho a implementar)…" .value=${st.intent ?? ''}
+        <button title=${t('archi.useCase.moveStepUp')} ?disabled=${i === 0} @click=${() => this.cmd({ kind: 'move-use-case-step', useCaseId: id, stepId: st.id, delta: -1 })}>↑</button>
+        <button title=${t('archi.useCase.moveStepDown')} ?disabled=${i === steps.length - 1} @click=${() => this.cmd({ kind: 'move-use-case-step', useCaseId: id, stepId: st.id, delta: 1 })}>↓</button>
+        <button title=${t('archi.useCase.removeStep')} @click=${() => this.cmd({ kind: 'remove-use-case-step', useCaseId: id, id: st.id })}>✕</button>
+        ${st.type === 'Custom' ? html`<textarea placeholder=${t('archi.useCase.stepIntentPlaceholder')} .value=${st.intent ?? ''}
           @change=${(e: Event) => this.cmd({ kind: 'set-use-case-step-intent', useCaseId: id, stepId: st.id, intent: (e.target as HTMLTextAreaElement).value })}></textarea>` : nothing}
       </div>`)}
-      ${steps.length ? nothing : html`<div class="hintx">Sin pasos: traza líneas a agregados o eventos, o añade un paso custom.</div>`}`;
+      ${steps.length ? nothing : html`<div class="hintx">${t('archi.useCase.noSteps')}</div>`}`;
   }
-  /** Bound mode, Apariencia: the fill this view gives the element (presentation only). */
+  /** Bound mode, Appearance: the fill this view gives the element (presentation only). */
   private renderBoundAppearance(id: string | null) {
     const mem = id ? this.view.members.find((m) => m.id === id) : undefined;
     const entry = id ? this.catalogById().get(id) : undefined;
-    if (!mem || !entry) return html`<div class="empty">Selecciona un elemento de la vista.</div>`;
-    const layer = LAYER[kindLayer(entry.kind)];
+    if (!mem || !entry) return html`<div class="empty">${t('archi.props.selectViewElement')}</div>`;
+    const layerKey = kindLayer(entry.kind);
+    const layer = LAYER[layerKey];
     const fill = mem.fill ?? layer.fill;
     return html`<div class="form">
-      <label>Relleno</label>
+      <label>${t('archi.props.fill')}</label>
       <span class="colorrow"><input type="color" .value=${fill} @input=${(e: Event) => this.setFill((e.target as HTMLInputElement).value)} /><span class="ro">${fill}</span></span>
-      ${mem.fill ? html`<label></label><button class="addprop" @click=${() => this.resetFill(mem.id)}>Restablecer el color de la capa</button>` : nothing}
-      <label>Borde</label><div class="ro">#5C5C5C (notación ArchiMate)</div>
-      <label>Capa</label><div class="ro">${layer.name}</div>
-      <label></label><div class="ro">El color es de esta vista; el modelo no cambia.</div></div>`;
+      ${mem.fill ? html`<label></label><button class="addprop" @click=${() => this.resetFill(mem.id)}>${t('archi.props.resetFill')}</button>` : nothing}
+      <label>${t('archi.props.border')}</label><div class="ro">${t('archi.props.archimateStroke')}</div>
+      <label>${t('archi.props.layer')}</label><div class="ro">${layerName(layerKey)}</div>
+      <label></label><div class="ro">${t('archi.props.fillIsViewOnly')}</div></div>`;
   }
   private resetFill(id: string) {
     this.view = { members: this.view.members.map((m) => { if (m.id !== id) return m; const { fill: _f, ...rest } = m; return rest; }) };
@@ -1350,10 +1397,10 @@ export class ArchiShell extends LitElement {
     if (bc) {
       const aggs = (m.aggregates ?? []).filter((a) => a.boundedContextId === bc.id).length;
       return html`<div class="form">
-        <label>Nombre</label><input .value=${bc.name} @input=${rename} />
-        <label>Tipo</label><div class="ro">Bounded context</div>
-        <label>Subdominio</label><div class="ro">${bc.subdomainType}</div>
-        <label>Agregados</label><div class="ro">${aggs}</div>
+        <label>${t('archi.props.name')}</label><input .value=${bc.name} @input=${rename} />
+        <label>${t('archi.props.type')}</label><div class="ro">${t('archi.props.boundedContext')}</div>
+        <label>${t('archi.props.subdomain')}</label><div class="ro">${bc.subdomainType}</div>
+        <label>${t('archi.props.aggregates')}</label><div class="ro">${aggs}</div>
         ${this.describeField(bc.id)}</div>`;
     }
     const agg = (m.aggregates ?? []).find((a) => a.id === id);
@@ -1361,14 +1408,14 @@ export class ArchiShell extends LitElement {
       const ents = (m.entities ?? []).filter((x) => x.aggregateId === agg.id).length;
       const vos = (m.valueObjects ?? []).filter((x) => x.aggregateId === agg.id).length;
       return html`<div class="form">
-        <label>Nombre</label><input .value=${agg.name} @input=${rename} />
-        ${this.typeField(agg.id, 'Agregado')}
-        <label>Contexto</label>
+        <label>${t('archi.props.name')}</label><input .value=${agg.name} @input=${rename} />
+        ${this.typeField(agg.id, catalogKindLabel('aggregate'))}
+        <label>${t('archi.props.context')}</label>
         <select .value=${agg.boundedContextId ?? ''} @change=${(e: Event) => this.emit('modux-command', { command: { kind: 'set-aggregate-context', id: agg.id, boundedContextId: (e.target as HTMLSelectElement).value } })}>
           ${m.boundedContexts.map((bc) => html`<option value=${bc.id}>${bc.name}</option>`)}
         </select>
-        <label>Entidades</label><div class="ro">${ents}</div>
-        <label>Value objects</label><div class="ro">${vos}</div>
+        <label>${t('archi.props.entities')}</label><div class="ro">${ents}</div>
+        <label>${t('archi.props.valueObjects')}</label><div class="ro">${vos}</div>
         ${this.describeField(agg.id)}
         ${agg.modelId ? this.renderFields(agg.modelId) : nothing}
         ${this.renderInvariants(agg.id, agg.invariants ?? [])}
@@ -1380,9 +1427,9 @@ export class ArchiShell extends LitElement {
     if (mem) {
       const cmdKind = ent ? 'set-entity-aggregate' : 'set-value-object-aggregate';
       return html`<div class="form">
-        <label>Nombre</label><input .value=${mem.name} @input=${rename} />
-        ${this.typeField(mem.id, ent ? 'Entidad' : 'Value object')}
-        <label>Agregado</label>
+        <label>${t('archi.props.name')}</label><input .value=${mem.name} @input=${rename} />
+        ${this.typeField(mem.id, catalogKindLabel(ent ? 'entity' : 'value-object'))}
+        <label>${t('archi.props.aggregate')}</label>
         <select .value=${mem.aggregateId ?? ''} @change=${(e: Event) => this.emit('modux-command', { command: { kind: cmdKind, id: mem.id, aggregateId: (e.target as HTMLSelectElement).value } })}>
           ${(m.aggregates ?? []).map((a) => html`<option value=${a.id}>${a.name}</option>`)}
         </select>
@@ -1399,25 +1446,25 @@ export class ArchiShell extends LitElement {
       const setCron = (e: Event) => this.emit('modux-command', { command: {
         kind: 'set-scheduled-trigger-cron', id: entry.id, cronExpression: (e.target as HTMLInputElement).value } });
       return html`<div class="form">
-        <label>Nombre</label><input .value=${entry.label} @input=${rename} />
-        ${this.typeField(entry.id, CATALOG_KIND_LABEL[entry.kind] ?? entry.kind)}
-        ${entry.kind === 'scheduler' ? html`<label>Cron</label>
-          <input title="Cron de Spring: segundo minuto hora día mes día-semana" .value=${trigger?.cronExpression ?? ''} @change=${setCron} />
-          <label>Dispara</label><div class="ro">${m.boundedContexts.flatMap((c) => c.useCases ?? []).find((u) => u.id === trigger?.useCaseId)?.name ?? '— traza una línea a un caso de uso —'}</div>` : nothing}
-        ${entry.contextType ? html`<label>Contexto</label>
+        <label>${t('archi.props.name')}</label><input .value=${entry.label} @input=${rename} />
+        ${this.typeField(entry.id, catalogKindLabel(entry.kind))}
+        ${entry.kind === 'scheduler' ? html`<label>${t('archi.props.cron')}</label>
+          <input title=${t('archi.props.cronHint')} .value=${trigger?.cronExpression ?? ''} @change=${setCron} />
+          <label>${t('archi.props.triggers')}</label><div class="ro">${m.boundedContexts.flatMap((c) => c.useCases ?? []).find((u) => u.id === trigger?.useCaseId)?.name ?? t('archi.props.triggersNone')}</div>` : nothing}
+        ${entry.contextType ? html`<label>${t('archi.props.context')}</label>
           <select .value=${entry.ownerId ?? ''} @change=${setContext}>
-            <option value="">— sin contexto —</option>
+            <option value="">${t('archi.props.noContext')}</option>
             ${m.boundedContexts.map((c) => html`<option value=${c.id} ?selected=${c.id === entry.ownerId}>${c.name}</option>`)}
           </select>` : nothing}
         ${this.describeField(entry.id)}
-        ${entry.kind === 'deployment' ? html`<label>Puerto</label>
+        ${entry.kind === 'deployment' ? html`<label>${t('archi.props.port')}</label>
           <input type="number" min="1" max="65535" placeholder="8080" .value=${String(m.services?.find((x) => x.id === entry.id)?.port ?? '')}
             @change=${(e: Event) => this.cmd({ kind: 'set-service-port', id: entry.id, port: (e.target as HTMLInputElement).value })} />` : nothing}
         ${entry.kind === 'model' ? this.renderFields(entry.id) : nothing}
         ${entry.kind === 'usecase' || entry.kind === 'policy' ? this.renderUseCaseContract(entry.id) : nothing}
       </div>`;
     }
-    return html`<div class="empty">Selecciona un elemento del modelo.</div>`;
+    return html`<div class="empty">${t('archi.props.selectModelElement')}</div>`;
   }
 
   private renderProps() {
@@ -1426,22 +1473,22 @@ export class ArchiShell extends LitElement {
     if (!n) {
       const edge = this.selectedEdge();
       if (edge) return this.renderEdgeProps(edge);
-      return html`<div class="empty">Selecciona un elemento en el árbol o el lienzo.</div>`;
+      return html`<div class="empty">${t('archi.props.selectTreeOrCanvasElement')}</div>`;
     }
-    const layer = LAYER[kindLayer(n.kind)];
+    const layer = layerName(kindLayer(n.kind));
     const m = this.metaOf(n.id);
     if (this.tab === 'appearance')
       return html`<div class="form">
-        <label>Relleno</label>
+        <label>${t('archi.props.fill')}</label>
         <span class="colorrow"><input type="color" .value=${n.fill ?? '#ffffff'} @input=${(e: Event) => this.setFill((e.target as HTMLInputElement).value)} /><span class="ro">${n.fill}</span></span>
-        <label>Borde</label><div class="ro">#5C5C5C (notación ArchiMate)</div>
-        <label>Capa</label><div class="ro">${layer.name}</div></div>`;
+        <label>${t('archi.props.border')}</label><div class="ro">${t('archi.props.archimateStroke')}</div>
+        <label>${t('archi.props.layer')}</label><div class="ro">${layer}</div></div>`;
     if (this.tab === 'properties') return this.renderPropsTable();
     return html`<div class="form">
-      <label>Nombre</label><input .value=${n.label} @input=${(e: Event) => this.rename((e.target as HTMLInputElement).value)} />
-      <label>Tipo</label><div class="ro">${n.kind}</div>
-      <label>Capa</label><div class="ro">${layer.name}</div>
-      <label>Documentación</label><textarea placeholder="Descripción del elemento…" .value=${m.doc} @input=${(e: Event) => this.setDoc((e.target as HTMLTextAreaElement).value)}></textarea></div>`;
+      <label>${t('archi.props.name')}</label><input .value=${n.label} @input=${(e: Event) => this.rename((e.target as HTMLInputElement).value)} />
+      <label>${t('archi.props.type')}</label><div class="ro">${n.kind}</div>
+      <label>${t('archi.props.layer')}</label><div class="ro">${layer}</div>
+      <label>${t('archi.props.documentation')}</label><textarea placeholder=${t('archi.props.elementDocPlaceholder')} .value=${m.doc} @input=${(e: Event) => this.setDoc((e.target as HTMLTextAreaElement).value)}></textarea></div>`;
   }
 
   // ---- menus ---------------------------------------------------------------
@@ -1457,7 +1504,7 @@ export class ArchiShell extends LitElement {
     this.gestureNotice = null;
     o.apply();
     // a gesture that could not go ahead says why (e.g. a flow needs to know who emits the event)
-    this.flash(this.gestureNotice ?? `${o.label}: «${src.label}» → «${tgt.label}»`);
+    this.flash(this.gestureNotice ?? t('archi.toast.connected', { action: o.label, source: src.label, target: tgt.label }));
   }
   private gestureNotice: string | null = null;
   /**
@@ -1483,25 +1530,25 @@ export class ArchiShell extends LitElement {
     const m = this.menu;
     return html`<div class="menu" style="left:${m.x}px;top:${m.y}px">
       <div class="mhead">${m.src.label} → ${m.tgt.label}</div>
-      ${m.opts.map((o) => html`<div class="mi" @click=${() => this.pickFromMenu(o)}>${this.relPreview(o.type)}<span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
+      ${m.opts.map((o) => html`<div class="mi" @click=${() => this.pickFromMenu(o)}>${this.relPreview(o.type)}<span>${relLabel(o.type)}</span>${o.reverse ? html`<span class="rev">${t('archi.menu.reverse')}</span>` : nothing}</div>`)}
     </div>`;
   }
   private renderCreateMenu() {
     if (!this.createMenu) return nothing;
     const m = this.createMenu;
     return html`<div class="menu" style="left:${m.x}px;top:${m.y}px">
-      <div class="mhead">Crear elemento desde «${m.src.label}»</div>
+      <div class="mhead">${t('archi.menu.createFrom', { name: m.src.label })}</div>
       ${ELEMENT_TOOLS.filter((e) => e.kind !== 'junction').map((el) => {
         const opts = validRelations(m.src.kind, el.kind);
         const expanded = this.createExpand === el.kind;
         return html`
           <div class="mi" @click=${() => this.toggleCreateExpand(el.kind)}>
-            ${this.elIcon(el.kind)}<span>${el.label}</span><span class="rev">${opts.length ? (expanded ? '▾' : '▸') : ''}</span>
+            ${this.elIcon(el.kind)}<span>${toolLabel(el)}</span><span class="rev">${opts.length ? (expanded ? '▾' : '▸') : ''}</span>
           </div>
           ${expanded ? html`
-            <div class="mi sub" @click=${() => this.pickCascade(el, null)}><span class="subl">(solo crear)</span></div>
+            <div class="mi sub" @click=${() => this.pickCascade(el, null)}><span class="subl">${t('archi.menu.createOnly')}</span></div>
             ${opts.map((o) => html`<div class="mi sub" @click=${() => this.pickCascade(el, o)}>
-              <span class="subl">${this.relPreview(o.type)}</span><span>${o.label}</span>${o.reverse ? html`<span class="rev">inversa</span>` : nothing}</div>`)}
+              <span class="subl">${this.relPreview(o.type)}</span><span>${relLabel(o.type)}</span>${o.reverse ? html`<span class="rev">${t('archi.menu.reverse')}</span>` : nothing}</div>`)}
           ` : nothing}
         `;
       })}
@@ -1509,36 +1556,37 @@ export class ArchiShell extends LitElement {
   }
 
   render() {
-    const t = this.tool;
-    const hint = this.painter !== null ? 'Copiar formato — click en los nodos a los que dar este color'
-      : t.kind === 'place' ? `Coloca «${t.el.label}» — click en el lienzo`
-      : t.kind === 'connect' ? `${t.rel === null ? 'Conector mágico' : `Relación «${REL_NOTATION[t.rel]?.label ?? t.rel}»`} — click en origen y luego en destino`
+    const tool = this.tool;
+    const hint = this.painter !== null ? t('archi.hint.formatPainter')
+      : tool.kind === 'place' ? t('archi.hint.place', { element: toolLabel(tool.el) })
+      : tool.kind === 'connect' ? t('archi.hint.connect', {
+          tool: tool.rel === null ? t('archi.tool.magicConnectorName') : t('archi.hint.relationTool', { relation: relLabel(tool.rel) }) })
       : '';
     return html`
       <div class="toolbar">
-        <span class="brand">modux <small>· vista</small></span>
-        ${hint ? html`<span class="hint">${hint} · Esc cancela</span>` : nothing}
+        <span class="brand">modux <small>${t('archi.toolbar.brandView')}</small></span>
+        ${hint ? html`<span class="hint">${t('archi.hint.escCancels', { hint })}</span>` : nothing}
         ${this.selectedIds.length >= 2 ? html`<span class="aligngrp">
-          <button title="Alinear izquierda" @click=${() => this.align('left')}>⇤</button>
-          <button title="Centrar horizontal" @click=${() => this.align('centerH')}>⇔</button>
-          <button title="Alinear derecha" @click=${() => this.align('right')}>⇥</button>
+          <button title=${t('archi.align.left')} @click=${() => this.align('left')}>⇤</button>
+          <button title=${t('archi.align.centerH')} @click=${() => this.align('centerH')}>⇔</button>
+          <button title=${t('archi.align.right')} @click=${() => this.align('right')}>⇥</button>
           <span class="asep"></span>
-          <button title="Alinear arriba" @click=${() => this.align('top')}>⤒</button>
-          <button title="Centrar vertical" @click=${() => this.align('middleV')}>⇳</button>
-          <button title="Alinear abajo" @click=${() => this.align('bottom')}>⤓</button>
+          <button title=${t('archi.align.top')} @click=${() => this.align('top')}>⤒</button>
+          <button title=${t('archi.align.middleV')} @click=${() => this.align('middleV')}>⇳</button>
+          <button title=${t('archi.align.bottom')} @click=${() => this.align('bottom')}>⤓</button>
         </span>` : nothing}
         <div class="spacer"></div>
-        <button class=${t.kind === 'select' ? 'on' : ''} @click=${() => this.resetTool()}>Seleccionar</button>
-        <button title="Copiar formato: toma el color del elemento seleccionado y aplícalo a otros con un click. El color se elige en Apariencia."
+        <button class=${tool.kind === 'select' ? 'on' : ''} @click=${() => this.resetTool()}>${t('archi.tool.select')}</button>
+        <button title=${t('archi.tool.formatPainterHint')}
           class=${this.painter !== null ? 'on' : ''} @click=${() => this.toggleFormatPainter()}>${this.painter !== null
             ? html`<span class="swatch" style="background:${this.painter};display:inline-block;width:12px;height:12px;border:1px solid #5C5C5C;margin-right:6px;vertical-align:-1px"></span>`
-            : nothing}Copiar formato</button>
-        <button class=${t.kind === 'connect' && t.rel === null ? 'on' : ''} @click=${() => (this.tool = { kind: 'connect', rel: null })}>Conector mágico ✦</button>
+            : nothing}${t('archi.tool.formatPainter')}</button>
+        <button class=${tool.kind === 'connect' && tool.rel === null ? 'on' : ''} @click=${() => (this.tool = { kind: 'connect', rel: null })}>${t('archi.tool.magicConnector')}</button>
       </div>
 
       <div class="panel tree">
-        <header>${this.bound ? 'Catálogo' : 'Modelo'}</header>
-        <input class="treesearch" type="search" placeholder="Buscar…" .value=${this.treeQuery}
+        <header>${this.bound ? t('archi.tree.catalog') : t('archi.tree.model')}</header>
+        <input class="treesearch" type="search" placeholder=${t('archi.tree.searchPlaceholder')} .value=${this.treeQuery}
           @input=${(e: Event) => (this.treeQuery = (e.target as HTMLInputElement).value)} />
         <div class="body">${this.renderTree()}</div>
       </div>
@@ -1567,24 +1615,24 @@ export class ArchiShell extends LitElement {
           @connect-rejected=${this.onRejected}
           @connect-on-empty=${this.onConnectEmpty}></modux-canvas>
         <div class="zoombar">
-          <button title="Acercar" @click=${() => this.canvasEl?.zoomBy(1.2)}>+</button>
-          <button title="Alejar" @click=${() => this.canvasEl?.zoomBy(0.8)}>−</button>
-          <button title="Encuadrar: la selección si hay alguna; si no, toda la vista" @click=${() => this.canvasEl?.fit()}>⤢</button>
+          <button title=${t('archi.zoom.in')} @click=${() => this.canvasEl?.zoomBy(1.2)}>+</button>
+          <button title=${t('archi.zoom.out')} @click=${() => this.canvasEl?.zoomBy(0.8)}>−</button>
+          <button title=${t('archi.zoom.fit')} @click=${() => this.canvasEl?.fit()}>⤢</button>
         </div>
         <div class="legend">${(() => {
           const used = new Set(this.scene.nodes.map((n) => kindLayer(n.kind)));
-          return Object.entries(LAYER).filter(([k]) => used.has(k as LayerKey)).map(([, l]) => html`<span class="k"><span class="sw" style="background:${l.fill};border-color:${l.stroke}"></span>${l.name}</span>`);
+          return (Object.keys(LAYER) as LayerKey[]).filter((k) => used.has(k)).map((k) => html`<span class="k"><span class="sw" style="background:${LAYER[k].fill};border-color:${LAYER[k].stroke}"></span>${layerName(k)}</span>`);
         })()}</div>
       </div>
 
       <div class="panel palette">
-        <div class="presize" title="Arrastra para ajustar el ancho" @pointerdown=${this.startPaletteResize}></div>
-        <header>Paleta</header><div class="body">${this.renderPalette()}</div>
+        <div class="presize" title=${t('archi.palette.resizeHint')} @pointerdown=${this.startPaletteResize}></div>
+        <header>${t('archi.palette.title')}</header><div class="body">${this.renderPalette()}</div>
       </div>
 
       <div class="panel props">
         <div class="tabs">${(this.bound ? ['main', 'appearance'] as const : ['main', 'appearance', 'properties'] as const).map((tb) => html`
-          <button class=${this.tab === tb ? 'on' : ''} @click=${() => (this.tab = tb)}>${tb === 'main' ? 'Principal' : tb === 'appearance' ? 'Apariencia' : 'Propiedades'}</button>`)}</div>
+          <button class=${this.tab === tb ? 'on' : ''} @click=${() => (this.tab = tb)}>${tb === 'main' ? t('archi.tab.main') : tb === 'appearance' ? t('archi.tab.appearance') : t('archi.tab.properties')}</button>`)}</div>
         <div class="body">${this.renderProps()}</div>
       </div>
 
@@ -1592,13 +1640,13 @@ export class ArchiShell extends LitElement {
       ${this.ctx ? html`
         <div class="ctxback" @pointerdown=${() => (this.ctx = null)} @contextmenu=${(e: Event) => e.preventDefault()}></div>
         <div class="menu" style="left:${this.ctx.x}px;top:${this.ctx.y}px">
-          <div class="mi" @click=${() => this.ctxRename()}>Renombrar <span class="rev">F2</span></div>
-          ${this.node(this.ctx.id)?.parentId ? html`<div class="mi" @click=${() => this.ctxUnnest()}>Sacar del contenedor</div>` : nothing}
-          <div class="mi" @click=${() => this.ctxDelete()}>Borrar <span class="rev">Supr</span></div>
+          <div class="mi" @click=${() => this.ctxRename()}>${t('archi.context.rename')} <span class="rev">F2</span></div>
+          ${this.node(this.ctx.id)?.parentId ? html`<div class="mi" @click=${() => this.ctxUnnest()}>${t('archi.context.unnest')}</div>` : nothing}
+          <div class="mi" @click=${() => this.ctxDelete()}>${t('archi.context.delete')} <span class="rev">${t('archi.context.deleteKey')}</span></div>
         </div>` : nothing}
       ${this.toast ? html`<div class="toast">${this.toast}</div>` : nothing}
       ${this._paletteDrag?.moved
-        ? html`<div class="drag-ghost" style="left:${this._paletteDrag.x}px;top:${this._paletteDrag.y}px">${this._paletteDrag.el.label}</div>`
+        ? html`<div class="drag-ghost" style="left:${this._paletteDrag.x}px;top:${this._paletteDrag.y}px">${toolLabel(this._paletteDrag.el)}</div>`
         : nothing}
       ${this._catalogDrag?.moved
         ? html`<div class="drag-ghost" style="left:${this._catalogDrag.x}px;top:${this._catalogDrag.y}px">${this._catalogDrag.entry.label}</div>`
