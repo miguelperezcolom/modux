@@ -64,6 +64,9 @@ public class ${aggregate.name}ViewModel implements Identifiable {
     @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.${field.stereotype})
     <#elseif (field.primitiveType!"") == "json">
     @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.textarea)
+    <#elseif field.money!false>
+    <#-- money reads as money (two decimals, the UI's grouping) on the detail, not as a bare 40 -->
+    @io.mateu.uidl.annotations.Stereotype(io.mateu.uidl.data.FieldStereotype.money)
     </#if>
     <#if lookups?? && lookups[field.name]??>
     <@lookup field/>
