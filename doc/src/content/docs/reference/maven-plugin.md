@@ -110,14 +110,15 @@ See [Deploying](/manual/deploying/) for environments, URLs and DNS providers.
 
 **Default phase:** none (run explicitly)
 
-Reads an OpenAPI 3.x YAML or JSON file and upserts `GatewayEntity` + `GatewayOperationEntity` entries into the spec store.
+Reads an OpenAPI 3.x YAML or JSON file and upserts `GatewayEntity` + `GatewayOperationEntity` entries into the model.
 
 ### Parameters
 
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the OpenAPI YAML or JSON file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec store |
+| `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is (`modux/`, or `.modux/` when there is no `modux/`) |
+| `specFile` | `modux.specFile` | — | No | Deprecated: a store to write to instead of `modelPath` |
 | `serviceId` | `modux.serviceId` | — | No | Service ID to link the imported gateway to |
 
 ### Usage
@@ -134,14 +135,15 @@ See [Importing Existing Specs](/manual/importers/) for the full guide.
 
 **Default phase:** none (run explicitly)
 
-Reads an AsyncAPI 2.x YAML file and upserts `DomainEventEntity` (publish channels) and `SubscriptionEntity` (subscribe channels) into the spec store.
+Reads an AsyncAPI 2.x YAML file and upserts `DomainEventEntity` (publish channels) and `SubscriptionEntity` (subscribe channels) into the model.
 
 ### Parameters
 
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the AsyncAPI YAML file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | Path to the YAML spec store |
+| `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is (`modux/`, or `.modux/` when there is no `modux/`) |
+| `specFile` | `modux.specFile` | — | No | Deprecated: a store to write to instead of `modelPath` |
 | `boundedContextId` | `modux.boundedContextId` | — | No | Bounded context ID that owns these events/subscriptions |
 
 ### Usage
