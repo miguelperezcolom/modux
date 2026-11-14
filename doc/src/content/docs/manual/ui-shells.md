@@ -7,9 +7,7 @@ A **UI Shell** represents a deployable frontend application. It bundles one or m
 
 ## Creating a UI shell
 
-1. Open the **Interfaces → UI Shells** section
-2. Click **New**
-3. Configure the services to include, the public URL, and the deployment target
+Add `modux/uiShells/{id}.yaml` with the services it federates (`serviceIds`), the public URL and the deployment target. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

@@ -7,10 +7,7 @@ A **Use Case** is the primary unit of application behaviour in Modux. It sits in
 
 ## Creating a use case
 
-1. Open **Behaviour → Use Cases**
-2. Click **New**
-3. Set the name, input/output models and exposure options
-4. Add steps to describe the orchestration logic
+Add `modux/useCases/{id}.yaml` — name, input/output models, exposure options and the `steps` of its orchestration — and list the id in its bounded context's `useCaseIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

@@ -3,7 +3,7 @@ title: CI/CD Integration
 description: Automate code generation with a spec-as-code repository and your CI/CD pipeline
 ---
 
-The recommended way to use Modux in a team is to treat the spec file as source code: store it in a dedicated repository, and let CI/CD generate and push the code automatically on every merge.
+The model is source code already — a directory of YAML files in a repository. One way to run Modux in a team is a dedicated **spec repository** holding only the model, with CI/CD generating and pushing the code automatically on every merge. (The simpler alternative, the one the [Quick Start](/getting-started/quick-start/) follows, keeps the model and the generated system in the same repository.)
 
 ## The spec-as-code concept
 
@@ -12,9 +12,9 @@ The recommended way to use Modux in a team is to treat the spec file as source c
 │   spec repository           │  ← your team edits YAML here
 │   my-system-spec/           │
 │   ├── pom.xml               │
-│   └── .dev/data/            │
-│       └── model-driven-      │
-│           store.yaml        │
+│   └── modux/                │
+│       ├── projects/…        │
+│       └── aggregates/…      │
 └────────────┬────────────────┘
              │ PR merged → CI runs mvn modux:generate
              ▼
@@ -32,17 +32,17 @@ The spec repo is the single source of truth. Developers never edit generated rep
 
 ## The spec project
 
-Create a plain Maven project with no Java sources — just a `pom.xml` and the spec file.
+Create a plain Maven project with no Java sources — just a `pom.xml` and the model directory.
 
 ### Directory structure
 
 ```
 my-system-spec/
 ├── pom.xml
-├── .dev/
-│   └── data/
-│       ├── model-driven-store.yaml
-│       └── model-driven-store-schema.json
+├── modux/                         # the model: one YAML file per element
+│   ├── model-driven-store-schema.json
+│   ├── projects/my-system.yaml
+│   └── …
 └── .github/
     └── workflows/
         └── generate.yml
@@ -70,10 +70,8 @@ my-system-spec/
                 <artifactId>modux-maven-plugin</artifactId>
                 <version>0.6.5</version>
                 <configuration>
-                    <projectId>YOUR_PROJECT_ID</projectId>
-                    <specFile>${project.basedir}/.dev/data/model-driven-store.yaml</specFile>
+                    <!-- overrides the project's own outputPath -->
                     <outputPath>${project.basedir}/generated</outputPath>
-                    <packageName>com.myorg</packageName>
                 </configuration>
                 <executions>
                     <execution>
@@ -86,7 +84,7 @@ my-system-spec/
 </project>
 ```
 
-Replace `YOUR_PROJECT_ID` with the `id` of your project entry in the YAML spec.
+The project, its package and its output path are facts of the model (`modux/projects/{id}.yaml`); the configuration only overrides them. The execution binds `generate` to `generate-sources`, so a plain `mvn package` regenerates too.
 
 :::tip
 Add `generated/` to `.gitignore` in the spec repo — generated code lives in the target repositories, not here.
@@ -105,7 +103,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.dev/data/model-driven-store.yaml'
+      - 'modux/**'
 
 jobs:
   generate:
@@ -119,10 +117,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Lint the model            # gate: exits 1 on ERROR findings
-        run: |
-          java -jar model-driven-generator.jar --modux.lint \
-            --modux.model-file=.dev/data/model-driven-store.yaml
+      - name: Validate the model        # gate: fails on any error
+        run: mvn modux:validate --no-transfer-progress
 
       - name: Generate code
         run: mvn modux:generate --no-transfer-progress
@@ -162,26 +158,18 @@ jobs:
 **Required secret:** `GH_TOKEN` — a GitHub personal access token (or a GitHub App token) with `contents: write` permission on the target repositories.
 
 :::note
-The workflow is triggered only when the spec file changes (`paths` filter), avoiding unnecessary runs on documentation or config-only commits.
+The workflow is triggered only when the model changes (`paths` filter), avoiding unnecessary runs on documentation or config-only commits.
 :::
 
-### Validation gates
+### Validation gate
 
-Two CLI gates are available, in increasing order of strictness:
-
-| Flag | What it checks | Exit 1 when |
-|---|---|---|
-| `--modux.check` | Referential integrity only (dangling `*Id` references) | any dangling reference |
-| `--modux.lint` | Integrity **plus** the full architectural rule catalog (lifecycle coherence, idempotency, DLQ, PII, tenancy…) | any ERROR finding (warnings and info are reported but don't fail) |
-
-Run `--modux.lint` in the PR workflow so an inconsistent model never reaches `main`; the same rule catalog powers the **Model health** page in the UI and the MCP `lint_model` tool, so what CI enforces is exactly what authors see while editing.
-
-While editing the YAML locally, `--modux.lint --modux.watch` keeps re-linting on every save — errors show up seconds after you introduce them:
-
-```bash
-java -jar model-driven-generator.jar --modux.lint --modux.watch \
-  --modux.model-file=.dev/data/model-driven-store.yaml
-```
+`mvn modux:validate` checks the model — dangling references, duplicate ids, declarations
+that collide once generated, and the ERROR rules of the lint catalog (lifecycle coherence,
+idempotency, DLQ, PII, tenancy…) — and fails the build on any error; warnings are printed
+and the build goes on. `mvn modux:generate` runs the same checks first and generates nothing
+while one remains. Run `validate` in the PR workflow so an inconsistent model never reaches
+`main`; it is the same check authors run locally after every edit, so what CI enforces is
+exactly what they see. See the [Maven plugin reference](/reference/maven-plugin/#goal-validate).
 
 ### Push to a PR instead of directly to main
 
@@ -233,7 +221,7 @@ generate:
     expire_in: 1 hour
   only:
     changes:
-      - .dev/data/model-driven-store.yaml
+      - modux/**/*
     refs:
       - main
 
@@ -270,14 +258,14 @@ pipeline {
     agent { label 'java21' }
 
     triggers {
-        // run only when spec file changes
+        // run only when the model changes
         pollSCM('H/5 * * * *')
     }
 
     stages {
         stage('Generate') {
             when {
-                changeset '.dev/data/model-driven-store.yaml'
+                changeset 'modux/**'
             }
             steps {
                 sh 'mvn modux:generate --no-transfer-progress'
@@ -286,7 +274,7 @@ pipeline {
 
         stage('Push services') {
             when {
-                changeset '.dev/data/model-driven-store.yaml'
+                changeset 'modux/**'
             }
             parallel {
                 stage('booking-service') {
@@ -351,17 +339,18 @@ Never manually edit files in target repositories if you use force-push. Any manu
 
 | Parameter | Recommended CI value |
 |---|---|
-| `specFile` | Absolute path via `${project.basedir}` — always resolved correctly in CI |
+| `modelPath` | Only when the model is not in `modux/` (or `.modux/`) next to the pom |
 | `outputPath` | `${project.basedir}/generated` — easy to reference in push scripts |
 | `sourceOnly` | `true` if the target repos already have their own `docker-compose.yml` and POMs |
-| `packageName` | Set once per spec project; must match the target repos' package structure |
+| `packageName` | Normally the project's own; must match the target repos' package structure |
 
 ## Local dry-run before pushing a PR
 
 Test generation locally before opening a PR:
 
 ```bash
-mvn modux:generate -Dmodux.projectId=my-project
+mvn modux:validate
+mvn modux:generate
 ls generated/
 ```
 

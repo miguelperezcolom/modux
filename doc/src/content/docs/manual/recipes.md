@@ -51,13 +51,12 @@ Emits one `NOTIFIES` flow; the subscription and the outbound call are derived.
 
 ## Applying a recipe
 
-Recipes are exposed through the [MCP authoring server](/manual/mcp-authoring/):
-
-```
-list_recipes                          → the catalog above, with parameter docs
-apply_recipe(recipe, params)          → creates the element(s), returns their ids
-```
-
-A typical agent exchange: *"cada vez que se cree una reserva quiero una lista de llegadas del día"* → the agent calls `apply_recipe("materialized-read-model", {...})`, then `lint_model` to see what is still open.
+A recipe used to be applied through the MCP authoring server, which is gone: the model is
+now a directory of YAML files that you (or an AI agent) edit directly. What a recipe
+*emits* is unchanged and small enough to write by hand — one `flows/{id}.yaml`
+(`MATERIALIZES` or `NOTIFIES`, with the parameters above as its fields) or one
+`processes/{id}.yaml` for the approval process. The expanders derive the structure from
+it at generation time exactly as before, and `mvn modux:validate` reports what is still
+open.
 
 The linter is part of the recipe by design: a `human-approval-process` without `approverRoleId` generates a `process-human-role` finding pointing exactly at what to fill in — the recipe gets you a valid skeleton in one move, the linter turns the remaining blanks into a to-do list.

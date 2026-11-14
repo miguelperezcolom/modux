@@ -7,9 +7,7 @@ Modux generates **Role-Based Access Control (RBAC)** definitions for your applic
 
 ## Creating a role
 
-1. Open a bounded context and go to **Roles** (under the Security section)
-2. Click **New**
-3. Configure and save
+Add `modux/roles/{id}.yaml`; the use cases a role may run are its `allowedUseCaseIds` (or each use case's `allowedRoles`). Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

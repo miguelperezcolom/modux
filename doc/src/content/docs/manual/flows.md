@@ -34,7 +34,7 @@ Every flow has an **archetype** that determines which pieces it derives:
 
 ## Defining a flow
 
-In the Modux UI, flows live under **Patrones › Flows**. A flow has:
+A flow is an element of its own, `modux/flows/{id}.yaml` (or drawn on the context map of the [graphical editor](/manual/graphical-editor/)). A flow has:
 
 - **Name** and optional description.
 - **Archetype** — one of the four above.

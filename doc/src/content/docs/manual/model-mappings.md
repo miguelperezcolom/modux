@@ -7,9 +7,7 @@ A **Model Mapping** defines how to transform data from one model to another. It 
 
 ## Creating a model mapping
 
-1. Open **Behaviour → Model Mappings**
-2. Click **New**
-3. Select the source and target models and add field rules
+Add `modux/modelMappings/{id}.yaml` with `sourceModelId`, `targetModelId` and its field rules. The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 Or on the **Mapeados** view of the [graphical editor](/manual/graphical-editor/):
 every model is a node, every mapping a labeled edge — **draw a line between two

@@ -9,14 +9,16 @@ things done on the canvas. It is the friendly companion to the
 and gesture exhaustively — reach for that when you want the fine print.
 
 The one idea to keep in mind: **the canvas edits the spec, not a drawing.** Every
-gesture emits the same command a form would, so everything is validated and
+gesture emits a command that changes the model files, so everything is validated and
 **undoable**, and the positions live apart from your elements (in the spec's
 `diagrams` section) — you never dirty the model just by tidying a diagram.
 
 ## Open the editor
 
-Open the **Graphical editor** page. It fills the window — no header of its own; the
-title sits in the toolbar. On first open you land on the **radial explorer**; switch
+In IntelliJ, with the [Modux plugin](/getting-started/installation/#the-intellij-plugin)
+installed, open a view document (`*.modux-view.yaml`; *New → Modux View* creates one,
+*New → Modux Model* initialises the model's `.modux/` directory if the repository has
+none). The editor fills the tab — no header of its own; the title sits in the toolbar. On first open you land on the **radial explorer**; switch
 to a canvas with the **view selector** at the top-left (see [Pick a view](#pick-a-view)).
 
 ## Find your way around
@@ -154,7 +156,7 @@ button that creates the backing piece. **⧉ Mermaid** copies it for a design do
 ## Everything is the spec
 
 Nothing on the canvas is throw-away pixels. Elements and their wiring are real spec
-changes (validated, undoable, visible in the forms and the YAML). Geometry — positions,
+changes (validated, undoable, visible in the YAML files). Geometry — positions,
 sizes, edge bends, each sheet's expansion — lives in the spec's `diagrams` section,
 which only *references* elements by id, so coordinates never leak into the elements
 themselves. Delete a diagram sheet and you lose only the layout, never the model.

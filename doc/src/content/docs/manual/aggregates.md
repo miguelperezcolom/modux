@@ -7,9 +7,7 @@ An **Aggregate** is the central DDD building block in Modux. It represents an ag
 
 ## Creating an aggregate
 
-1. Open a bounded context and go to **Aggregates**
-2. Click **New**
-3. Configure the aggregate and save
+Add `modux/aggregates/{id}.yaml` and list the id in its bounded context's `aggregateIds`. An aggregate carries `modelId`, the `models/` element holding its state (by convention `model-{name}`). Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

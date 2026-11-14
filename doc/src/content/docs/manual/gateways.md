@@ -7,9 +7,7 @@ A **Gateway** defines how your service calls an external system — another micr
 
 ## Creating a gateway
 
-1. Open a bounded context and go to **Gateways**
-2. Click **New**
-3. Configure and save
+Add `modux/gateways/{id}.yaml` and list the id in its service's `gatewayIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 

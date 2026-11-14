@@ -1,296 +1,199 @@
 ---
-title: Editing the Spec File Directly
-description: How to edit the Modux YAML spec file in IntelliJ or VSCode with full intellisense and validation
+title: Editing the Model
+description: The model is a directory of YAML files in your repository — its layout, the JSON schema that gives your IDE completion, the rules the schema cannot express, and authoring it with an AI agent
 ---
 
-In addition to the Modux UI, you can edit the spec file directly as YAML. This is useful for bulk edits, version-controlled diffs, copy-pasting between projects, or working offline.
+A Modux model is **a directory of YAML files in the repository**, one file per element,
+versioned next to the code it generates. You edit it like any other source — by hand, with an
+AI agent, or in the [graphical editor](/manual/graphical-editor-guide/), which writes the same
+files.
 
-**Authoring with an AI agent?** Point it at the [compact authoring reference](/modux-ai-compact.md) — one page with the metamodel's mental map, the idioms that carry the architecture, and the pitfalls that otherwise cost a failed generation each. It exists because we measured what a first-time agent spends discovering them (see the [case study](/reference/case-study-booking/)).
-
-The spec file and its JSON Schema live side-by-side in `.dev/data/`:
+## Layout
 
 ```
-.dev/data/
-├── model-driven-store.yaml         # your spec (YAML format)
-└── model-driven-store-schema.json  # JSON Schema (Draft 2020-12)
+my-project/
+├── pom.xml                          # declares modux-maven-plugin
+└── modux/                           # the model (the IntelliJ plugin names it .modux/)
+    ├── model-driven-store-schema.json
+    ├── projects/{id}.yaml           # exactly one: a repository is one project
+    ├── services/{id}.yaml
+    ├── boundedContexts/{id}.yaml
+    ├── modules/{id}.yaml
+    ├── aggregates/{id}.yaml
+    ├── models/{id}.yaml
+    ├── useCases/{id}.yaml
+    └── …                            # one directory per element type
 ```
 
-The schema is regenerated automatically every time the Modux generator starts, so it always reflects the current domain model.
+The Maven plugin reads `modux/` by default and falls back to `.modux/` when that is what
+exists; `-Dmodux.modelPath` points it anywhere else.
 
-The schema is not just structure — it encodes the authoring rules, so the IDE catches most mistakes while you type:
+- **File names come from ids**, sanitized (`[^A-Za-z0-9._-]` → `_`). Two ids that differ only
+  by a special character collide in one file.
+- **Element order within a type is not meaningful** — files load alphabetically. Order
+  *inside* an element (a use case's steps) is meaningful and preserved.
+- **Leave empty values out**: no nulls, empty strings or empty lists, and omit `false`
+  booleans. Modux never writes them, so the diffs stay small.
+- Ids are conventionally prefixed by type: `bc-`, `agg-`, `ent-`, `vo-`, `uc-`, `model-`.
 
-- **`id` is required** on every addressable element (aggregates, use cases, flows…; not on name-identified parts like model fields).
-- **Id-shaped fields** (`id`, `*Id`, `*Ids`) carry a pattern that rejects spaces and exotic characters — kebab-case recommended.
-- **Reference fields** (`modelId`, `decisionIds`…) and the top-level store sections have hover documentation, including whether referential integrity is checked by the linter.
+The [Quick Start](/getting-started/quick-start/#2-the-model) shows a complete small model.
 
-What the schema *cannot* check is whether a referenced id actually exists — that is the linter's job (`--modux.lint`, the Model health page, or the MCP `check_model` tool).
+## The schema is the metamodel
 
-## Quickest setup: inline schema declaration
+`modux/model-driven-store-schema.json` defines every element type and every field — what can
+be said at all. A field that is not in the schema does not exist, and the generator ignores it
+silently, so look a field up there before inventing it. `mvn modux:validate` and
+`mvn modux:generate` (re)write it; `mvn modux:schema` does only that — run it after upgrading
+the plugin.
 
-Add this comment as the very first line of `model-driven-store.yaml`:
+The schema also encodes authoring rules the IDE checks while you type: `id` is required on
+every addressable element, id-shaped fields (`id`, `*Id`, `*Ids`) reject spaces and exotic
+characters, and reference fields carry hover documentation.
 
-```yaml
-# yaml-language-server: $schema=./.dev/data/model-driven-store-schema.json
-```
+### In IntelliJ IDEA
 
-This works out of the box in both IntelliJ and VSCode (with the YAML extension) — no project settings needed. The path is relative to the workspace root.
+*Settings → Languages & Frameworks → Schemas and DTDs → JSON Schema Mappings*, **+**:
 
----
+| Field | Value |
+|---|---|
+| Name | `Modux model` |
+| Schema file or URL | `modux/model-driven-store-schema.json` |
+| Schema version | `JSON Schema version 7` *(the IDE treats Draft 2020-12 as v7+)* |
+| Mapping | directory `modux` |
 
-## IntelliJ IDEA
+You get completion (**Ctrl+Space**), the field's description on **Ctrl+Q**, and red
+underlines for unknown fields and type mismatches.
 
-### Option A — Inline comment (recommended)
+The schema describes the **whole store** — one top-level key per element type
+(`aggregates`, `useCases`…) holding a list — while each file holds **one element**. Map it
+to the files as the definition of their type, or put a `# yaml-language-server: $schema=…`
+comment pointing at `…/model-driven-store-schema.json#/$defs/AggregateEntity` (or the type's
+own definition) at the top of a file to get per-element completion.
 
-Add the `# yaml-language-server:` comment shown above. IntelliJ 2022.1+ picks it up automatically; no plugin required.
+### In Visual Studio Code
 
-### Option B — JSON Schema Mapping
-
-If you prefer not to touch the file header:
-
-1. Open **Settings** → **Languages & Frameworks** → **Schemas and DTDs** → **JSON Schema Mappings**
-2. Click **+** to add a new mapping
-3. Fill in:
-   | Field | Value |
-   |---|---|
-   | Name | `Modux spec store` |
-   | Schema file or URL | `$PROJECT_DIR$/.dev/data/model-driven-store-schema.json` |
-   | Schema version | `JSON Schema version 7` *(the IDE treats Draft 2020-12 as v7+)* |
-4. Under **Mappings**, click **+** and add the file pattern:
-   ```
-   .dev/data/model-driven-store.yaml
-   ```
-5. Click **OK**
-
-Once applied, IntelliJ shows autocompletion, inline validation errors, and quick-documentation on hover for every field in the spec.
-
-### What you get
-
-- **Ctrl+Space** — autocomplete field names and enum values
-- **Ctrl+Q** on a field — show its description from the schema
-- Red underlines for unknown fields or type mismatches
-- Structure view (Alt+7) showing the YAML tree
-
----
-
-## Visual Studio Code
-
-### Step 1 — Install the YAML extension
-
-Install **YAML** by Red Hat from the Extensions Marketplace (`ext install redhat.vscode-yaml`).
-
-### Option A — Inline comment (recommended)
-
-Add the `# yaml-language-server:` comment as the first line — the Red Hat YAML extension picks it up automatically.
-
-### Option B — Workspace settings
-
-Create or open `.vscode/settings.json` in your workspace and add:
+Install **YAML** by Red Hat (`ext install redhat.vscode-yaml`) and map the schema in
+`.vscode/settings.json`:
 
 ```json
 {
   "yaml.schemas": {
-    ".dev/data/model-driven-store-schema.json": ".dev/data/model-driven-store.yaml"
+    "modux/model-driven-store-schema.json#/$defs/AggregateEntity": "modux/aggregates/*.yaml",
+    "modux/model-driven-store-schema.json#/$defs/UseCaseEntity": "modux/useCases/*.yaml"
   }
 }
 ```
 
-The key is the path to the schema, the value is a glob matching the files to validate. You can use a glob to apply it to any YAML in `.dev/data/`:
+One line per element type you edit by hand; the definition names are under `$defs` in the
+schema.
 
-```json
-{
-  "yaml.schemas": {
-    ".dev/data/model-driven-store-schema.json": ".dev/data/*.yaml"
-  }
-}
+## The rules the schema cannot express
+
+The schema guards shape. These break a model while still matching it — and they are what
+`mvn modux:validate` reports, with the element and field that carries each problem:
+
+1. **Every id reference must resolve.** Any field ending in `Id` or `Ids` must name an
+   element that exists. This is the most common breakage from a hand edit.
+2. **Back-references are two-way.** An aggregate declares nothing about its context; the
+   *context* lists it in `aggregateIds`. A new `aggregates/agg-x.yaml` not listed in a
+   context is an orphan the editor will not draw. The same holds for `useCaseIds`,
+   `valueObjectIds` and a service's `moduleIds`.
+3. **A bounded context needs its main module** (`{contextId}-main`, `main: true`), and a
+   service has to list that module in `moduleIds` — otherwise nothing deploys the context.
+   A module is deployed by exactly one service.
+4. **An aggregate needs its state model**: `modelId`, conventionally `model-{name}`.
+5. **Invariants are nested** inside their owner's `invariants` list (aggregate, value object
+   or entity), not in a top-level directory.
+6. **Deletion has preconditions.** A context with aggregates, or an aggregate with entities,
+   cannot go until those go first.
+
+The full list — lifecycles, workflows, system-supplied values, events — is in the
+`modux-model` skill below. Then generate:
+
+```bash
+mvn modux:validate     # references, duplicate ids, generation conflicts and the lint catalog
+mvn modux:generate     # checks again, then generates
 ```
 
-### What you get
+Fix the model, not the generated code: the generated zone is overwritten on every run, and
+business logic belongs in the `{service}-custom` module (see
+[Generating Code](/manual/generating-code/#generated-code-vs-your-code-two-zones)).
 
-- **Ctrl+Space** — field name and value autocompletion
-- Hover — inline description of each field
-- Problems panel — validation errors with exact line numbers
-- Breadcrumb navigation through the YAML structure
+## Authoring with an AI agent
 
----
+An agent edits the model the way it edits code: it reads and writes the files and runs
+`mvn modux:validate`. There is no server and no tool surface in front of the files. What the
+agent needs is knowledge, and the modux repository ships it as a skill:
+[`.claude/skills/modux-model/SKILL.md`](https://github.com/miguelperezcolom/modux/blob/main/.claude/skills/modux-model/SKILL.md)
+— the metamodel in brief, the referential rules above and the ones not listed here, the
+validate/generate loop and the two-zone rule. Copy it into your repository's
+`.claude/skills/` for Claude Code, or hand it to any other agent as instructions. The JSON
+schema next to the model gives every agent the shape.
 
-## YAML structure overview
+For a denser summary of the idioms that carry the architecture, point the agent at the
+[compact authoring reference](/modux-ai-compact.md) — it exists because we measured what a
+first-time agent spends discovering them (see the [case study](/reference/case-study-booking/)).
+Worked models to imitate are in `sample/patterns/` (one per pattern) and
+`sample/hla-booking/` (see the [Examples Catalog](/reference/examples/)).
 
-The spec file has one top-level key per entity type. All IDs are plain strings (typically UUIDs generated by the Modux UI):
+## Versioning the model with git
+
+Because the model is files in the repository, git does what a model needs from version
+control:
+
+- **A to-be proposal is a branch.** `main` holds the system as it is; a branch holds only the
+  proposed change. Elements that already existed but were never modelled go to `main`, and
+  reach the branch by merging `main` into it — so the branch's diff is exactly the proposal.
+- **Reviewing it is a pull request**: one file per element makes `git diff` readable element
+  by element, and the [HLA document](/reference/maven-plugin/#goal-hla) regenerated on the
+  branch is its narrative companion.
+- **A textual conflict means the same element changed on both sides** — exactly the
+  granularity at which to resolve it.
+- **History of one element**: `git log -- modux/aggregates/agg-book.yaml`.
+
+Diagram geometry lives in `diagrams/`, apart from the elements, so tidying a diagram never
+dirties them.
+
+## Views of a large model
+
+A **view** is a named, cross-cutting slice of the model — "check-in", "the reservations
+context". It only *references* elements by id, so there is a single source of truth:
 
 ```yaml
-# yaml-language-server: $schema=./.dev/data/model-driven-store-schema.json
-
-projects:
-  - id: "proj-1"
-    name: "Booking Platform"
-    packageName: "com.example.booking"
-    version: "0.2.0"
-    outputPath: "/workspace/generated"
-    serviceIds:
-      - "svc-1"
-
-services:
-  - id: "svc-1"
-    name: "booking-service"
-    moduleIds:            # the modules this service deploys
-      - "bc-1-main"
-
-boundedContexts:
-  - id: "bc-1"
-    name: "bookings"
-    aggregateIds:
-      - "agg-1"
-    useCaseIds: []
-    domainEventIds: []
-
-modules:                  # packaging: every bounded context has a main module
-  - id: "bc-1-main"
-    name: "bookings"
-    boundedContextId: "bc-1"
-    main: true
-
-aggregates:
-  - id: "agg-1"
-    name: "Booking"
-    modelId: "model-1"
-    idType: "UUID"
-    persistenceType: "JPA"
-    operations: []
-    invariants: []
-
-models:
-  - id: "model-1"
-    name: "Booking"
-    fields:
-      - id: "f-1"
-        name: "reference"
-        basicType: true
-        type: "Wrapper"
-      - id: "f-2"
-        name: "startDate"
-        basicType: true
-        type: "Wrapper"
-
-useCases: []
-gateways: []
-domainEvents: []
-sagas: []
-projections: []
-subscriptions: []
-scheduledTriggers: []
-businessRules: []
-readModels: []
-roles: []
-pages: []
-uiAdapters: []
-uiShells: []
-components: []
-valueObjects: []
-entities: []
-modelMappings: []
-bddScenarios: []
+# modux/views/view-checkin.yaml
+id: view-checkin
+name: Check-in
+kind: CURATED
+memberIds:
+  - uc-crearEstancia
+  - reserva
 ```
 
-:::tip
-Keep all lists present (even as `[]`) to avoid deserialization warnings. The Modux store initialises missing lists to empty by default, but leaving them out removes autocomplete hints for those sections.
-:::
-
-## Large models: a granular store
-
-A single store file is convenient at first, but a large model (many bounded contexts, hundreds of
-elements) is painful to diff, merge and edit as one giant YAML. Modux can keep the model as a
-**granular tree** instead — one file per element, grouped by type:
-
-```
-model/
-├── index.yaml
-├── aggregates/{id}.yaml
-├── usecases/{id}.yaml
-└── …
-```
-
-Convert between the two formats with the CLI:
-
-```bash
-# split the monolithic store into a granular tree
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.split=./model
-
-# merge a granular tree back into a single file
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.merge=./model-driven-store.yaml
-```
-
-Point `modux.model-file` at the directory to load the granular store (the format is auto-detected:
-a directory → granular, a file → monolithic), and Modux persists changes in whatever format it loaded.
-Granular storage diffs and merges cleanly and is the basis for the catalog-and-views work on huge
-models.
-
-### Checking referential integrity
-
-Whatever the format, a dangling reference (an `…Id` pointing at an element that no longer exists) is
-easy to introduce. Validate the whole model — handy as a CI gate:
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.check   # exits non-zero if broken
-```
-
-### Views: curated slices of a large model
-
-A **view** is a named, cross-cutting slice of the catalog — "check-in", "the reservations
-context". It only *references* elements by id (it never copies them), so there is a single source of
-truth. Add one to the `views:` list:
+A **computed** view names a *seed* instead of listing members and recalculates itself as the
+model changes — seeding with a bounded context gives the whole context:
 
 ```yaml
-views:
-  - id: view-checkin
-    name: Check-in
-    kind: CURATED
-    memberIds:
-      - uc-crearEstancia
-      - reserva
+# modux/views/view-frontoffice.yaml
+id: view-frontoffice
+name: FrontOffice bounded context
+kind: COMPUTED
+seedId: mod-frontoffice
 ```
 
-A **computed** view names a *seed* instead of listing members, and recalculates itself as the model
-changes — seeding with a bounded context gives the whole context:
+Members and seeds are references, so `mvn modux:validate` checks them too. See
+[Views & Large Models](/manual/views-and-large-models/).
 
-```yaml
-views:
-  - id: view-frontoffice
-    name: FrontOffice bounded context
-    kind: COMPUTED
-    seedId: mod-frontoffice
-```
+## Older models: the single-file store
 
-Because members (and the seed) are plain references, [`--modux.check`](#checking-referential-integrity)
-validates them too. Expand a view to its **dependency closure** — what it actually touches once you
-follow every reference (a use case pulls in its aggregate, gateway, event and input model):
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.view=view-checkin
-```
-
-You can also **generate just a slice** — only the view's closure is emitted, inside the normal project
-skeleton (so it still builds; out-of-scope modules are simply empty):
-
-```bash
-mvn spring-boot:run \
-  -Dspring-boot.run.arguments="--modux.generate=<projectId> --modux.view=view-checkin"
-```
-
-This is the payoff of catalog-and-views: with a huge model you regenerate one bounded context at a time
-instead of the whole thing.
-
-On a granular store you can also **load only a view's closure** into memory (read-only), to open one
-bounded context of a huge model without loading everything:
-
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments=--modux.load-view=view-frontoffice
-```
-
-## Keeping the schema up to date
-
-The schema is regenerated on every startup of the Modux generator. If you add custom entity types or the data model evolves, restart the generator and the new schema will be written to `.dev/data/model-driven-store-schema.json` automatically.
+Models created before the granular layout are one `model-driven-store.yaml` with a top-level
+list per type. The Maven plugin still reads them (`-Dmodux.modelPath=…/model-driven-store.yaml`).
+To split one into a directory — and back — use the generator's command line from the modux
+sources:
 
 ```bash
 cd model-driven-generator
-mvn spring-boot:run   # schema regenerated during startup
+# split a single-file store into a directory of files
+mvn spring-boot:run -Dspring-boot.run.arguments="--modux.model-file=/path/to/model-driven-store.yaml --modux.split=/path/to/modux"
+# merge a directory back into one file
+mvn spring-boot:run -Dspring-boot.run.arguments="--modux.model-file=/path/to/modux --modux.merge=/path/to/model-driven-store.yaml"
 ```

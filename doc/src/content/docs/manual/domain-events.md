@@ -12,9 +12,7 @@ A domain event can be consumed in two ways:
 
 ## Creating a domain event
 
-1. Open a bounded context and go to **Domain Events** (or define events directly on an aggregate's operations)
-2. Click **New**
-3. Configure and save
+Add `modux/domainEvents/{id}.yaml` with its payload model (`modelId`) and list the id in its bounded context's `domainEventIds`. Or create it from the palette of the [graphical editor](/manual/graphical-editor-guide/). The fields are listed below and in the model's JSON schema — see [Editing the Model](/getting-started/yaml-editing/).
 
 ## Configuration
 
