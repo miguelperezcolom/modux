@@ -1,17 +1,64 @@
 /** The palette: what NEW elements exist, labelled and grouped for humans. */
+import { t, type MessageKey } from './i18n/index.js';
+
+/**
+ * Section ids, in display order. They are lookup keys (an item's `group`), not display text:
+ * render them through `paletteGroupLabel`.
+ */
 export const PALETTE_GROUPS = [
   'Estratégico', 'Dominio', 'Distribución', 'APIs', 'Sistema externo', 'IA',
   'Orquestación', 'UI', 'Modelos', 'Layouts', 'Componentes', 'Display',
   ];
 
+const GROUP_KEYS: Record<string, MessageKey> = {
+  'Estratégico': 'palette.group.strategic',
+  'Dominio': 'palette.group.domain',
+  'Distribución': 'palette.group.distribution',
+  'APIs': 'palette.group.apis',
+  'Sistema externo': 'palette.group.externalSystem',
+  'IA': 'palette.group.ai',
+  'Orquestación': 'palette.group.orchestration',
+  'UI': 'palette.group.ui',
+  'Modelos': 'palette.group.models',
+  'Layouts': 'palette.group.layouts',
+  'Componentes': 'palette.group.components',
+  'Display': 'palette.group.display',
+};
+
 export interface PaletteItem {
   type: string;
+  /**
+   * The element's base name in Spanish: it seeds the default NAME of a newly created element
+   * (model content), so it is not translated. Display text comes from `paletteLabel`.
+   */
   label: string;
   child?: boolean;
   symbol: string;
   color: string;
-  /** Section header the item renders under in the «Nuevos» tab. */
+  /** Section id (one of PALETTE_GROUPS) the item renders under in the «New» tab. */
   group: string;
+}
+
+/** The translated header of a palette section. */
+export function paletteGroupLabel(group: string): string {
+  const key = GROUP_KEYS[group];
+  return key ? t(key) : group;
+}
+
+/** The message key of an item's label: `palette.item.` + its type in camelCase. */
+function itemKey(type: string): MessageKey {
+  const [head, ...rest] = type.split(/[-:]/);
+  return `palette.item.${head}${rest.map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join('')}` as MessageKey;
+}
+
+/** The translated label of a palette item, prefix included (e.g. «Layout · Vertical»). */
+export function paletteLabel(item: PaletteItem): string {
+  return t(itemKey(item.type));
+}
+
+/** The label as the palette shows it: without the «Layout · » / «Component · » prefix. */
+export function paletteShortLabel(item: PaletteItem): string {
+  return paletteLabel(item).replace(/^(Layout|Componente|Component) · /, '');
 }
 
 export const PALETTE_NEW: PaletteItem[] = [
@@ -78,7 +125,7 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'model-field', label: 'Campo', child: true, symbol: 'gear', color: '#a78bfa', group: 'Modelos' },
   { type: 'transformation', label: 'Transformación', symbol: 'gear', color: '#ea580c', group: 'Modelos' },
   { type: 'custom-code', label: 'Custom code', symbol: 'gear', color: '#0f172a', group: 'Modelos' },
-  // Diseño: the Mateu layout vocabulary…
+  // Design: the Mateu layout vocabulary…
   { type: 'cmp:verticalLayout', label: 'Layout · Vertical', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
   { type: 'cmp:horizontalLayout', label: 'Layout · Horizontal', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
   { type: 'cmp:formLayout', label: 'Layout · Form', symbol: 'component', color: '#0ea5e9', group: 'Layouts' },
@@ -158,5 +205,3 @@ export const PALETTE_NEW: PaletteItem[] = [
   { type: 'cmp:markdown', label: 'Display · Markdown', symbol: 'readmodel', color: '#0284c7', group: 'Display' },
   { type: 'cmp:breadcrumbs', label: 'Display · Migas de pan', symbol: 'flow', color: '#0284c7', group: 'Display' },
   ];
-
-  /** Every element of the model, grouped for the palette's «Catálogo» tab. */

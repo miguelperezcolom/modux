@@ -25,10 +25,11 @@ import './modux-tilt.js';
 import './modux-explorer.js';
 import { inverseOf, type UndoHost } from './undo.js';
 import { applyConnectionGesture, archimateOptions, performDeleteGesture, type GestureHost } from './gestures.js';
-import { PALETTE_GROUPS, PALETTE_NEW } from './palette-defs.js';
+import { PALETTE_GROUPS, PALETTE_NEW, paletteGroupLabel, paletteLabel, paletteShortLabel } from './palette-defs.js';
 import { coordinateFrom, repoNameOf } from './project-reference.js';
 import { slug } from './ids.js';
 import { SYMBOLS } from './modux-canvas.js';
+import { LanguageController, t, type MessageKey } from './i18n/index.js';
 
 /** Strategic context-mapping patterns: abbreviation (as drawn) + full name. */
 const RELATION_META: Record<ContextMapRelationType, { abbr: string; name: string }> = {
@@ -161,22 +162,44 @@ function normalizeActivation(id: string, kind: string): { elementType: string; i
   }
 }
 
-/** Spanish labels for the drawer's element-type header; unknown types fall back to humanizeKey. */
-const ELEMENT_TYPE_LABELS: Record<string, string> = {
-  boundedContext: 'Contexto', aggregate: 'Agregado', entity: 'Entidad',
-  'value-object': 'Value object', 'use-case': 'Caso de uso', field: 'Campo',
-  flow: 'Flow', process: 'Proceso', workflow: 'Workflow', 'domain-event': 'Evento de dominio',
-  subscription: 'Suscripción', projection: 'Proyección', 'read-model': 'Read model',
-  'ui-adapter': 'Adaptador UI', page: 'Página', service: 'Servicio', 'query-service': 'Query service',
-  actor: 'Actor', 'scheduled-trigger': 'Disparador programado', 'workflow-gateway': 'Gateway',
-  model: 'Modelo', mapping: 'Mapping', component: 'Componente', 'external-system': 'Sistema externo',
-  module: 'Módulo', 'custom-code': 'Código a medida', 'ai-agent': 'Agente IA', rag: 'RAG',
-  'mcp-gateway': 'Pasarela MCP', 'identity-provider': 'Proveedor de identidad',
+/** Message keys of the drawer's element-type header; unknown types fall back to humanizeKey. */
+const ELEMENT_TYPE_LABELS: Record<string, MessageKey> = {
+  boundedContext: 'editor.elementType.context',
+  aggregate: 'editor.elementType.aggregate',
+  entity: 'editor.elementType.entity',
+  'value-object': 'editor.elementType.valueObject',
+  'use-case': 'editor.elementType.useCase',
+  field: 'editor.elementType.field',
+  flow: 'editor.elementType.flow',
+  process: 'editor.elementType.process',
+  workflow: 'editor.elementType.workflow',
+  'domain-event': 'editor.elementType.domainEvent',
+  subscription: 'editor.elementType.subscription',
+  projection: 'editor.elementType.projection',
+  'read-model': 'editor.elementType.readModel',
+  'ui-adapter': 'editor.elementType.uiAdapter',
+  page: 'editor.elementType.page',
+  service: 'editor.elementType.service',
+  'query-service': 'editor.elementType.queryService',
+  actor: 'editor.elementType.actor',
+  'scheduled-trigger': 'editor.elementType.scheduledTrigger',
+  'workflow-gateway': 'editor.elementType.workflowGateway',
+  model: 'editor.elementType.model',
+  mapping: 'editor.elementType.mapping',
+  component: 'editor.elementType.component',
+  'external-system': 'editor.elementType.externalSystem',
+  module: 'editor.elementType.module',
+  'custom-code': 'editor.elementType.customCode',
+  'ai-agent': 'editor.elementType.aiAgent',
+  rag: 'editor.elementType.rag',
+  'mcp-gateway': 'editor.elementType.mcpGateway',
+  'identity-provider': 'editor.elementType.identityProvider',
 };
 
-/** «Contexto» for a known elementType, else a spaced-out version of the raw key. */
+/** The translated caption for a known elementType, else a spaced-out version of the raw key. */
 function drawerTypeLabel(type: string): string {
-  return ELEMENT_TYPE_LABELS[type] ?? humanizeKey(type);
+  const key = ELEMENT_TYPE_LABELS[type];
+  return key ? t(key) : humanizeKey(type);
 }
 
 /**
@@ -221,6 +244,8 @@ function activationForStep(
  */
 @customElement('modux-editor')
 export class ModuxEditor extends LitElement {
+  readonly _i18n = new LanguageController(this, { root: true });
+
   @property({ attribute: false }) model: ModuxModel = {
     boundedContexts: [],
     externalSystems: [],
@@ -1619,16 +1644,16 @@ export class ModuxEditor extends LitElement {
         : (this.model.boundedContexts.find((mo) => mo.id === this._selectedId)?.id ?? null);
     if (!apiId && !homeExternalId && !homeBoundedContextId) {
       this.emit('modux-notice', {
-        message:
-          'Selecciona la API destino, o el sistema externo o contexto que la publicará, antes de importar',
+        message: t('editor.importApi.selectTarget'),
       });
       return;
     }
     const target = apiId ? ` -Dmodux.apiId=${apiId}` : '';
     this.emit('modux-notice', {
       kind: 'info',
-      message: `Importar un contrato es un paso de build: mvn modux:import-api`
-        + ` -Dmodux.filePath=${file.name}${target}`,
+      message: t('editor.importApi.buildStep', {
+        command: `mvn modux:import-api -Dmodux.filePath=${file.name}${target}`,
+      }),
     });
   }
 
@@ -1893,8 +1918,8 @@ export class ModuxEditor extends LitElement {
         options: [
           {
             id: 'invert-connection',
-            label: '⇄ Invertir sentido',
-            hint: 'Intercambia origen y destino y vuelve a ofrecer los tipos',
+            label: t('editor.connect.invert'),
+            hint: t('editor.connect.invertHint'),
             apply: () => {
               this._connectPicker = null;
               this.applyConnection(targetId, sourceId, x, y, connectKind);
@@ -2045,8 +2070,8 @@ export class ModuxEditor extends LitElement {
       <label
         class="${opts.child ? 'child' : ''} ${opts.implicit && !members.has(id) ? 'implicit' : ''}"
         title=${opts.implicit && !members.has(id)
-          ? 'Ya se ve por su contenedor; márcalo para que sea miembro explícito'
-          : 'Miembro de la vista — desmarcar lo quita de la vista, NO del proyecto'}
+          ? t('editor.viewTree.implicitHint')
+          : t('editor.viewTree.memberHint')}
       >
         <input
           type="checkbox"
@@ -2060,9 +2085,9 @@ export class ModuxEditor extends LitElement {
       rows.length ? html`<h4>${title}</h4>${rows}` : '';
     return html`
       <aside class="view-tree" @pointerdown=${(e: Event) => e.stopPropagation()}>
-        <div class="tree-title">Vista: ${view.name}</div>
+        <div class="tree-title">${t('editor.viewTree.title', { name: view.name })}</div>
         ${group(
-          'Contextos',
+          t('editor.group.contexts'),
           this.model.boundedContexts.flatMap((m) => [
             row(m.id, m.name),
             ...(this.model.aggregates ?? [])
@@ -2071,17 +2096,17 @@ export class ModuxEditor extends LitElement {
           ]),
         )}
         ${group(
-          'Sistemas externos',
+          t('editor.group.externalSystems'),
           this.model.externalSystems.map((x) => row(x.id, x.name)),
         )}
-        ${group('APIs', (this.model.apis ?? []).map((a) => row(a.id, a.name)))}
-        ${group('Actores', (this.model.actors ?? []).map((a) => row(a.id, a.name)))}
-        ${group('Agentes IA', (this.model.aiAgents ?? []).map((a) => row(a.id, a.name)))}
-        ${group('Gateways MCP', (this.model.mcpGateways ?? []).map((g) => row(g.id, g.name)))}
-        ${group('RAGs', (this.model.rags ?? []).map((r) => row(r.id, r.name)))}
-        ${group('Flows', this.model.flows.map((f) => row(f.id, f.name)))}
-        ${group('Procesos', (this.model.processes ?? []).map((p) => row(p.id, p.name)))}
-        ${group('Workflows', (this.model.workflows ?? []).map((w) => row(w.id, w.name)))}
+        ${group(t('editor.group.apis'), (this.model.apis ?? []).map((a) => row(a.id, a.name)))}
+        ${group(t('editor.group.actors'), (this.model.actors ?? []).map((a) => row(a.id, a.name)))}
+        ${group(t('editor.group.aiAgents'), (this.model.aiAgents ?? []).map((a) => row(a.id, a.name)))}
+        ${group(t('editor.group.mcpGateways'), (this.model.mcpGateways ?? []).map((g) => row(g.id, g.name)))}
+        ${group(t('editor.group.rags'), (this.model.rags ?? []).map((r) => row(r.id, r.name)))}
+        ${group(t('editor.group.flows'), this.model.flows.map((f) => row(f.id, f.name)))}
+        ${group(t('editor.group.processes'), (this.model.processes ?? []).map((p) => row(p.id, p.name)))}
+        ${group(t('editor.group.workflows'), (this.model.workflows ?? []).map((w) => row(w.id, w.name)))}
       </aside>
     `;
   }
@@ -2323,10 +2348,10 @@ export class ModuxEditor extends LitElement {
     const next: 'intent' | 'fact' = effective === 'intent' ? 'fact' : 'intent';
     return [{
       id: 'toggle-nature',
-      label: next === 'fact' ? '◆ Marcar como hecho (real)' : '◇ Marcar como intención (boceto)',
+      label: next === 'fact' ? t('editor.nature.markFact') : t('editor.nature.markIntent'),
       hint: next === 'fact'
-        ? 'Cuenta como acoplamiento real: genera y sube por roll-up'
-        : 'Boceto sin peso en el código; se confirma cuando un hecho de abajo la realice',
+        ? t('editor.nature.markFactHint')
+        : t('editor.nature.markIntentHint'),
       apply: () => this.command({ kind: 'set-archimate-relation-nature', id: rel.id, nature: next }),
     }];
   }
@@ -2364,8 +2389,8 @@ export class ModuxEditor extends LitElement {
           options: [
             {
               id: 'invert-direction',
-              label: '↔ Invertir sentido',
-              hint: 'Intercambia origen y destino de la relación',
+              label: t('editor.relation.invert'),
+              hint: t('editor.relation.invertHint'),
               apply: () => this.command({ kind: 'invert-archimate-relation', id: relId }),
             },
             ...this.natureToggleOption(rel),
@@ -2654,37 +2679,37 @@ export class ModuxEditor extends LitElement {
       items: { id: string; name: string }[];
     }[] = [
       {
-        label: 'Sistemas',
+        label: t('editor.group.systems'),
         symbol: 'component',
         color: '#475569',
         items: (m.systems ?? []).map((x) => ({ id: x.id, name: x.name })),
       },
       {
-        label: 'CDC',
+        label: t('editor.group.cdcs'),
         symbol: 'flow',
         color: '#0891b2',
         items: (m.cdcs ?? []).map((x) => ({ id: x.id, name: x.name })),
       },
       {
-        label: 'Contextos',
+        label: t('editor.group.contexts'),
         symbol: 'component',
         color: '#94a3b8',
         items: m.boundedContexts.map((x) => ({ id: x.id, name: x.name })),
       },
       {
-        label: 'Apps',
+        label: t('editor.group.apps'),
         symbol: 'component',
         color: '#0ea5e9',
         items: (m.uiApps ?? []).map((x) => ({ id: x.id, name: x.title || x.name })),
       },
       {
-        label: 'Páginas',
+        label: t('editor.group.pages'),
         symbol: 'interface',
         color: '#0284c7',
         items: (m.pages ?? []).map((x) => ({ id: x.id, name: x.name })),
       },
       {
-        label: 'Modelos',
+        label: t('editor.group.models'),
         symbol: 'readmodel',
         color: '#0369a1',
         // A state model belongs to an aggregate/entity (its fields) — not a stand-alone catalog model.
@@ -2693,7 +2718,7 @@ export class ModuxEditor extends LitElement {
           .map((x) => ({ id: x.id, name: x.name })),
       },
       {
-        label: 'Triggers programados',
+        label: t('editor.group.scheduledTriggers'),
         symbol: 'clock',
         color: '#d97706',
         items: m.boundedContexts.flatMap((mod) =>
@@ -2701,19 +2726,19 @@ export class ModuxEditor extends LitElement {
         ),
       },
       {
-        label: 'Mapeados',
+        label: t('editor.group.mappings'),
         symbol: 'flow',
         color: '#7c3aed',
         items: (m.modelMappings ?? []).map((x) => ({ id: x.id, name: x.name })),
       },
       {
-        label: 'Casos de uso',
+        label: t('editor.group.useCases'),
         symbol: 'usecase',
         color: '#06b6d4',
         items: m.boundedContexts.flatMap((mod) => (mod.useCases ?? []).map((u) => ({ id: u.id, name: u.name }))),
       },
       {
-        label: 'Eventos',
+        label: t('editor.group.events'),
         symbol: 'event',
         color: '#f59e0b',
         items: m.boundedContexts.flatMap((mod) => [
@@ -2723,19 +2748,19 @@ export class ModuxEditor extends LitElement {
         ]),
       },
       {
-        label: 'Agregados',
+        label: t('editor.group.aggregates'),
         symbol: 'aggregate',
         color: '#8b5cf6',
         items: (m.aggregates ?? []).map((a) => ({ id: a.id, name: a.name })),
       },
       {
-        label: 'Read models',
+        label: t('editor.group.readModels'),
         symbol: 'readmodel',
         color: '#10b981',
         items: m.boundedContexts.flatMap((mod) => (mod.readModels ?? []).map((rm) => ({ id: rm.id, name: rm.name }))),
       },
       {
-        label: 'Operaciones de consulta',
+        label: t('editor.group.queryOperations'),
         symbol: 'lens',
         color: '#0284c7',
         items: m.boundedContexts.flatMap((mod) =>
@@ -2745,25 +2770,25 @@ export class ModuxEditor extends LitElement {
         ),
       },
       {
-        label: 'Query services',
+        label: t('editor.group.queryServices'),
         symbol: 'lens',
         color: '#0284c7',
         items: m.boundedContexts.flatMap((mod) => (mod.queryServices ?? []).map((q) => ({ id: q.id, name: q.name }))),
       },
       {
-        label: 'Actores',
+        label: t('editor.group.actors'),
         symbol: 'person',
         color: '#64748b',
         items: (m.actors ?? []).map((a) => ({ id: a.id, name: a.name })),
       },
       {
-        label: 'Sistemas externos',
+        label: t('editor.group.externalSystems'),
         symbol: 'component',
         color: '#64748b',
         items: m.externalSystems.map((x) => ({ id: x.id, name: x.name })),
       },
       {
-        label: 'Operaciones y tablas externas',
+        label: t('editor.group.externalOperations'),
         symbol: 'usecase',
         color: '#64748b',
         items: m.externalSystems.flatMap((x) => [
@@ -2773,43 +2798,43 @@ export class ModuxEditor extends LitElement {
         ]),
       },
       {
-        label: 'APIs',
+        label: t('editor.group.apis'),
         symbol: 'interface',
         color: '#4f46e5',
         items: (m.apis ?? []).map((a) => ({ id: a.id, name: a.name })),
       },
       {
-        label: 'Operaciones de API',
+        label: t('editor.group.apiOperations'),
         symbol: 'usecase',
         color: '#4f46e5',
         items: (m.apis ?? []).flatMap((a) => a.operations.map((o) => ({ id: o.id, name: o.name }))),
       },
       {
-        label: 'Proxies API',
+        label: t('editor.group.proxyApis'),
         symbol: 'interface',
         color: '#0e7490',
         items: (m.proxyApis ?? []).map((px) => ({ id: px.id, name: px.name })),
       },
       {
-        label: 'Agentes IA',
+        label: t('editor.group.aiAgents'),
         symbol: 'robot',
         color: '#9333ea',
         items: (m.aiAgents ?? []).map((a) => ({ id: a.id, name: a.name })),
       },
       {
-        label: 'Gateways MCP',
+        label: t('editor.group.mcpGateways'),
         symbol: 'plug',
         color: '#7c3aed',
         items: (m.mcpGateways ?? []).map((g) => ({ id: g.id, name: g.name })),
       },
       {
-        label: 'RAGs',
+        label: t('editor.group.rags'),
         symbol: 'lens',
         color: '#0e7490',
         items: (m.rags ?? []).map((r) => ({ id: r.id, name: r.name })),
       },
       {
-        label: 'Workflows',
+        label: t('editor.group.workflows'),
         symbol: 'process',
         color: '#6d28d9',
         items: (m.workflows ?? []).map((w) => ({ id: w.id, name: w.name })),
@@ -3080,7 +3105,7 @@ export class ModuxEditor extends LitElement {
             cur = cur.parentId ? this.mockupComponentIn(mockupHostId, cur.parentId) : null;
           }
           if (!hostId) {
-            this.emit('modux-notice', { message: 'Suelta la pestaña sobre un layout de pestañas' });
+            this.emit('modux-notice', { message: t('editor.drop.tabOnTabLayout') });
             return;
           }
           const componentId = this.newComponentId('tab');
@@ -3119,7 +3144,7 @@ export class ModuxEditor extends LitElement {
       }
       const pageId = m ? m[1] : targetId && (this.model.pages ?? []).some((x) => x.id === targetId) ? targetId : null;
       if (!pageId) {
-        this.emit('modux-notice', { message: 'Suelta el layout/componente sobre una página' });
+        this.emit('modux-notice', { message: t('editor.drop.componentOnPage') });
         return;
       }
       let parentComponentId = m ? m[2] : undefined;
@@ -3136,7 +3161,7 @@ export class ModuxEditor extends LitElement {
           cur = cur.parentId ? this.componentIn(pageId, cur.parentId) : null;
         }
         if (!hostId) {
-          this.emit('modux-notice', { message: 'Suelta la pestaña sobre un layout de pestañas' });
+          this.emit('modux-notice', { message: t('editor.drop.tabOnTabLayout') });
           return;
         }
         const host = this.componentIn(pageId, hostId)!.node;
@@ -3294,7 +3319,7 @@ export class ModuxEditor extends LitElement {
         const parentId = chain.find((cid) => this.model.externalSystems.some((x) => x.id === cid));
         if (parentId) {
           issue({ ...cmd, parentId }, id);
-          this.emit('modux-notice', { message: 'Subsistema creado como parte del sistema' });
+          this.emit('modux-notice', { message: t('editor.notice.subsystemCreatedAsPart') });
           return;
         }
       }
@@ -3304,7 +3329,7 @@ export class ModuxEditor extends LitElement {
         const parentSystemId = chain.find((cid) => (this.model.systems ?? []).some((s) => s.id === cid));
         if (parentSystemId) {
           issue({ ...cmd, parentSystemId }, id);
-          this.emit('modux-notice', { message: 'Subsistema creado dentro del sistema' });
+          this.emit('modux-notice', { message: t('editor.notice.subsystemCreatedInside') });
           return;
         }
       }
@@ -3315,7 +3340,7 @@ export class ModuxEditor extends LitElement {
         if (systemId) {
           issue(cmd, id);
           this.command({ kind: 'set-context-system', id, parentSystemId: systemId });
-          this.emit('modux-notice', { message: 'Contexto creado dentro del sistema' });
+          this.emit('modux-notice', { message: t('editor.notice.contextCreatedInSystem') });
           return;
         }
       }
@@ -3328,7 +3353,7 @@ export class ModuxEditor extends LitElement {
         .map((cid) => /^wizrow:([^:]+):/.exec(cid)?.[1] ?? cid)
         .find((cid) => (this.model.pages ?? []).some((pg) => pg.id === cid && pg.type === 'WIZARD'));
       if (!wizardId) {
-        this.emit('modux-notice', { message: 'Suelta el paso sobre un wizard' });
+        this.emit('modux-notice', { message: t('editor.drop.stepOnWizard') });
         return;
       }
       const steps = (this.model.pages ?? []).find((pg) => pg.id === wizardId)?.wizardSteps ?? [];
@@ -3336,7 +3361,7 @@ export class ModuxEditor extends LitElement {
       let n = steps.length + 1;
       while (taken.has(`wzs-${n}`)) n++;
       this.command({ kind: 'add-page-wizard-step', pageId: wizardId, itemId: `wzs-${n}`, label: `Paso ${n}` });
-      this.emit('modux-notice', { message: 'Paso creado — arrastra su asa hasta la página que lo implementa' });
+      this.emit('modux-notice', { message: t('editor.notice.wizardStepCreated') });
       return;
     }
     if (type === 'page' || type === 'ui-page-crud' || type === 'ui-page-wizard') {
@@ -3360,7 +3385,7 @@ export class ModuxEditor extends LitElement {
         this.command({ kind: 'add-page-wizard-step', pageId: wizardId, targetId: id }, false);
         const moveOp = place(id);
         this.pushUndoEntry([{ kind: 'delete-ui-page', id }, moveOp]);
-        this.emit('modux-notice', { message: `${name} creada como paso del wizard` });
+        this.emit('modux-notice', { message: t('editor.notice.pageCreatedAsWizardStep', { name }) });
         return;
       }
       if (appId) {
@@ -3383,7 +3408,7 @@ export class ModuxEditor extends LitElement {
       const chain = this.dropChain(targetId);
       const appId = chain.find((cid) => (this.model.uiApps ?? []).some((a) => a.id === cid));
       if (!appId) {
-        this.emit('modux-notice', { message: 'Suelta la entrada de menú sobre una app' });
+        this.emit('modux-notice', { message: t('editor.drop.menuItemOnApp') });
         return;
       }
       // labels must not collide: they are what the user reads AND the pre-id identity
@@ -3415,7 +3440,7 @@ export class ModuxEditor extends LitElement {
         .map((cid) => (this.model.etlFlows ?? []).find((f) => f.id === cid))
         .find(Boolean);
       if (!flow) {
-        this.emit('modux-notice', { message: 'Suelta la transformación sobre un flujo ETL' });
+        this.emit('modux-notice', { message: t('editor.drop.transformOnEtlFlow') });
         return;
       }
       const taken = new Set((flow.steps ?? []).map((s) => s.id));
@@ -3429,7 +3454,7 @@ export class ModuxEditor extends LitElement {
         stepType: 'TRANSFORM',
       });
       this.emit('modux-notice', {
-        message: 'Transformación añadida — el mapping o el intent se detallan en su ficha',
+        message: t('editor.notice.transformAdded'),
       });
       return;
     }
@@ -3438,7 +3463,7 @@ export class ModuxEditor extends LitElement {
       const loose = this.uniquePaletteName(def.label);
       issue({ kind: 'add-etl-flow', id: loose.id, name: loose.name }, loose.id);
       this.emit('modux-notice', {
-        message: 'Integrador creado suelto — su contexto dueño se fija en la ficha; cablea fuentes y escrituras aquí',
+        message: t('editor.notice.etlFlowCreatedLoose'),
       });
       return;
     }
@@ -3448,7 +3473,7 @@ export class ModuxEditor extends LitElement {
       issue({ kind: 'add-workflow-gateway', id, name,
         stepType: type === 'workflow-join' ? 'JOIN' : 'SPLIT' }, id);
       this.emit('modux-notice', {
-        message: 'Gateway creado suelto — sus líneas dirán de qué workflow es (join: n entradas → 1 salida; split: 1 → n)',
+        message: t('editor.notice.gatewayCreatedLoose'),
       });
       return;
     }
@@ -3470,7 +3495,7 @@ export class ModuxEditor extends LitElement {
       if (!wf && workflows.length === 1) wf = workflows[0];
       if (!wf) {
         if (!workflows.length) {
-          this.emit('modux-notice', { message: 'Crea antes un workflow: los pasos viven en uno' });
+          this.emit('modux-notice', { message: t('editor.notice.createWorkflowFirst') });
           return;
         }
         this._wfStepPicker = { pos, stepType };
@@ -3493,7 +3518,7 @@ export class ModuxEditor extends LitElement {
       );
       if (this._view !== 'workflows') {
         this.emit('modux-notice', {
-          message: `Paso añadido a ${wf.name} — se ve en la vista Workflows`,
+          message: t('editor.notice.workflowStepAdded', { name: wf.name }),
         });
       }
       return;
@@ -3504,7 +3529,7 @@ export class ModuxEditor extends LitElement {
       const home = this.dropContainerFor('api', targetId);
       if (!home) {
         this.emit('modux-notice', {
-          message: 'Una API vive en un sistema externo o en un contexto: suéltala sobre uno',
+          message: t('editor.drop.apiNeedsHome'),
         });
         return;
       }
@@ -3547,13 +3572,14 @@ export class ModuxEditor extends LitElement {
               : { kind: 'add-use-case', id, name, ...(type === 'policy' ? { policy: true } : {}) };
       issue(cmd, id);
       const noun =
-        type === 'aggregate' ? 'Agregado'
-          : type === 'entity' ? 'Entidad'
-          : type === 'value-object' ? 'Value object'
-          : type === 'policy' ? 'Policy' : 'Caso de uso';
-      const parentNoun = type === 'entity' || type === 'value-object' ? 'un agregado' : 'un contexto';
+        type === 'aggregate' ? t('editor.noun.aggregate')
+          : type === 'entity' ? t('editor.noun.entity')
+          : type === 'value-object' ? t('editor.noun.valueObject')
+          : type === 'policy' ? t('editor.noun.policy') : t('editor.noun.useCase');
+      const parentNoun = type === 'entity' || type === 'value-object'
+        ? t('editor.parentNoun.anAggregate') : t('editor.parentNoun.aContext');
       this.emit('modux-notice', {
-        message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
+        message: t('editor.notice.createdLoose', { noun, name, parent: parentNoun }),
       });
       return;
     }
@@ -3564,18 +3590,19 @@ export class ModuxEditor extends LitElement {
       const { id, name } = this.uniquePaletteName(def.label);
       issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table' | 'integration-event' }, id);
       const parentNoun =
-        type === 'operation' ? 'un agregado'
-          : type === 'invariant' ? 'un agregado, entidad o value object'
-          : type === 'field' ? 'un modelo'
-          : type === 'read-model' ? 'un contexto o agregado'
-          : type === 'external-table' ? 'un sistema externo'
-          : type === 'integration-event' ? 'un contexto'
-          : 'un caso de uso o policy';
-      const noun = type === 'operation' ? 'Operación' : type === 'invariant' ? 'Invariante'
-        : type === 'field' ? 'Campo' : type === 'read-model' ? 'Read model'
-        : type === 'external-table' ? 'Tabla' : type === 'integration-event' ? 'Evento de integración' : 'Paso';
+        type === 'operation' ? t('editor.parentNoun.anAggregate')
+          : type === 'invariant' ? t('editor.parentNoun.anAggregateEntityOrValueObject')
+          : type === 'field' ? t('editor.parentNoun.aModel')
+          : type === 'read-model' ? t('editor.parentNoun.aContextOrAggregate')
+          : type === 'external-table' ? t('editor.parentNoun.anExternalSystem')
+          : type === 'integration-event' ? t('editor.parentNoun.aContext')
+          : t('editor.parentNoun.aUseCaseOrPolicy');
+      const noun = type === 'operation' ? t('editor.noun.operation') : type === 'invariant' ? t('editor.noun.invariant')
+        : type === 'field' ? t('editor.noun.field') : type === 'read-model' ? t('editor.noun.readModel')
+        : type === 'external-table' ? t('editor.noun.table')
+        : type === 'integration-event' ? t('editor.noun.integrationEvent') : t('editor.noun.step');
       this.emit('modux-notice', {
-        message: `${noun} «${name}» creado suelto — arrastra una composición desde ${parentNoun} para asociarlo`,
+        message: t('editor.notice.createdLoose', { noun, name, parent: parentNoun }),
       });
       return;
     }
@@ -3583,14 +3610,14 @@ export class ModuxEditor extends LitElement {
       this.emit('modux-notice', {
         message:
           type === 'api-operation'
-            ? 'Suelta la operación sobre una API'
+            ? t('editor.drop.operationOnApi')
             : type === 'use-case-step'
-              ? 'Suelta el paso sobre un caso de uso'
+              ? t('editor.drop.stepOnUseCase')
               : ['external-use-case', 'external-table', 'mcp-server'].includes(type)
-                ? 'Suelta el elemento sobre un sistema externo'
+                ? t('editor.drop.elementOnExternalSystem')
                 : ['entity', 'value-object', 'invariant', 'field', 'operation'].includes(type)
-                  ? 'Suéltalo sobre un agregado (o cerca de uno, en la vista de agregados)'
-                  : 'Suelta el elemento sobre un contexto',
+                  ? t('editor.drop.onAggregate')
+                  : t('editor.drop.elementOnContext'),
       });
       return;
     }
@@ -3600,26 +3627,26 @@ export class ModuxEditor extends LitElement {
     } else if (type === 'entity') {
       issue({ kind: 'add-entity', id, name, aggregateId: container }, id, container);
       const agg = (this.model.aggregates ?? []).find((a) => a.id === container);
-      this.emit('modux-notice', { message: `Entidad «${name}» creada en el agregado «${agg?.name ?? container}»` });
+      this.emit('modux-notice', { message: t('editor.notice.entityCreated', { name, aggregate: agg?.name ?? container }) });
     } else if (type === 'value-object') {
       issue({ kind: 'add-value-object', id, name, aggregateId: container }, id, container);
       const agg = (this.model.aggregates ?? []).find((a) => a.id === container);
-      this.emit('modux-notice', { message: `Value object «${name}» creado en el agregado «${agg?.name ?? container}»` });
+      this.emit('modux-notice', { message: t('editor.notice.valueObjectCreated', { name, aggregate: agg?.name ?? container }) });
     } else if (type === 'operation') {
       issue({ kind: 'add-operation', id, name, aggregateId: container }, id, container);
       const agg = (this.model.aggregates ?? []).find((a) => a.id === container);
       this.emit('modux-notice', {
-        message: `Operación «${name}» creada en «${agg?.name ?? container}» — sus modelos de entrada/salida se editan en la ficha`,
+        message: t('editor.notice.operationCreated', { name, aggregate: agg?.name ?? container }),
       });
     } else if (type === 'invariant') {
       this.command({ kind: 'add-invariant', ownerId: container, id, name });
       const ownerKind = (this.model.valueObjects ?? []).some((v) => v.id === container)
-        ? 'value object'
+        ? t('editor.ownerKind.valueObject')
         : (this.model.entities ?? []).some((e) => e.id === container)
-          ? 'entidad'
-          : 'agregado';
+          ? t('editor.ownerKind.entity')
+          : t('editor.ownerKind.aggregate');
       this.emit('modux-notice', {
-        message: `Invariante declarado en el ${ownerKind} — sus condiciones se detallan en su ficha`,
+        message: t('editor.notice.invariantDeclared', { owner: ownerKind }),
       });
     } else if (type === 'field') {
       // A field IS a ModelField of the owner's Model (one concept).
@@ -3630,10 +3657,10 @@ export class ModuxEditor extends LitElement {
       if (modelId) {
         this.command({ kind: 'add-model-field', modelId, fieldId: id, name });
         this.emit('modux-notice', {
-          message: `Campo «${name}» creado en «${owner?.name ?? container}» — arrastra un value object sobre él para tiparlo`,
+          message: t('editor.notice.fieldCreated', { name, owner: owner?.name ?? container }),
         });
       } else {
-        this.emit('modux-notice', { message: 'Suelta el campo sobre un agregado o entidad' });
+        this.emit('modux-notice', { message: t('editor.drop.fieldOnAggregateOrEntity') });
       }
     } else if (type === 'ui-button') {
       const group = (this.model.buttonGroups ?? []).find((g) => g.id === container);
@@ -3642,7 +3669,7 @@ export class ModuxEditor extends LitElement {
       while (taken.has(`btn-${n2}`)) n2++;
       this.command({ kind: 'add-group-button', id: container, itemId: `btn-${n2}`, label: name });
       this.emit('modux-notice', {
-        message: 'Botón creado — arrastra su asa hasta un caso de uso o policy para fijar qué dispara',
+        message: t('editor.notice.buttonCreated'),
       });
     } else if (type === 'model-field') {
       // the chip's scene id is fld:<modelId>:<fieldId> and its spot is fixed — no layout write
@@ -3650,7 +3677,7 @@ export class ModuxEditor extends LitElement {
     } else if (type === 'module') {
       issue({ kind: 'add-module', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
-        message: 'Módulo creado — arrastra el asa de los elementos del contexto hasta él para distribuirlos',
+        message: t('editor.notice.moduleCreated'),
       });
     } else if (type === 'use-case' || type === 'policy') {
       issue(
@@ -3671,23 +3698,22 @@ export class ModuxEditor extends LitElement {
     } else if (type === 'scheduled-trigger') {
       issue({ kind: 'add-scheduled-trigger', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
-        message: 'Trigger creado (cron diario por defecto) — arrástralo a un caso de uso o policy para fijar qué dispara',
+        message: t('editor.notice.triggerCreated'),
       });
     } else if (type === 'notification') {
       issue({ kind: 'add-notification', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
-        message: 'Notificación creada (canal EMAIL) — arrastra un evento hasta ella y de ella a los roles que avisa',
+        message: t('editor.notice.notificationCreated'),
       });
     } else if (type === 'document') {
       issue({ kind: 'add-document', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
-        message: 'Documento creado — arrástralo a un modelo (plantilla) o a una consulta (informe)',
+        message: t('editor.notice.documentCreated'),
       });
     } else if (type === 'etl-flow') {
       issue({ kind: 'add-etl-flow', id, name, boundedContextId: container }, id, container);
       this.emit('modux-notice', {
-        message:
-          'Integrador creado en el contexto — cablea fuentes HACIA él (tabla/API = pull, evento = consumidor) y escrituras DESDE él',
+        message: t('editor.notice.etlFlowCreated'),
       });
     } else if (type === 'read-model') {
       const aggregate = (this.model.aggregates ?? []).find((a) => a.id === container);
@@ -3710,7 +3736,7 @@ export class ModuxEditor extends LitElement {
       );
       if (!showsOps) {
         this.emit('modux-notice', {
-          message: `Operación añadida a ${api?.name ?? container} — se ve en el nivel «APIs y operaciones»`,
+          message: t('editor.notice.apiOperationAdded', { name: api?.name ?? container }),
         });
       }
     } else if (type === 'use-case-step') {
@@ -3729,7 +3755,7 @@ export class ModuxEditor extends LitElement {
       }
       issue({ kind: 'add-use-case-step', useCaseId: container, id, name: stepName }, id, container);
       this.emit('modux-notice', {
-        message: `Paso Custom añadido a ${uc?.name ?? container} — detállalo en su ficha; una relación trazada desde el caso de uso crea el paso tipado`,
+        message: t('editor.notice.customStepAdded', { name: uc?.name ?? container }),
       });
     } else if (type === 'external-use-case') {
       issue({ kind: 'add-external-use-case', id, name, boundedContextId: container }, id, container);
@@ -3786,7 +3812,7 @@ export class ModuxEditor extends LitElement {
         });
       } else {
         this.emit('modux-notice', {
-          message: 'Ese elemento no se pinta en este nivel de detalle',
+          message: t('editor.notice.notDrawnAtThisLevel'),
         });
       }
       return;
@@ -3861,7 +3887,7 @@ export class ModuxEditor extends LitElement {
               ? html`<input
                   class="drawer-title-input"
                   .value=${title}
-                  aria-label="Nombre"
+                  aria-label=${t('editor.drawer.name')}
                   @keydown=${(e: KeyboardEvent) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -3875,7 +3901,7 @@ export class ModuxEditor extends LitElement {
                 />`
               : html`<div class="drawer-title">${title}</div>`}
           </div>
-          <button class="drawer-close" title="Cerrar (Esc)" @click=${close}>✕</button>
+          <button class="drawer-close" title=${t('editor.drawer.close')} @click=${close}>✕</button>
         </header>
         ${el
           ? html`<dl class="drawer-body">
@@ -3884,7 +3910,7 @@ export class ModuxEditor extends LitElement {
                   <dd>${r.value}</dd>`,
               )}
             </dl>`
-          : html`<div class="drawer-empty">Este elemento ya no está en el modelo.</div>`}
+          : html`<div class="drawer-empty">${t('editor.drawer.elementGone')}</div>`}
       </aside>
     `;
   }
@@ -3922,10 +3948,10 @@ export class ModuxEditor extends LitElement {
         <div class="drawer-backdrop" @pointerdown=${close}></div>
         <aside class="drawer" @pointerdown=${(e: Event) => e.stopPropagation()}>
           <header class="drawer-head">
-            <div class="drawer-head-text"><div class="drawer-type">Componente</div></div>
-            <button class="drawer-close" title="Cerrar (Esc)" @click=${close}>✕</button>
+            <div class="drawer-head-text"><div class="drawer-type">${t('editor.drawer.component')}</div></div>
+            <button class="drawer-close" title=${t('editor.drawer.close')} @click=${close}>✕</button>
           </header>
-          <div class="drawer-empty">Este componente ya no está en el mockup.</div>
+          <div class="drawer-empty">${t('editor.drawer.componentGone')}</div>
         </aside>`;
     }
     const set = (patch: { title?: string | null; label?: string | null; text?: string | null }): void => {
@@ -3950,18 +3976,18 @@ export class ModuxEditor extends LitElement {
       <aside class="drawer" @pointerdown=${(e: Event) => e.stopPropagation()}>
         <header class="drawer-head">
           <div class="drawer-head-text">
-            <div class="drawer-type">Componente · ${c.kind}</div>
+            <div class="drawer-type">${t('editor.drawer.componentKind', { kind: c.kind })}</div>
             <div class="drawer-title">${c.title || c.label || c.kind}</div>
           </div>
-          <button class="drawer-close" title="Cerrar (Esc)" @click=${close}>✕</button>
+          <button class="drawer-close" title=${t('editor.drawer.close')} @click=${close}>✕</button>
         </header>
         <dl class="drawer-body">
-          ${field('Título', 'title')}
-          ${field('Etiqueta', 'label')}
-          ${field('Texto', 'text')}
-          ${c.useCaseId ? html`<dt>Caso de uso</dt><dd>${c.useCaseId}</dd>` : ''}
-          ${c.modelId ? html`<dt>Modelo</dt><dd>${c.modelId}</dd>` : ''}
-          ${c.fieldId ? html`<dt>Campo</dt><dd>${c.fieldId}</dd>` : ''}
+          ${field(t('editor.drawer.title'), 'title')}
+          ${field(t('editor.drawer.label'), 'label')}
+          ${field(t('editor.drawer.text'), 'text')}
+          ${c.useCaseId ? html`<dt>${t('editor.drawer.useCase')}</dt><dd>${c.useCaseId}</dd>` : ''}
+          ${c.modelId ? html`<dt>${t('editor.drawer.model')}</dt><dd>${c.modelId}</dd>` : ''}
+          ${c.fieldId ? html`<dt>${t('editor.drawer.field')}</dt><dd>${c.fieldId}</dd>` : ''}
         </dl>
       </aside>
     `;
@@ -3988,12 +4014,12 @@ export class ModuxEditor extends LitElement {
         value =
           names.length === v.length
             ? names.join(', ')
-            : `${v.length} elemento${v.length === 1 ? '' : 's'}`;
+            : v.length === 1 ? t('editor.drawer.elements.one') : t('editor.drawer.elements.other', { count: v.length });
       } else if (typeof v === 'object') {
         const o = v as Record<string, unknown>;
         value = (o.name as string) ?? (o.label as string) ?? (o.id as string) ?? '—';
       } else if (typeof v === 'boolean') {
-        value = v ? 'sí' : 'no';
+        value = v ? t('editor.drawer.yes') : t('editor.drawer.no');
       } else {
         value = String(v);
       }
@@ -4019,7 +4045,7 @@ export class ModuxEditor extends LitElement {
               : this._view === 'mappings'
                 ? ['ui-model', 'model-field', 'transformation', 'custom-code'].includes(k.type)
                 : !['page', 'menu-item', 'model-field', 'transformation', 'ui-button'].includes(k.type)) &&
-        (!needle || k.label.toLowerCase().includes(needle)),
+        (!needle || paletteLabel(k).toLowerCase().includes(needle)),
     );
     // The workflows view has no catalog section: it always shows the new elements.
     const tab = this._view === 'workflows' ? 'new' : this._paletteTab;
@@ -4028,34 +4054,34 @@ export class ModuxEditor extends LitElement {
         <div class="palette-body">
           <input
             class="palette-filter"
-            placeholder="Filtrar…"
+            placeholder=${t('editor.palette.filter')}
             .value=${this._paletteFilter}
             @input=${(e: Event) => (this._paletteFilter = (e.target as HTMLInputElement).value)}
           />
           ${tab === 'new'
             ? html`
-                <div class="palette-h">Nuevos — arrastra al lienzo${''}</div>
+                <div class="palette-h">${t('editor.palette.newHeader')}</div>
                 ${PALETTE_GROUPS.map((g) => {
                   const items = news.filter((k) => k.group === g);
                   return items.length
                     ? html`
-                        <div class="palette-g">${g}</div>
+                        <div class="palette-g">${paletteGroupLabel(g)}</div>
                         ${items.map(
                           (k) => html`
                             <div
                               class="palette-item ${k.child ? 'palette-child' : ''}"
                               title=${k.type === 'workflow-step'
-                                ? 'Suéltalo sobre un workflow — o sobre uno de sus pasos para encadenarlo'
+                                ? t('editor.palette.dropWorkflowStep')
                                 : k.child
-                                  ? 'Suéltalo sobre su contenedor (contexto, sistema externo o API)'
-                                  : 'Suéltalo en el lienzo'}
+                                  ? t('editor.palette.dropOnContainer')
+                                  : t('editor.palette.dropOnCanvas')}
                               @pointerdown=${(e: PointerEvent) =>
-                                this.startPaletteDrag(e, { new: k.type }, k.label.replace(/^(Layout|Componente) · /, ''))}
+                                this.startPaletteDrag(e, { new: k.type }, paletteShortLabel(k))}
                             >
                               <svg class="pal-ico" viewBox="0 0 12 12" style="color: ${k.color}">
                                 ${SYMBOLS[k.symbol]}
                               </svg>
-                              <span class="pal-label">${k.label.replace(/^(Layout|Componente) · /, '')}</span>
+                              <span class="pal-label">${paletteShortLabel(k)}</span>
                             </div>
                           `,
                         )}
@@ -4064,7 +4090,7 @@ export class ModuxEditor extends LitElement {
                 })}
               `
             : html`
-                <div class="palette-h">Catálogo — arrastra para colocar o conectar</div>
+                <div class="palette-h">${t('editor.palette.catalogHeader')}</div>
                 ${this.paletteCatalog().map(
                   (g) => html`
                     <div class="palette-g">${g.label}</div>
@@ -4072,7 +4098,7 @@ export class ModuxEditor extends LitElement {
                       (it) => html`
                         <div
                           class="palette-item"
-                          title="Suéltalo en el lienzo para colocarlo, o sobre un nodo para conectarlo"
+                          title=${t('editor.palette.catalogItemHint')}
                           @pointerdown=${(e: PointerEvent) =>
                             this.startPaletteDrag(e, { existing: it.id }, it.name)}
                         >
@@ -4094,18 +4120,18 @@ export class ModuxEditor extends LitElement {
                 <button
                   class="palette-vtab"
                   ?data-active=${tab === 'new'}
-                  title="Elementos nuevos para arrastrar al lienzo"
+                  title=${t('editor.palette.newTabHint')}
                   @click=${() => (this._paletteTab = 'new')}
                 >
-                  Nuevos
+                  ${t('editor.palette.newTab')}
                 </button>
                 <button
                   class="palette-vtab"
                   ?data-active=${tab === 'catalog'}
-                  title="El catálogo del modelo: colocar o conectar elementos existentes"
+                  title=${t('editor.palette.catalogTabHint')}
                   @click=${() => (this._paletteTab = 'catalog')}
                 >
-                  Catálogo
+                  ${t('editor.palette.catalogTab')}
                 </button>
               </div>
             `}
@@ -4498,13 +4524,13 @@ export class ModuxEditor extends LitElement {
            @click=${this.refocusCanvasAfterControl}>
         <span
           class="brand"
-          title="Editor gráfico — context map, agregados, flows, procesos y eventstorming sobre lienzo editable; los cambios se guardan en el modelo"
-        >Editor gráfico</span>
+          title=${t('editor.toolbar.brandHint')}
+        >${t('editor.toolbar.brand')}</span>
         <button
           class="tab hamburger"
           ?hidden=${!['context-map', 'distribution', 'workflows', 'ui', 'mappings', 'integrations', 'aggregates'].includes(this._view)}
           ?data-active=${this._paletteOpen}
-          title="Paleta de elementos: arrastra nuevos o existentes al lienzo (P)"
+          title=${t('editor.toolbar.paletteHint')}
           @click=${() => (this._paletteOpen = !this._paletteOpen)}
         >
           ☰
@@ -4514,10 +4540,10 @@ export class ModuxEditor extends LitElement {
               <button
                 class="tab"
                 ?data-active=${this._treeOpen}
-                title="Árbol del catálogo: marca qué elementos pertenecen a la vista (sin borrar nada del proyecto)"
+                title=${t('editor.toolbar.treeHint')}
                 @click=${() => (this._treeOpen = !this._treeOpen)}
               >
-                ☰ Árbol
+                ${t('editor.toolbar.tree')}
               </button>
             `
           : ''}
@@ -4527,10 +4553,10 @@ export class ModuxEditor extends LitElement {
           ? html`
               <input
                 class="new-name"
-                placeholder="Nombre de la vista…"
+                placeholder=${t('editor.toolbar.viewNamePlaceholder')}
                 title=${this.viewSelection().length
-                  ? 'Crear una vista modux con la selección'
-                  : 'Crear una vista modux vacía — luego añades elementos soltándolos o desde el árbol'}
+                  ? t('editor.toolbar.createViewFromSelection')
+                  : t('editor.toolbar.createEmptyView')}
                 .value=${this._newViewName}
                 @input=${(e: Event) => (this._newViewName = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.createViewFromSelection()}
@@ -4538,11 +4564,11 @@ export class ModuxEditor extends LitElement {
               <button
                 class="tab"
                 title=${this.viewSelection().length
-                  ? 'Crear una vista modux con la selección'
-                  : 'Crear una vista modux vacía — luego añades elementos soltándolos o desde el árbol'}
+                  ? t('editor.toolbar.createViewFromSelection')
+                  : t('editor.toolbar.createEmptyView')}
                 @click=${this.createViewFromSelection}
               >
-                ⊞ Vista${this.viewSelection().length ? ` (${this.viewSelection().length})` : ''}
+                ${t('editor.toolbar.createView')}${this.viewSelection().length ? ` (${this.viewSelection().length})` : ''}
               </button>
               <span class="sep"></span>
             `
@@ -4558,12 +4584,12 @@ export class ModuxEditor extends LitElement {
           class="tab"
           ?hidden=${this._view !== 'context-map'}
           title=${this.selectedApiId()
-            ? 'Importa un OpenAPI/WSDL sobre la API seleccionada (operaciones y modelos rq/rs)'
-            : 'Importa un OpenAPI/WSDL como una nueva API del diagrama'}
+            ? t('editor.toolbar.importApiIntoHint')
+            : t('editor.toolbar.importApiNewHint')}
           @click=${() =>
             (this.renderRoot.querySelector('input.import-api-file') as HTMLInputElement | null)?.click()}
         >
-          ⇪ Importar API${this.selectedApiId() ? ' aquí' : '…'}
+          ${this.selectedApiId() ? t('editor.toolbar.importApiHere') : t('editor.toolbar.importApi')}
         </button>
         ${this._view === 'context-map' &&
         this._selectedId &&
@@ -4571,19 +4597,19 @@ export class ModuxEditor extends LitElement {
           ? html`
               <span class="sep"></span>
               <select
-                title="Tipo de fuente de contenido del RAG"
+                title=${t('editor.toolbar.ragSourceType')}
                 @change=${(e: Event) =>
                   (this._newRagSourceType = (e.target as HTMLSelectElement).value)}
               >
                 ${['WEB', 'REPO', 'FTP', 'DATABASE', 'BUCKET', 'SHAREPOINT', 'CONFLUENCE', 'DRIVE', 'FILESYSTEM', 'TICKETING', 'CRM'].map(
-                  (t) =>
-                    html`<option value=${t} ?selected=${t === this._newRagSourceType}>${t}</option>`,
+                  (kind) =>
+                    html`<option value=${kind} ?selected=${kind === this._newRagSourceType}>${kind}</option>`,
                 )}
               </select>
               <input
                 class="new-name"
-                placeholder="URI de la fuente…"
-                title="La fuente que alimenta el RAG: repo, web, FTP, base de datos, bucket, SharePoint, Confluence, Drive o sistema de ficheros"
+                placeholder=${t('editor.toolbar.ragSourceUriPlaceholder')}
+                title=${t('editor.toolbar.ragSourceUriHint')}
                 .value=${this._newRagSourceUri}
                 @input=${(e: Event) =>
                   (this._newRagSourceUri = (e.target as HTMLInputElement).value)}
@@ -4592,26 +4618,26 @@ export class ModuxEditor extends LitElement {
               />
               <button
                 class="tab"
-                title="Añadir la fuente de contenido al RAG seleccionado"
+                title=${t('editor.toolbar.addRagSourceHint')}
                 @click=${this.addRagContentSourceFromToolbar}
               >
-                ＋ Fuente
+                ${t('editor.toolbar.addRagSource')}
               </button>
             `
           : ''}
         <button
           class="tab"
-          title="Ajustar la vista a la selección (o a todo el diagrama, si no hay selección)"
+          title=${t('editor.toolbar.fitHint')}
           @click=${() => {
             this.renderRoot.querySelector('modux-canvas')?.fit();
             this.renderRoot.querySelector('modux-explorer')?.fit();
           }}
         >
-          ⌖ Ajustar
+          ${t('editor.toolbar.fit')}
         </button>
         <button
           class="tab"
-          title="Alejar (tecla −)"
+          title=${t('editor.toolbar.zoomOut')}
           ?disabled=${this._yugo}
           @click=${() => this.renderRoot.querySelector('modux-canvas')?.zoomBy(1 / 1.25)}
         >
@@ -4619,7 +4645,7 @@ export class ModuxEditor extends LitElement {
         </button>
         <button
           class="tab"
-          title="Acercar (tecla +)"
+          title=${t('editor.toolbar.zoomIn')}
           ?disabled=${this._yugo}
           @click=${() => this.renderRoot.querySelector('modux-canvas')?.zoomBy(1.25)}
         >
@@ -4628,8 +4654,8 @@ export class ModuxEditor extends LitElement {
         <button
           class="tab"
           title=${this._multi.length >= 2
-            ? `Recoloca solo los ${this._multi.length} elementos seleccionados (deshacible)`
-            : 'Recoloca todo el diagrama automáticamente — o solo la selección si la hay (deshacible)'}
+            ? t('editor.toolbar.autoLayoutSelectionHint', { count: this._multi.length })
+            : t('editor.toolbar.autoLayoutHint')}
           ?disabled=${this._yugo}
           @click=${() => void this.runAutoLayout()}
         >
@@ -4638,28 +4664,28 @@ export class ModuxEditor extends LitElement {
         <button
           class="tab"
           title=${this.viewSelection().length
-            ? 'Recalcula solo las líneas de la selección sobre las posiciones actuales, sin mover los nodos (deshacible)'
-            : 'Recalcula todas las líneas sobre las posiciones actuales, sin mover los nodos (deshacible)'}
+            ? t('editor.toolbar.rerouteSelectionHint')
+            : t('editor.toolbar.rerouteHint')}
           ?disabled=${this._yugo}
           @click=${() => this.runRerouteEdges()}
         >
-          ↻ Líneas
+          ${t('editor.toolbar.reroute')}
         </button>
         ${this._multi.length >= 2 && !this._yugo
           ? html`
               <button
                 class="tab"
-                title="Alinear los seleccionados en una fila (misma altura)"
+                title=${t('editor.toolbar.alignRowHint')}
                 @click=${() => this.alignSelection('row')}
               >
-                ↔ Alinear
+                ${t('editor.toolbar.alignRow')}
               </button>
               <button
                 class="tab"
-                title="Alinear los seleccionados en una columna (misma vertical)"
+                title=${t('editor.toolbar.alignColumnHint')}
                 @click=${() => this.alignSelection('column')}
               >
-                ↕ Alinear
+                ${t('editor.toolbar.alignColumn')}
               </button>
             `
           : ''}
@@ -4667,7 +4693,7 @@ export class ModuxEditor extends LitElement {
           && ((this.model.processes ?? []).length || (this.model.sagas ?? []).length)
           ? html`<button
               class="tab"
-              title="Procesos y sagas se fusionan en workflows: cadena lineal con rol, plazo y compensación en cada paso"
+              title=${t('editor.toolbar.migrateHint')}
               @click=${() => {
                 if ((this.model.processes ?? []).length) {
                   this.command({ kind: 'migrate-processes-to-workflows' }, false);
@@ -4677,20 +4703,20 @@ export class ModuxEditor extends LitElement {
                 }
               }}
             >
-              ⇪ Migrar ${[
+              ${t('editor.toolbar.migrate', { what: [
                 (this.model.processes ?? []).length
-                  ? `${(this.model.processes ?? []).length} procesos` : '',
+                  ? t('editor.toolbar.migrateProcesses', { count: (this.model.processes ?? []).length }) : '',
                 (this.model.sagas ?? []).length
-                  ? `${(this.model.sagas ?? []).length} sagas` : '',
-              ].filter(Boolean).join(' y ')}
+                  ? t('editor.toolbar.migrateSagas', { count: (this.model.sagas ?? []).length }) : '',
+              ].filter(Boolean).join(t('editor.toolbar.migrateAnd')) })}
             </button>`
           : ''}
         <button
           class="tab"
           ?data-active=${this._tilt}
           title=${this._tilt
-            ? 'Volver al lienzo editable (V)'
-            : 'Vista 3D: el diagrama como placas apiladas por contención (V)'}
+            ? t('editor.toolbar.tiltBack')
+            : t('editor.toolbar.tiltHint')}
           @click=${() => {
             this._tilt = !this._tilt;
             if (this._tilt) this._yugo = false;
@@ -4702,8 +4728,8 @@ export class ModuxEditor extends LitElement {
           class="tab"
           ?data-active=${this._yugo}
           title=${this._yugo
-            ? 'Volver al lienzo editable (Y)'
-            : 'Superficie yugo: la vista como organismo físico — click expande, shift+arrastrar relaciona (Y)'}
+            ? t('editor.toolbar.yugoBack')
+            : t('editor.toolbar.yugoHint')}
           @click=${() => {
             this._yugo = !this._yugo;
             if (this._yugo) this._tilt = false;
@@ -4715,18 +4741,18 @@ export class ModuxEditor extends LitElement {
           class="tab"
           ?data-active=${!this._showDerived}
           title=${this._showDerived
-            ? 'Ocultar los elementos inferidos (stubs generados por el sistema, marcados ✦)'
-            : 'Mostrar los elementos inferidos (stubs generados por el sistema, marcados ✦)'}
+            ? t('editor.toolbar.hideDerivedHint')
+            : t('editor.toolbar.showDerivedHint')}
           @click=${() => (this._showDerived = !this._showDerived)}
         >
-          ✦ Inferidos: ${this._showDerived ? 'visibles' : 'ocultos'}
+          ${this._showDerived ? t('editor.toolbar.derivedShown') : t('editor.toolbar.derivedHidden')}
         </button>
         <button
           class="tab"
           ?data-active=${this._fullscreen}
           title=${this._fullscreen
-            ? 'Salir de pantalla completa (F o Esc)'
-            : 'El diagrama a pantalla completa (F)'}
+            ? t('editor.toolbar.exitFullscreen')
+            : t('editor.toolbar.fullscreen')}
           @click=${() => void this.toggleFullscreen()}
         >
           ⛶
@@ -4734,7 +4760,7 @@ export class ModuxEditor extends LitElement {
         <button
           class="tab"
           ?data-active=${this._helpOpen}
-          title="Atajos de teclado y gestos (?)"
+          title=${t('editor.toolbar.helpHint')}
           @click=${() => (this._helpOpen = !this._helpOpen)}
         >
           ?
@@ -4773,14 +4799,14 @@ export class ModuxEditor extends LitElement {
                 e.detail.members.filter((m) => MEMBER_KINDS.has(m.kind)).map((m) => m.id),
               )];
               if (!memberIds.length) {
-                this.emit('modux-notice', { message: 'Despliega algo antes de crear la vista' });
+                this.emit('modux-notice', { message: t('editor.notice.expandBeforeView') });
                 return;
               }
               const id = crypto.randomUUID();
               this.command({ kind: 'add-view', id, name: e.detail.name, memberIds });
               this.afterViewCreated(id, e.detail.name, memberIds);
               this.emit('modux-notice', {
-                message: `Vista «${e.detail.name}» creada con lo desplegado (${memberIds.length} miembros)`,
+                message: t('editor.notice.viewCreatedFromExpanded', { name: e.detail.name, count: memberIds.length }),
               });
             }}
           ></modux-explorer>`
@@ -4846,22 +4872,13 @@ export class ModuxEditor extends LitElement {
       </div>
       <div class="hint">
         ${this._view === 'context-map'
-          ? html`Arrastra para reordenar · Shift+arrastrar mueve una API de sistema (y un sistema externo dentro/fuera de otro) · Ctrl+arrastrar una API a un sistema crea un proxy · asa azul → crear relación (elige el tipo) · doble click
-            en la etiqueta cambia el tipo · arrastra en vacío para seleccionar · espacio+arrastra
-            mueve el lienzo · Supr borra la relación o el contexto vacío seleccionado · F2 renombra
-            · rueda para zoom`
+          ? t('editor.hint.contextMap')
           : this._view === 'eventstorming'
-            ? html`Vista derivada del modelo: comando azul → agregado amarillo → evento naranja →
-              policy lila → read model verde · se edita desde las otras vistas o los CRUD (doble
-              click abre el CRUD) · ✨ Auto-layout ordena la narrativa · rueda para zoom`
+            ? t('editor.hint.eventstorming')
             : this._view === 'workflows'
-              ? html`Arrastra un paso sobre otro con el asa para declarar dependencia (B espera a A)
-                · Supr borra el paso o la dependencia seleccionada · F2 renombra · doble click abre
-                el CRUD · espacio+arrastra mueve el lienzo · rueda para zoom`
-              : html`Arrastra para reordenar · arrastra en vacío para seleccionar · espacio+arrastra
-            mueve el lienzo · Supr borra (si está vacío) · F2 renombra · doble click abre el CRUD ·
-            rueda para zoom`}
-        · pulsa <b>?</b> para los atajos
+              ? t('editor.hint.workflows')
+              : t('editor.hint.default')}
+        · ${t('editor.hint.press')} <b>?</b> ${t('editor.hint.forShortcuts')}
       </div>
       ${this.renderRelationPicker()} ${this.renderRepoPicker()} ${this.renderWfStepPicker()} ${this.renderInvariantCondEditor()} ${this.renderBranchCondEditor()} ${this.renderExtDepPicker()} ${this.renderConnectPicker()} ${this.renderDeletePicker()}
       ${this.renderHelpPopover()} ${this.renderDrawer()}
@@ -4872,24 +4889,24 @@ export class ModuxEditor extends LitElement {
   private renderHelpPopover() {
     if (!this._helpOpen) return '';
     const rows: [string, string][] = [
-      ['P', 'Mostrar/ocultar la paleta'],
-      ['F', 'Pantalla completa (Esc sale)'],
-      ['0', 'Ajustar la vista a la selección (o a todo el diagrama)'],
-      ['+ / −', 'Zoom (también con la rueda)'],
-      ['1 · 4', 'Mapa del sistema · Distribución'],
-      ['2', 'Secuencias (interacciones)'],
-      ['5 · 6 · 7 · 8 · 9', 'Flows · Procesos · Workflows · UI · Diseño'],
-      ['A', 'Vista de agregados'],
-      ['E', 'Vista EventStorming'],
-      ['V', 'Vista 3D (placas apiladas, tipo Firefox Tilt)'],
-      ['T', 'Árbol del catálogo (con una vista activa)'],
-      ['Supr', 'Borrar la selección'],
-      ['F2', 'Renombrar el nodo seleccionado'],
-      ['Ctrl+Z / Ctrl+Y', 'Deshacer / rehacer'],
-      ['Espacio+arrastrar', 'Mover el lienzo'],
-      ['Shift+click / arrastrar', 'Multi-selección / banda elástica'],
-      ['Alt+arrastrar', 'Arrastre libre (desactiva el snap a rejilla y las guías)'],
-      ['?', 'Esta ayuda'],
+      ['P', t('editor.help.palette')],
+      ['F', t('editor.help.fullscreen')],
+      ['0', t('editor.help.fit')],
+      ['+ / −', t('editor.help.zoom')],
+      ['1 · 4', t('editor.help.systemMapDistribution')],
+      ['2', t('editor.help.sequences')],
+      ['5 · 6 · 7 · 8 · 9', t('editor.help.otherViews')],
+      ['A', t('editor.help.aggregates')],
+      ['E', t('editor.help.eventstorming')],
+      ['V', t('editor.help.tilt')],
+      ['T', t('editor.help.tree')],
+      [t('editor.help.deleteKey'), t('editor.help.delete')],
+      ['F2', t('editor.help.rename')],
+      ['Ctrl+Z / Ctrl+Y', t('editor.help.undoRedo')],
+      [t('editor.help.panKeys'), t('editor.help.pan')],
+      [t('editor.help.multiKeys'), t('editor.help.multi')],
+      [t('editor.help.freeDragKeys'), t('editor.help.freeDrag')],
+      ['?', t('editor.help.help')],
     ];
     return html`
       <div class="picker-backdrop" @pointerdown=${() => (this._helpOpen = false)}></div>
@@ -4898,7 +4915,7 @@ export class ModuxEditor extends LitElement {
         style="left: 50%; top: 90px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">Atajos de teclado</div>
+        <div class="picker-title">${t('editor.help.title')}</div>
         ${rows.map(
           ([keys, what]) => html`
             <div class="help-row"><span class="help-keys">${keys}</span><span>${what}</span></div>
@@ -4921,7 +4938,9 @@ export class ModuxEditor extends LitElement {
       (it) => scene.nodes.find((n) => n.id === it.id)?.label ?? it.id,
     );
     const what =
-      names.length === 1 ? `«${names[0]}»` : `${names.length} elementos (${names.join(', ')})`;
+      names.length === 1
+        ? `«${names[0]}»`
+        : t('editor.delete.elements', { count: names.length, names: names.join(', ') });
     const offerView = p.memberIds.length > 0 && view;
     return html`
       <div class="picker-backdrop" @pointerdown=${() => (this._deletePicker = null)}></div>
@@ -4931,7 +4950,7 @@ export class ModuxEditor extends LitElement {
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
         <div class="picker-title">
-          ${offerView ? `¿Eliminar ${what}, o solo quitar de la vista?` : `¿Eliminar ${what} del modelo?`}
+          ${offerView ? t('editor.delete.titleWithView', { what }) : t('editor.delete.title', { what })}
         </div>
         ${offerView
           ? html`
@@ -4950,7 +4969,7 @@ export class ModuxEditor extends LitElement {
                 }}
               >
                 <span class="abbr">👁</span>
-                <span class="name">Quitar de la vista «${view!.name ?? this._activeViewId}»</span>
+                <span class="name">${t('editor.delete.removeFromView', { name: view!.name ?? this._activeViewId })}</span>
               </button>
             `
           : ''}
@@ -4965,11 +4984,11 @@ export class ModuxEditor extends LitElement {
           }}
         >
           <span class="abbr">🗑</span>
-          <span class="name">Eliminar del modelo — desaparece de todas las vistas y diagramas</span>
+          <span class="name">${t('editor.delete.fromModel')}</span>
         </button>
         <button class="picker-item" @click=${() => (this._deletePicker = null)}>
           <span class="abbr">✕</span>
-          <span class="name">Cancelar</span>
+          <span class="name">${t('editor.common.cancel')}</span>
         </button>
       </div>
     `;
@@ -5001,7 +5020,7 @@ export class ModuxEditor extends LitElement {
         class="relation-picker relation-picker--centered"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">¿Qué relación es esta línea?</div>
+        <div class="picker-title">${t('editor.connect.title')}</div>
         ${p.options.map(
           (o) => html`
             <button
@@ -5027,8 +5046,8 @@ export class ModuxEditor extends LitElement {
       (d) => d.sourceId === p.sourceId && d.targetId === p.targetId,
     )?.type;
     const options = [
-      { type: 'DEPENDS' as const, abbr: 'DEP', name: 'Dependencia simple' },
-      { type: 'CQRS' as const, abbr: 'CQRS', name: 'CQRS — consulta sobre sus datos' },
+      { type: 'DEPENDS' as const, abbr: 'DEP', name: t('editor.extDep.depends') },
+      { type: 'CQRS' as const, abbr: 'CQRS', name: t('editor.extDep.cqrs') },
     ];
     return html`
       <div class="picker-backdrop" @pointerdown=${() => (this._extDepPicker = null)}></div>
@@ -5037,7 +5056,7 @@ export class ModuxEditor extends LitElement {
         style="left:${p.x}px; top:${p.y}px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">Tipo de dependencia</div>
+        <div class="picker-title">${t('editor.extDep.title')}</div>
         ${options.map(
           (o) => html`
             <button
@@ -5088,17 +5107,17 @@ export class ModuxEditor extends LitElement {
         style="left:${this.clientWidth / 2}px; top:120px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">Referenciar otro proyecto modux</div>
+        <div class="picker-title">${t('editor.repo.title')}</div>
         <input
           class="picker-input"
-          placeholder="URL del repositorio, o ../otro-repo/modux"
+          placeholder=${t('editor.repo.placeholder')}
           .value=${p.coordinate}
           @input=${(e: Event) =>
             (this._repoPicker = { ...p, coordinate: (e.target as HTMLInputElement).value })}
           @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && add()}
         />
         <button class="picker-item" ?disabled=${!p.coordinate.trim()} @click=${add}>
-          Referenciar
+          ${t('editor.repo.reference')}
         </button>
       </div>
     `;
@@ -5121,10 +5140,10 @@ export class ModuxEditor extends LitElement {
         style="left:${this.clientWidth / 2}px; top:120px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">⚖ ${p.name} — condición (vacío la quita)</div>
+        <div class="picker-title">${t('editor.invariant.title', { name: p.name })}</div>
         <input
           style=${inputStyle}
-          placeholder="expresión — p. ej. importe >= 0"
+          placeholder=${t('editor.invariant.expressionPlaceholder')}
           .value=${p.expression}
           @input=${(e: Event) => (p.expression = (e.target as HTMLInputElement).value)}
           @keydown=${(e: KeyboardEvent) => {
@@ -5134,7 +5153,7 @@ export class ModuxEditor extends LitElement {
         />
         <input
           style=${inputStyle}
-          placeholder="mensaje de error — p. ej. El importe no puede ser negativo"
+          placeholder=${t('editor.invariant.errorPlaceholder')}
           .value=${p.errorMessage}
           @input=${(e: Event) => (p.errorMessage = (e.target as HTMLInputElement).value)}
           @keydown=${(e: KeyboardEvent) => {
@@ -5142,7 +5161,7 @@ export class ModuxEditor extends LitElement {
             if (e.key === 'Escape') this._invariantCondEditor = null;
           }}
         />
-        <button class="picker-item" @click=${save}>Guardar</button>
+        <button class="picker-item" @click=${save}>${t('editor.common.save')}</button>
       </div>
     `;
   }
@@ -5158,10 +5177,10 @@ export class ModuxEditor extends LitElement {
         style="left:${this.clientWidth / 2}px; top:120px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">Condición de la rama (vacío la quita)</div>
+        <div class="picker-title">${t('editor.branch.title')}</div>
         <input
           style="width: 240px; margin: 6px 10px; padding: 5px 8px; border: 1px solid var(--modux-border-strong, #cbd5e1); border-radius: 6px; font: 12px system-ui;"
-          placeholder="p. ej. importe > 1000"
+          placeholder=${t('editor.branch.placeholder')}
           .value=${p.value}
           @input=${(e: Event) => (p.value = (e.target as HTMLInputElement).value)}
           @keydown=${(e: KeyboardEvent) => {
@@ -5179,7 +5198,7 @@ export class ModuxEditor extends LitElement {
             this._branchCondEditor = null;
           }}
         >
-          Guardar
+          ${t('editor.common.save')}
         </button>
       </div>
     `;
@@ -5196,7 +5215,7 @@ export class ModuxEditor extends LitElement {
         style="left:${this.clientWidth / 2}px; top:120px"
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
-        <div class="picker-title">¿De qué workflow es el paso?</div>
+        <div class="picker-title">${t('editor.wfStep.title')}</div>
         ${(this.model.workflows ?? []).map(
           (w) => html`
             <button
@@ -5247,17 +5266,17 @@ export class ModuxEditor extends LitElement {
         @pointerdown=${(e: Event) => e.stopPropagation()}
       >
         <div class="picker-title">
-          ${p.mode === 'create' ? 'Tipo de relación' : 'Cambiar tipo'}
+          ${p.mode === 'create' ? t('editor.relation.typeTitle') : t('editor.relation.changeType')}
         </div>
         ${RELATION_TYPES.map(
-          (t) => html`
+          (type) => html`
             <button
-              class="picker-item ${t === current ? 'current' : ''}"
-              title=${t}
-              @click=${() => this.pickRelationType(t)}
+              class="picker-item ${type === current ? 'current' : ''}"
+              title=${type}
+              @click=${() => this.pickRelationType(type)}
             >
-              <span class="abbr">${RELATION_META[t].abbr}</span>
-              <span class="name">${RELATION_META[t].name}</span>
+              <span class="abbr">${RELATION_META[type].abbr}</span>
+              <span class="name">${RELATION_META[type].name}</span>
             </button>
           `,
         )}
