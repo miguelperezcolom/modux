@@ -314,7 +314,7 @@ export const PAGE_COMMANDS: Record<string, Handler> = {
         id: key,
         key,
         pageId: targetId,
-        label: command.label ?? mapped?.name ?? `Paso ${steps.length + 1}`,
+        label: command.label ?? mapped?.name ?? t('store.default.stepN', { n: steps.length + 1 }),
       }],
     });
   },
@@ -376,8 +376,8 @@ function crudTarget(pageField: string, appField: string): Handler {
 function newComponent(id: string, kind: string): Node {
   const children = kind === TAB_LAYOUT
     ? [
-      { id: `${id}-tab-1`, kind: TAB, title: 'Pestaña 1', children: [] },
-      { id: `${id}-tab-2`, kind: TAB, title: 'Pestaña 2', children: [] },
+      { id: `${id}-tab-1`, kind: TAB, title: t('store.default.tabN', { n: 1 }), children: [] },
+      { id: `${id}-tab-2`, kind: TAB, title: t('store.default.tabN', { n: 2 }), children: [] },
     ]
     : [];
   return { id, kind, children };

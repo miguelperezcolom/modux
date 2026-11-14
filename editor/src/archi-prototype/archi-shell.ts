@@ -27,8 +27,8 @@ import { LanguageController, t, type MessageKey } from '../i18n/index.js';
 interface ConnectOption { id: string; label: string; hint: string; apply(): void }
 
 /**
- * A palette tool. `defaultName` is the name a freshly minted model element gets — model content,
- * so it is not translated; what the palette shows comes from `toolLabel()`.
+ * A palette tool. A freshly minted model element is named after `toolLabel()`, in the UI language;
+ * `defaultName` (Spanish, the original label) is only the fallback for a kind without a message key.
  */
 interface ElementTool { kind: string; defaultName: string; layer: LayerKey; w: number; h: number; container?: boolean; group: PaletteGroup; }
 /** Element palette groups, in display order — new (high-level) groups slot in here. */
@@ -964,8 +964,8 @@ export class ArchiShell extends LitElement {
   private addNodeAt(el: ElementTool, x: number, y: number): SceneNode {
     if (this.bound) {
       const id = `${el.kind}-${Date.now()}`;
-      // the default name is model content: it is persisted, so it is not translated
-      const name = el.defaultName;
+      // the default name follows the UI language (the user renames it anyway)
+      const name = toolLabel(el);
       const build = BOUND_CREATE[el.kind];
       if (build) {
         this.emit('modux-command', { command: build(id, name) });
@@ -1293,7 +1293,7 @@ export class ArchiShell extends LitElement {
       this.cmd({ kind: 'set-model-field', modelId, fieldId, name, type });
     // the default field name is model content: it is persisted, so it is not translated
     return html`<div class="sec"><span>${t('archi.props.fields')}</span><button @click=${() => this.cmd({
-        kind: 'add-model-field', modelId, fieldId: `f-${Date.now()}`, name: `campo${(model.fields?.length ?? 0) + 1}`, type: 'string' })}>${t('archi.props.addField')}</button></div>
+        kind: 'add-model-field', modelId, fieldId: `f-${Date.now()}`, name: t('archi.default.fieldN', { n: (model.fields?.length ?? 0) + 1 }), type: 'string' })}>${t('archi.props.addField')}</button></div>
       ${(model.fields ?? []).map((f) => html`<div class="rowx">
         <input .value=${f.name} @change=${(e: Event) => set(f.id, (e.target as HTMLInputElement).value, f.type ?? 'string')} />
         <select @change=${(e: Event) => set(f.id, f.name, (e.target as HTMLSelectElement).value)}>
@@ -1358,7 +1358,7 @@ export class ArchiShell extends LitElement {
     return html`${pick('inputModelId', uc.inputModelId, 'in', t('archi.useCase.input'))}${pick('outputModelId', uc.outputModelId, 'out', t('archi.useCase.result'))}
       <label>REST</label>
       <label class="check"><input type="checkbox" .checked=${uc.exposedAsRest === true} @change=${(e: Event) => this.cmd({ kind: 'set-use-case-contract', id, exposedAsRest: (e.target as HTMLInputElement).checked })} /> ${t('archi.useCase.exposed', { path: uc.name.toLowerCase() })}</label>
-      <div class="sec"><span>${t('archi.useCase.steps')}</span><button @click=${() => this.cmd({ kind: 'add-use-case-step', useCaseId: id, id: `step-${Date.now()}`, name: `paso${steps.length + 1}` })}>${t('archi.useCase.addCustomStep')}</button></div>
+      <div class="sec"><span>${t('archi.useCase.steps')}</span><button @click=${() => this.cmd({ kind: 'add-use-case-step', useCaseId: id, id: `step-${Date.now()}`, name: t('archi.default.stepN', { n: steps.length + 1 }) })}>${t('archi.useCase.addCustomStep')}</button></div>
       ${steps.map((st, i) => html`<div class="rowx step">
         <div class="ro">${st.name ?? st.id}<span class="kind">${st.type ?? ''}</span></div>
         <button title=${t('archi.useCase.moveStepUp')} ?disabled=${i === 0} @click=${() => this.cmd({ kind: 'move-use-case-step', useCaseId: id, stepId: st.id, delta: -1 })}>↑</button>

@@ -13,6 +13,7 @@
 
 import type { Element } from './store.js';
 import { slug } from '../ids.js';
+import { t } from '../i18n/index.js';
 
 const cap = (value: unknown) => {
   const text = String(value ?? '');
@@ -80,7 +81,7 @@ export function crudUseCases(aggregate: Element): Element[] {
       name: `delete${nameCap}`,
       type: 'Custom',
       aggregateId: aggregate.id,
-      description: `Elimina el agregado ${nameCap}`,
+      description: t('store.default.deleteAggregateDescription', { name: nameCap }),
     }, publishStep(events[2])]),
   ];
 }
@@ -103,11 +104,11 @@ export const listingQuery = (aggregate: Element, boundedContextId: string): Elem
   id: listingQueryId(aggregate.id),
   name: `${cap(aggregate.name)}Queries`,
   boundedContextId,
-  description: `Listado canónico del agregado ${aggregate.name}.`,
+  description: t('store.default.queriesDescription', { name: aggregate.name }),
   operations: [{
     id: listOperationId(aggregate.id),
     name: 'list',
-    description: `Listado paginado de ${aggregate.name}`,
+    description: t('store.default.listDescription', { name: aggregate.name }),
     responseModelId: aggregate.modelId ?? null,
     cardinality: 'Page',
   }],
@@ -143,7 +144,7 @@ export function crudApi(aggregate: Element, boundedContextId: string): Element {
   return {
     id: apiId,
     name: `${nameCap}API`,
-    description: `CRUD del agregado ${aggregate.name}.`,
+    description: t('store.default.crudApiDescription', { name: aggregate.name }),
     operations: [create, update, remove, list],
     implementedByBoundedContextIds: [boundedContextId],
     operationImplementations: [0, 1, 2].map((i) => ({

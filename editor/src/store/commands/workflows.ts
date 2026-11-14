@@ -363,12 +363,12 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
           ? byId.get(String(step.compensatingStepId)) : undefined;
         const detail: string[] = [];
         if (step.aggregateId) {
-          detail.push(`opera sobre ${step.aggregateId}`
-            + (step.operationId ? `.${step.operationId}` : ''));
+          detail.push(t('store.default.sagaStepOperatesOn', { target: `${step.aggregateId}`
+            + (step.operationId ? `.${step.operationId}` : '') }));
         }
-        if (step.gatewayId) detail.push(`llama al gateway ${step.gatewayId}`);
+        if (step.gatewayId) detail.push(t('store.default.sagaStepCallsGateway', { gateway: step.gatewayId }));
         if (compensating && !compensating.useCaseId) {
-          detail.push(`compensaba con el paso ${compensating.name}`);
+          detail.push(t('store.default.sagaStepCompensatedWith', { step: compensating.name }));
         }
         chain.push({
           id: step.id,
@@ -384,10 +384,10 @@ export const WORKFLOW_COMMANDS: Record<string, Handler> = {
       const triggers = asList(saga.triggeringEventIds);
       const notes: string[] = [];
       if (triggers.length > 1) {
-        notes.push(`también la disparaban: ${triggers.slice(1).join(', ')}`);
+        notes.push(t('store.default.sagaAlsoTriggeredBy', { events: triggers.slice(1).join(', ') }));
       }
-      if (saga.timeoutMs != null) notes.push(`timeout de la saga: ${saga.timeoutMs} ms`);
-      if (saga.maxRetries != null) notes.push(`reintentos: ${saga.maxRetries}`);
+      if (saga.timeoutMs != null) notes.push(t('store.default.sagaTimeout', { ms: saga.timeoutMs }));
+      if (saga.maxRetries != null) notes.push(t('store.default.sagaRetries', { retries: saga.maxRetries }));
       if (saga.deadLetterQueue != null) notes.push(`DLQ: ${saga.deadLetterQueue}`);
 
       store.put('workflows', {

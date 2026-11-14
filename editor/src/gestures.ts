@@ -313,7 +313,7 @@ export function connectionOptions(
     const tblId = isTable(sourceId) ? sourceId : isTable(targetId) ? targetId : null;
     if (rmId && tblId && !(m.projections ?? []).some((p) => p.readModelId === rmId)) {
       offer('projection', () => host.command({
-        kind: 'add-projection', id: `proj-${tblId}-${rmId}`, name: 'Proyección',
+        kind: 'add-projection', id: `proj-${tblId}-${rmId}`, name: t('gestures.default.projection'),
         externalTableId: tblId, targetId: rmId,
       }));
     }

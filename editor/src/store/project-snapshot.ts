@@ -10,6 +10,7 @@
  */
 
 import { type Element, type ModelStore } from './store.js';
+import { t } from '../i18n/index.js';
 
 export interface ProjectSnapshot {
   /** The project's own name, or the repository's when it does not give one. */
@@ -53,7 +54,7 @@ export function referenceElement(
   return {
     id,
     name: snapshot.name,
-    description: 'Proyecto modux referenciado',
+    description: t('store.default.referencedProjectDescription'),
     decisionIds: [],
     useCases: snapshot.useCases.map((uc) => ({ id: `${id}-${uc.id}`, name: uc.name })),
     referencedProject: coordinate,

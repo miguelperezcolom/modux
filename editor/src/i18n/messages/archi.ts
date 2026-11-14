@@ -222,6 +222,10 @@ export const en = {
 
   // Standalone prototype pages
   'archi.spike.banner': 'real model · FREE-FORM view (you decide what it includes) · persisted in localStorage',
+
+  // default names of new elements (model content, in the UI language)
+  'archi.default.fieldN': 'field{n}',
+  'archi.default.stepN': 'step{n}',
 } satisfies Record<`archi.${string}`, string>;
 
 export const es: Record<keyof typeof en, string> = {
@@ -434,4 +438,7 @@ export const es: Record<keyof typeof en, string> = {
   'archi.toast.connected': '{action}: «{source}» → «{target}»',
 
   'archi.spike.banner': 'modelo real · vista LIBRE (tú decides qué incluye) · persiste en localStorage',
+
+  'archi.default.fieldN': 'campo{n}',
+  'archi.default.stepN': 'paso{n}',
 };

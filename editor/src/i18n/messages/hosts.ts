@@ -19,6 +19,9 @@ export const en = {
   // draw.io host
   'hosts.drawio.noBridge': 'No bridge to the IDE (window.moduxBridge missing).',
   'hosts.drawio.openModelFailed': 'Could not open the model: {message}',
+
+  // default names written into the model (in the UI language)
+  'hosts.default.project': 'project',
 } satisfies Record<`hosts.${string}`, string>;
 
 export const es: Record<keyof typeof en, string> = {
@@ -38,4 +41,6 @@ export const es: Record<keyof typeof en, string> = {
 
   'hosts.drawio.noBridge': 'Sin puente con el IDE (window.moduxBridge ausente).',
   'hosts.drawio.openModelFailed': 'No se pudo abrir el modelo: {message}',
+
+  'hosts.default.project': 'proyecto',
 };

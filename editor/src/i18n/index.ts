@@ -58,7 +58,7 @@ export function onLanguageChange(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-export type MessageParams = Record<string, string | number | null | undefined>;
+export type MessageParams = Record<string, unknown>;
 
 /**
  * The message for `key` in the current language, with `{name}` placeholders replaced from

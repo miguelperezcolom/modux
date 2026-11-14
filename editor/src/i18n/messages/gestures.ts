@@ -65,6 +65,9 @@ export const en = {
   'gestures.notice.etlWiring': 'An ETL flow reads from tables, APIs and events, and writes to APIs, tables and events',
   'gestures.notice.declarePublisherFirst': 'First declare which use case publishes {event} (drag from the use case to the event) — the flow needs its trigger',
   'gestures.notice.declareEmitterFirst': 'First declare who emits {event} (drag from the aggregate or domain service to the event) — the flow needs its trigger',
+
+  // default names written into the model (in the UI language)
+  'gestures.default.projection': 'Projection',
 } satisfies Record<`gestures.${string}`, string>;
 
 export const es: Record<keyof typeof en, string> = {
@@ -133,4 +136,6 @@ export const es: Record<keyof typeof en, string> = {
   'gestures.notice.etlWiring': 'Un flujo ETL lee de tablas, APIs y eventos, y escribe en APIs, tablas y eventos',
   'gestures.notice.declarePublisherFirst': 'Declara primero qué caso de uso publica {event} (arrastra desde el caso de uso hasta el evento) — el flow necesita su disparador',
   'gestures.notice.declareEmitterFirst': 'Declara primero quién emite {event} (arrastra desde el agregado o servicio de dominio hasta el evento) — el flow necesita su disparador',
+
+  'gestures.default.projection': 'Proyección',
 };

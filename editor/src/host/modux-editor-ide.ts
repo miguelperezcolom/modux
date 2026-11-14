@@ -191,7 +191,7 @@ export class ModuxEditorIde extends LitElement {
         t('hosts.ide.referencedModelNotFound', { project: coordinate.gitUrl ?? coordinate.path }));
     }
     const other = await loadTree(readOnlyFileSystem(bridge, root), ROOT);
-    const fallback = root.split('/').filter(Boolean).at(-1) ?? 'proyecto';
+    const fallback = root.split('/').filter(Boolean).at(-1) ?? t('hosts.default.project');
     return { ...command, snapshot: snapshotOf(other, fallback) };
   }
 

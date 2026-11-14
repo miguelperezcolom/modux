@@ -180,6 +180,21 @@ export const en = {
   'store.readside.removeProjectionUpdated': 'Projection {id} is updated by subscriptions; remove those actions first',
   'store.readside.invalidCron': '«{cron}» is not a Spring cron: it has six fields (second minute hour day month day-of-week)',
   'store.readside.projectionNeedsSource': 'A projection needs a source: aggregate, external operation or table',
+
+  // default names and descriptions written into the model (model content, in the UI language)
+  'store.default.stepN': 'Step {n}',
+  'store.default.tabN': 'Tab {n}',
+  'store.default.sagaStepOperatesOn': 'operates on {target}',
+  'store.default.sagaStepCallsGateway': 'calls the gateway {gateway}',
+  'store.default.sagaStepCompensatedWith': 'was compensated by step {step}',
+  'store.default.sagaAlsoTriggeredBy': 'also triggered by: {events}',
+  'store.default.sagaTimeout': 'saga timeout: {ms} ms',
+  'store.default.sagaRetries': 'retries: {retries}',
+  'store.default.deleteAggregateDescription': 'Deletes the aggregate {name}',
+  'store.default.queriesDescription': 'Canonical listing of the aggregate {name}.',
+  'store.default.listDescription': 'Paged listing of {name}',
+  'store.default.crudApiDescription': 'CRUD of the aggregate {name}.',
+  'store.default.referencedProjectDescription': 'Referenced modux project',
 } satisfies Record<`store.${string}`, string>;
 
 export const es: Record<keyof typeof en, string> = {
@@ -363,4 +378,18 @@ export const es: Record<keyof typeof en, string> = {
   'store.readside.removeProjectionUpdated': 'La proyección {id} la actualizan subscriptions; quita esas acciones primero',
   'store.readside.invalidCron': '«{cron}» no es un cron de Spring: lleva seis campos (segundo minuto hora día mes día-semana)',
   'store.readside.projectionNeedsSource': 'La proyección necesita una fuente: agregado, operación externa o tabla',
+
+  'store.default.stepN': 'Paso {n}',
+  'store.default.tabN': 'Pestaña {n}',
+  'store.default.sagaStepOperatesOn': 'opera sobre {target}',
+  'store.default.sagaStepCallsGateway': 'llama al gateway {gateway}',
+  'store.default.sagaStepCompensatedWith': 'compensaba con el paso {step}',
+  'store.default.sagaAlsoTriggeredBy': 'también la disparaban: {events}',
+  'store.default.sagaTimeout': 'timeout de la saga: {ms} ms',
+  'store.default.sagaRetries': 'reintentos: {retries}',
+  'store.default.deleteAggregateDescription': 'Elimina el agregado {name}',
+  'store.default.queriesDescription': 'Listado canónico del agregado {name}.',
+  'store.default.listDescription': 'Listado paginado de {name}',
+  'store.default.crudApiDescription': 'CRUD del agregado {name}.',
+  'store.default.referencedProjectDescription': 'Proyecto modux referenciado',
 };

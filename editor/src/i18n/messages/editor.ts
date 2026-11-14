@@ -278,6 +278,14 @@ export const en = {
 
   'editor.common.cancel': 'Cancel',
   'editor.common.save': 'Save',
+  // default names of new elements (model content, in the UI language)
+  'editor.default.tabN': 'Tab {n}',
+  'editor.default.step': 'Step',
+  'editor.default.stepN': 'Step {n}',
+  'editor.default.page': 'Page',
+  'editor.default.menuEntry': 'Entry',
+  'editor.default.menuEntryN': 'Entry {n}',
+  'editor.default.transformationN': 'Transformation {n}',
 } satisfies Record<`editor.${string}`, string>;
 
 export const es: Record<keyof typeof en, string> = {
@@ -559,4 +567,12 @@ export const es: Record<keyof typeof en, string> = {
 
   'editor.common.cancel': 'Cancelar',
   'editor.common.save': 'Guardar',
+
+  'editor.default.tabN': 'Pestaña {n}',
+  'editor.default.step': 'Paso',
+  'editor.default.stepN': 'Paso {n}',
+  'editor.default.page': 'Página',
+  'editor.default.menuEntry': 'Entrada',
+  'editor.default.menuEntryN': 'Entrada {n}',
+  'editor.default.transformationN': 'Transformación {n}',
 };

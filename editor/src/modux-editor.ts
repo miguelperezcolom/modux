@@ -3110,7 +3110,7 @@ export class ModuxEditor extends LitElement {
           }
           const componentId = this.newComponentId('tab');
           const host = this.mockupComponent(mockupHostId, hostId);
-          const title = `Pestaña ${(host?.children ?? []).filter((c) => c.kind === 'tab').length + 1}`;
+          const title = t('editor.default.tabN', { n: (host?.children ?? []).filter((c) => c.kind === 'tab').length + 1 });
           this.command({ kind: 'add-page-component', mockupId: mockupHostId, componentId, componentKind: 'tab', parentComponentId: hostId }, false);
           this.command({ kind: 'set-page-component', mockupId: mockupHostId, componentId, title }, false);
           this.pushUndoEntry([{ kind: 'remove-page-component', mockupId: mockupHostId, componentId }]);
@@ -3166,7 +3166,7 @@ export class ModuxEditor extends LitElement {
         }
         const host = this.componentIn(pageId, hostId)!.node;
         const componentId = this.newComponentId('tab');
-        const title = `Pestaña ${(host.children ?? []).filter((c) => c.kind === 'tab').length + 1}`;
+        const title = t('editor.default.tabN', { n: (host.children ?? []).filter((c) => c.kind === 'tab').length + 1 });
         this.command({ kind: 'add-page-component', pageId, componentId, componentKind: 'tab', parentComponentId: hostId }, false);
         this.command({ kind: 'set-page-component', pageId, componentId, title }, false);
         this.pushUndoEntry([{ kind: 'remove-page-component', pageId, componentId }]);
@@ -3236,7 +3236,7 @@ export class ModuxEditor extends LitElement {
       this.pushUndoEntry([...undo, moveOp]);
     };
     if (!def.child) {
-      const { id, name } = this.uniquePaletteName(def.label);
+      const { id, name } = this.uniquePaletteName(paletteLabel(def));
       const cmd: ModuxCommand =
         type === 'boundedContext'
           ? { kind: 'add-boundedContext', id, name, subdomainType: 'SUPPORTING' }
@@ -3360,13 +3360,13 @@ export class ModuxEditor extends LitElement {
       const taken = new Set(steps.map((s) => s.id ?? s.pageId));
       let n = steps.length + 1;
       while (taken.has(`wzs-${n}`)) n++;
-      this.command({ kind: 'add-page-wizard-step', pageId: wizardId, itemId: `wzs-${n}`, label: `Paso ${n}` });
+      this.command({ kind: 'add-page-wizard-step', pageId: wizardId, itemId: `wzs-${n}`, label: t('editor.default.stepN', { n }) });
       this.emit('modux-notice', { message: t('editor.notice.wizardStepCreated') });
       return;
     }
     if (type === 'page' || type === 'ui-page-crud' || type === 'ui-page-wizard') {
       const pageType = type === 'ui-page-crud' ? 'CRUD' : type === 'ui-page-wizard' ? 'WIZARD' : 'PAGE';
-      const base = pageType === 'CRUD' ? 'CRUD' : pageType === 'WIZARD' ? 'Wizard' : 'Página';
+      const base = pageType === 'CRUD' ? 'CRUD' : pageType === 'WIZARD' ? 'Wizard' : t('editor.default.page');
       const { id, name } = this.uniquePaletteName(base);
       // Dropped on an app (or on one of its menu entries): the page hangs from its menu.
       const chain = this.dropChain(targetId);
@@ -3420,8 +3420,8 @@ export class ModuxEditor extends LitElement {
         }
       };
       (this.model.uiApps ?? []).forEach((a) => walkLabels(a.menuItems as never));
-      let label = 'Entrada';
-      for (let n = 2; taken.has(label); n++) label = `Entrada ${n}`;
+      let label = t('editor.default.menuEntry');
+      for (let n = 2; taken.has(label); n++) label = t('editor.default.menuEntryN', { n });
       // dropped on an existing entry: the new one nests under it (a submenu)
       const parentNode = chain.map((cid) => parseMenuNodeId(cid)).find(Boolean);
       this.command({
@@ -3450,7 +3450,7 @@ export class ModuxEditor extends LitElement {
         kind: 'add-etl-step',
         etlFlowId: flow.id,
         id: `ets-${n}`,
-        name: `Transformación ${n}`,
+        name: t('editor.default.transformationN', { n }),
         stepType: 'TRANSFORM',
       });
       this.emit('modux-notice', {
@@ -3460,7 +3460,7 @@ export class ModuxEditor extends LitElement {
     }
     if (type === 'etl-flow' && !this.dropContainerFor(type, targetId)) {
       // In the open it floats: the pipeline exists before deciding who operates it.
-      const loose = this.uniquePaletteName(def.label);
+      const loose = this.uniquePaletteName(paletteLabel(def));
       issue({ kind: 'add-etl-flow', id: loose.id, name: loose.name }, loose.id);
       this.emit('modux-notice', {
         message: t('editor.notice.etlFlowCreatedLoose'),
@@ -3502,7 +3502,7 @@ export class ModuxEditor extends LitElement {
         return;
       }
       const { id, name } = this.uniquePaletteName(
-        stepType === 'JOIN' ? 'Join' : stepType === 'SPLIT' ? 'Split' : 'Paso');
+        stepType === 'JOIN' ? 'Join' : stepType === 'SPLIT' ? 'Split' : t('editor.default.step'));
       // Chained onto a step: land beside it, downstream (dependencies flow left→right).
       if (stepHit) pos = { x: pos.x + 190, y: pos.y };
       issue(
@@ -3561,7 +3561,7 @@ export class ModuxEditor extends LitElement {
     // Free-standing creation: dropped on empty canvas, these are born without an owner and tied to
     // their parent later by drawing a composition edge (they wear a «sin asociar» badge until then).
     if (!container && ['aggregate', 'entity', 'value-object', 'use-case', 'policy'].includes(type)) {
-      const { id, name } = this.uniquePaletteName(def.label);
+      const { id, name } = this.uniquePaletteName(paletteLabel(def));
       const cmd: ModuxCommand =
         type === 'aggregate'
           ? { kind: 'add-aggregate', id, name }
@@ -3587,7 +3587,7 @@ export class ModuxEditor extends LitElement {
     // their parent's array, so a loose one goes to the looseElements bucket and is adopted into the
     // parent later by a composition edge. It wears a «sin asociar» badge until then.
     if (!container && ['operation', 'invariant', 'field', 'use-case-step', 'read-model', 'external-table', 'integration-event'].includes(type)) {
-      const { id, name } = this.uniquePaletteName(def.label);
+      const { id, name } = this.uniquePaletteName(paletteLabel(def));
       issue({ kind: 'add-loose-element', id, name, elementType: type as 'operation' | 'invariant' | 'field' | 'use-case-step' | 'read-model' | 'external-table' | 'integration-event' }, id);
       const parentNoun =
         type === 'operation' ? t('editor.parentNoun.anAggregate')
@@ -3621,7 +3621,7 @@ export class ModuxEditor extends LitElement {
       });
       return;
     }
-    const { id, name } = this.uniquePaletteName(def.label);
+    const { id, name } = this.uniquePaletteName(paletteLabel(def));
     if (type === 'aggregate') {
       issue({ kind: 'add-aggregate', id, name, boundedContextId: container }, id, container);
     } else if (type === 'entity') {
@@ -3726,7 +3726,7 @@ export class ModuxEditor extends LitElement {
       let opName = name;
       let id = `apiop-${container.replace(/^api-/, '')}-${slug(opName)}`;
       for (let n = 2; taken.has(id); n++) {
-        opName = `${def.label} ${n}`;
+        opName = `${paletteLabel(def)} ${n}`;
         id = `apiop-${container.replace(/^api-/, '')}-${slug(opName)}`;
       }
       issue({ kind: 'add-api-operation', apiId: container, id, name: opName }, id, container);
@@ -3750,7 +3750,7 @@ export class ModuxEditor extends LitElement {
       let stepName = name;
       let id = `step-${slug(stepName)}`;
       for (let n = 2; taken.has(id); n++) {
-        stepName = `${def.label} ${n}`;
+        stepName = `${paletteLabel(def)} ${n}`;
         id = `step-${slug(stepName)}`;
       }
       issue({ kind: 'add-use-case-step', useCaseId: container, id, name: stepName }, id, container);
@@ -5224,7 +5224,7 @@ export class ModuxEditor extends LitElement {
                 const picked = p;
                 this._wfStepPicker = null;
                 const { id, name } = this.uniquePaletteName(
-                  picked.stepType === 'JOIN' ? 'Join' : picked.stepType === 'SPLIT' ? 'Split' : 'Paso');
+                  picked.stepType === 'JOIN' ? 'Join' : picked.stepType === 'SPLIT' ? 'Split' : t('editor.default.step'));
                 this.command(
                   { kind: 'add-workflow-step', workflowId: w.id, id, name,
                     ...(picked.stepType ? { stepType: picked.stepType } : {}) },
