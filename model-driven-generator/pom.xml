@@ -10,7 +10,7 @@
     </parent>
     <groupId>io.mateu.modux</groupId>
     <artifactId>model-driven-generator</artifactId>
-    <version>0.6.5</version>
+    <version>0.6.6</version>
     <name>model-driven-generator</name>
     <description>model-driven-generator</description>
     <url>https://modux.mateu.io</url>

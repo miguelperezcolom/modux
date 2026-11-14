@@ -29,7 +29,7 @@ Declare it in the `pom.xml` of the project that holds the model — see the
 <plugin>
   <groupId>io.mateu.modux</groupId>
   <artifactId>modux-maven-plugin</artifactId>
-  <version>0.6.5</version>
+  <version>0.6.6</version>
 </plugin>
 ```
 
