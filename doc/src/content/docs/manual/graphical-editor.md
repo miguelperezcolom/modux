@@ -379,6 +379,23 @@ on disk, so a write from an agent's own MCP server, a `git pull` on the checkout
 a hand edit in the IDE reloads the catalog and lands on every open canvas through
 the same channel — see [the live store](/manual/mcp-authoring/#the-live-store).
 
+## Language
+
+The editor's interface comes in **English** (the default) and **Spanish**. It picks the
+language from, in order:
+
+1. a `lang` attribute (or property) on the element that hosts it — `<modux-editor>`,
+   `<modux-editor-connected>`, `<modux-editor-ide>`, `<modux-archi-ide>`,
+   `<archi-shell>` or `<modux-explorer>`, e.g. `<modux-editor-connected lang="es">`;
+2. the page's `<html lang>`;
+3. the browser's language (`navigator.language`).
+
+Any tag starting with `es` selects Spanish; everything else selects English. The
+IntelliJ plugin sets the page language from the IDE's UI language. Only the editor's
+own interface is translated: element names, descriptions and everything else you author
+stay exactly as written in the model, and messages that come back from the server are
+shown as the server sends them. Keyboard shortcuts are the same in both languages.
+
 ## Under the hood
 
 The editor is a standalone Lit web component (`editor/` in the repo) embedded through
