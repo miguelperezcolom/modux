@@ -495,10 +495,27 @@ public class EditorApiController {
         return Map.of("version", currentVersion());
     }
 
+    /**
+     * The fingerprint is taken over each element AS STORED (its YAML), not over the in-memory
+     * object: an element we just wrote and the same element read back from its file must count
+     * as equal (an empty list is written as nothing and read back as null), or the store watcher
+     * re-reading our own write would look like an external change to every open editor.
+     */
     private String currentVersion() {
         var elements = repository.allElements();
-        var hash = elements.stream().mapToInt(Objects::hashCode).sum() * 31 + elements.size();
+        var hash = elements.stream().mapToInt(EditorApiController::storedHash).sum() * 31 + elements.size();
         return Integer.toHexString(hash);
+    }
+
+    private static final com.fasterxml.jackson.dataformat.yaml.YAMLMapper STORED =
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelYaml.writer();
+
+    private static int storedHash(Object element) {
+        try {
+            return element.getClass().getName().hashCode() * 31 + STORED.writeValueAsString(element).hashCode();
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return Objects.hashCode(element);
+        }
     }
 
     // The server used to push its fingerprint over SSE so clients never polled. There is no
