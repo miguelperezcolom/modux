@@ -6,20 +6,35 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Finds the catalog a file belongs to, and tells a view document from anything else.
  *
- * <p>A modux model is a catalog — the elements — in a {@code .modux/} directory at the repo root
- * (§12.3). The directory's <em>name</em> is the marker: unambiguous, so no index file or content
- * check is needed. Resolution walks up to the nearest {@code .modux/}, the same "nearest marker"
- * idea as before, with the directory as the marker. See {@code docs/design/catalog-and-views.md}
- * §12 and {@code docs/design/ide-plugin.md} §4.6.
+ * <p>A modux model is a catalog — the elements — in a directory at the repo root (§12.3): the
+ * {@code modux/} the Maven plugin, the docs and the authoring skill name, or the {@code .modux/}
+ * this plugin creates. Resolution walks up to the nearest ancestor holding one, the same "nearest
+ * marker" idea as before, with the directory as the marker. Where both are there, {@code modux/}
+ * wins, as it does for the Maven plugin ({@code ModuxModel.locate}). See
+ * {@code docs/design/catalog-and-views.md} §12 and {@code docs/design/ide-plugin.md} §4.6.
  */
 public final class ModuxProject {
 
     /**
-     * The catalog directory: the single, canonical home of the elements, at the repo root. Hidden
-     * on purpose — the navigable surface is the views, and the catalog is plumbing you rarely open
-     * by hand.
+     * The catalog directory this plugin creates: the single, canonical home of the elements, at
+     * the repo root. Hidden on purpose — the navigable surface is the views, and the catalog is
+     * plumbing you rarely open by hand.
      */
     public static final String CATALOG_DIR = ".modux";
+
+    /**
+     * The model directory by convention ({@code modux/}): the Maven plugin's default, and what the
+     * docs and the authoring skill write. Read first, as the Maven plugin does.
+     */
+    public static final String MODEL_DIR = "modux";
+
+    /**
+     * The bucket every model has: a repository is one project, and the project element lives in
+     * {@code projects/}. A {@code modux/} directory needs it to count as a catalog — unlike
+     * {@code .modux}, that name is common enough (a checkout of modux itself, say) to be no marker
+     * on its own.
+     */
+    static final String PROJECTS_DIR = "projects";
 
     /**
      * The suffix of a view document: a saved perspective ({@code viewId} + lens + geometry) that
@@ -42,25 +57,40 @@ public final class ModuxProject {
     private ModuxProject() {}
 
     /**
-     * Whether a directory is a catalog: named {@code .modux} (§12.3). The name alone is the marker —
-     * there is no index file to check — which is why a stray {@code .modux/} is the only false
-     * positive, and an unlikely one for a name this specific.
+     * Whether a directory is a catalog: named {@code .modux} (§12.3), where the name alone is the
+     * marker; or named {@code modux} and holding a model (its {@code projects/}).
      */
     public static boolean isCatalog(@Nullable VirtualFile dir) {
-        return dir != null && dir.isDirectory() && CATALOG_DIR.equals(dir.getName());
+        if (dir == null || !dir.isDirectory()) return false;
+        if (CATALOG_DIR.equals(dir.getName())) return true;
+        if (!MODEL_DIR.equals(dir.getName())) return false;
+        var projects = dir.findChild(PROJECTS_DIR);
+        return projects != null && projects.isDirectory();
     }
 
     /**
-     * The catalog owning {@code file}: walking up, the first ancestor that <em>holds</em> a
-     * {@code .modux/}. Like finding {@code .git} — the catalog sits at the repo root, and a view
-     * document lives off to the side (in {@code docs/}, next to code…), so a walk that only matched
-     * an ancestor <em>named</em> {@code .modux} would never reach it. What binds a view to a model
-     * is not its path but the catalog it resolves to.
+     * The catalog {@code dir} holds, if any: its {@code modux/} when that is one, else its
+     * {@code .modux/} — the Maven plugin's precedence.
+     */
+    public static @Nullable VirtualFile catalogIn(@Nullable VirtualFile dir) {
+        if (dir == null || !dir.isDirectory()) return null;
+        var model = dir.findChild(MODEL_DIR);
+        if (isCatalog(model)) return model;
+        var catalog = dir.findChild(CATALOG_DIR);
+        return isCatalog(catalog) ? catalog : null;
+    }
+
+    /**
+     * The catalog owning {@code file}: walking up, the first ancestor that <em>holds</em> one. Like
+     * finding {@code .git} — the catalog sits at the repo root, and a view document lives off to
+     * the side (in {@code docs/}, next to code…), so a walk that only matched an ancestor
+     * <em>named</em> like a catalog would never reach it. What binds a view to a model is not its
+     * path but the catalog it resolves to.
      */
     public static @Nullable VirtualFile catalogRootFor(@Nullable VirtualFile file) {
         for (var candidate = directoryOf(file); candidate != null; candidate = candidate.getParent()) {
-            var catalog = candidate.findChild(CATALOG_DIR);
-            if (isCatalog(catalog)) return catalog;
+            var catalog = catalogIn(candidate);
+            if (catalog != null) return catalog;
         }
         return null;
     }

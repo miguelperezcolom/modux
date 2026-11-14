@@ -41,6 +41,14 @@ public class DeployMojo extends AbstractMojo {
     @Parameter(property = "modux.platform", defaultValue = "linux/amd64")
     private String platform;
 
+    /**
+     * The Docker Compose project of the local stack. Left out, it is the one the model names (the
+     * project id), or the folder's name for a system deployed before that name existed. See the
+     * deploying guide.
+     */
+    @Parameter(property = "modux.composeProject")
+    private String composeProject;
+
     @Override
     public void execute() throws MojoExecutionException {
         try {
@@ -50,7 +58,7 @@ public class DeployMojo extends AbstractMojo {
             var theTag = tag != null && !tag.isBlank() ? tag
                     : LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
             var urls = new Deployer(DeployMojo::run, getLog()::info, System::getenv)
-                    .deploy(Path.of(output).toAbsolutePath(), new Deployer.Settings(environment, theTag, !skipBuild, platform));
+                    .deploy(Path.of(output).toAbsolutePath(), new Deployer.Settings(environment, theTag, !skipBuild, platform, composeProject));
             getLog().info("Modux: deployed '" + environment + "' (" + theTag + ")");
             urls.forEach(u -> getLog().info("Modux:   " + u));
         } catch (Exception e) {

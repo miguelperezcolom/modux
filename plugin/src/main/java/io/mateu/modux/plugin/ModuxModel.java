@@ -37,6 +37,14 @@ final class ModuxModel {
         return Files.isDirectory(catalog) ? catalog : path;
     }
 
+    /**
+     * The model a goal that predates {@code modelPath} writes to: the deprecated {@code specFile}
+     * when one is given, the located {@code modelPath} otherwise.
+     */
+    static Path modelFile(String modelPath, String specFile) {
+        return specFile != null && !specFile.isBlank() ? Path.of(specFile) : locate(modelPath);
+    }
+
     private final Path root;
     private final AllData data;
 

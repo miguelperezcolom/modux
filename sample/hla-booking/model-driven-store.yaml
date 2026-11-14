@@ -94,6 +94,8 @@ projects:
   name: "Booking"
   outputPath: "sample/hla-booking/generated"
   packageName: "com.acme.booking"
+  # el idioma de lo que modux escribe por su cuenta (el documento HLA, la UI generada)
+  defaultLocale: "es"
   serviceIds:
   - "svc-distribution"
   - "svc-reservas"
