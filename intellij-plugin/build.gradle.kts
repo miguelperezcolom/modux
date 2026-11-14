@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.6.4"
+version = "0.6.5"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,13 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.5</h4>
+            <ul>
+              <li>The editor speaks English by default, Spanish when the IDE does.</li>
+              <li>The generated system follows the project's language (English unless defaultLocale says Spanish): the words the UI adds, messages, scripts, the system user.</li>
+              <li>A form field naming another context's aggregate is a picker over the read model kept of it; money reads as money on a record's detail.</li>
+              <li>Fixes: an operation taking a SEQUENCE number confirms (it hung PENDING); a Create{Agg} use case no longer clashes with the built-in one; no false "edited by hand" warnings.</li>
+            </ul>
             <h4>0.6.4</h4>
             <ul>
               <li>The generated deployment is the same on every generation too (the definitions hash in the compose and deploy/targets.json): regenerating an unchanged model changes no file.</li>

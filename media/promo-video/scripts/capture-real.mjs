@@ -77,7 +77,13 @@ await shot(promoter, 'concert-saved');
 const customer = await as('customer');
 async function buy(tickets, card, tag) {
   await menu(customer, 'Sales', 'Buy tickets');
-  await customer.locator('#concertId input').fill('1');
+  // the concert is a picker over the concerts Sales keeps (modux >= 0.6.5): choose it by name
+  await customer.locator('#concertId input').first().click();
+  await customer.keyboard.type('Midnight');
+  await customer.waitForTimeout(1200);
+  await customer.keyboard.press('ArrowDown');
+  await customer.keyboard.press('Enter');
+  await customer.waitForTimeout(500);
   await customer.locator('#customer input').fill('alex.morgan@example.com');
   await customer.locator('#tickets input').fill(String(tickets));
   await customer.locator('#card input').fill(card);
