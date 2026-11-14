@@ -1,0 +1,7 @@
+id: enum-book-status
+values:
+  - id: AVAILABLE
+    name: AVAILABLE
+  - id: WITHDRAWN
+    name: WITHDRAWN
+projectId: library
