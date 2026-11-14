@@ -5522,7 +5522,7 @@ public class GenerateCodeUseCase {
         }
         var prev = previousManifest.get(relPath(file));
         if (prev != null && !prev.equals(hashFile(file))) {
-            log.warn("Generated file was edited by hand and is being overwritten: {} — put custom logic in the *-custom boundedContext instead.",
+            log.warn("Generated file was edited by hand and is being overwritten: {} — put custom logic in the *-custom module instead.",
                     relPath(file));
         }
     }

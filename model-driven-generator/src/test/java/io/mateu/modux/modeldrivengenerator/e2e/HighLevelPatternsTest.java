@@ -66,6 +66,31 @@ class HighLevelPatternsTest {
     }
 
     @Test
+    void a_generated_file_edited_by_hand_is_reported_and_restored() throws Exception {
+        Path edited;
+        try (var files = Files.walk(out)) {
+            edited = files.filter(f -> f.getFileName().toString().equals("ComprarPage.java")).findFirst().orElseThrow();
+        }
+        var generated = Files.readString(edited);
+        Files.writeString(edited, generated + "\n// edited by hand\n");
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(GenerateCodeUseCase.class);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            generateCodeUseCase.handle(new GenerateCodeCommand("entradas", out.toString(), null, true));
+        } finally {
+            logger.detachAppender(appender);
+        }
+        var handEdits = appender.list.stream().map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage)
+                .filter(m -> m.contains("edited by hand")).toList();
+        assertTrue(handEdits.size() == 1 && handEdits.get(0).contains("ComprarPage.java"), handEdits.toString());
+        // the custom zone is a module of the service, not a bounded context
+        assertTrue(handEdits.get(0).endsWith("put custom logic in the *-custom module instead."), handEdits.toString());
+        assertTrue(Files.readString(edited).equals(generated), "the generated file was not restored");
+    }
+
+    @Test
     void a_form_field_naming_another_contexts_aggregate_picks_it_from_the_read_model_kept_here() throws Exception {
         // comprar (Ventas) takes a conciertoId; Concierto lives in Catálogo, Ventas keeps ConciertoView
         var page = read("ComprarPage.java");
