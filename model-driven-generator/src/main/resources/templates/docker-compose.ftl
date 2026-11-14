@@ -1,3 +1,11 @@
+<#if composeProject??>
+# The system's own Compose project, from the project id: without it Compose would name it after
+# this folder, and two systems generated into folders of the same name would share containers
+# and volumes. COMPOSE_PROJECT_NAME (in the environment or in .env, where `mvn modux:deploy` pins
+# a stack deployed before this name existed) overrides it.
+name: ${composeProject}
+
+</#if>
 services:
 <#list project.services as svc>
   ${svc.name?lower_case?replace("[^a-z0-9]","-",'r')}:

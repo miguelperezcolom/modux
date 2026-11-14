@@ -38,7 +38,7 @@ final class ReferencedProjects {
         }
         var name = repositoryName(gitUrl);
         if (name == null) return null;
-        // The catalog is <repo>/.modux (§12.3); modelRoot is that catalog, so its grandparent is
+        // The catalog is <repo>/modux or <repo>/.modux (§12.3); modelRoot is that catalog, so its grandparent is
         // where sibling checkouts sit.
         var siblings = modelRoot.getParent() == null ? null : modelRoot.getParent().getParent();
         if (siblings == null) return null;
@@ -50,8 +50,7 @@ final class ReferencedProjects {
     private static @Nullable VirtualFile modelOf(@Nullable VirtualFile candidate) {
         if (candidate == null || !candidate.isDirectory()) return null;
         if (ModuxProject.isCatalog(candidate)) return candidate;
-        var catalog = candidate.findChild(ModuxProject.CATALOG_DIR);
-        return ModuxProject.isCatalog(catalog) ? catalog : null;
+        return ModuxProject.catalogIn(candidate);
     }
 
     /**

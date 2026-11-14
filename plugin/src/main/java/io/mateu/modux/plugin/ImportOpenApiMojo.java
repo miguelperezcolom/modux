@@ -10,8 +10,11 @@ import org.apache.maven.plugins.annotations.Parameter;
 @Mojo(name = "import-openapi")
 public class ImportOpenApiMojo extends AbstractMojo {
 
-    @Parameter(property = "modux.specFile",
-               defaultValue = "${project.basedir}/.dev/data/model-driven-store.yaml")
+    @Parameter(property = "modux.modelPath", defaultValue = "${project.basedir}/" + ModuxModel.DEFAULT_PATH)
+    private String modelPath;
+
+    /** Deprecated: the model a build reads is {@code modelPath}, as for the other goals. Still honoured when set. */
+    @Parameter(property = "modux.specFile")
     private String specFile;
 
     @Parameter(property = "modux.serviceId")
@@ -23,7 +26,12 @@ public class ImportOpenApiMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException {
         getLog().info("Modux import-openapi: " + filePath);
-        System.setProperty("modux.model-file", specFile);
+        if (specFile != null && !specFile.isBlank()) {
+            getLog().warn("Modux: modux.specFile is deprecated; use modux.modelPath (default: the project's modux/ or .modux/)");
+        }
+        var model = ModuxModel.modelFile(modelPath, specFile);
+        getLog().info("Modux import-openapi: into " + model);
+        System.setProperty("modux.model-file", model.toString());
 
         try (var ctx = ModuxContext.create()) {
             ctx.getBean(ImportOpenApiUseCase.class)

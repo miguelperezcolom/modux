@@ -166,14 +166,14 @@ Reads an OpenAPI 3.x YAML or JSON file and upserts a gateway (something the syst
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the OpenAPI YAML or JSON file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | The model — pass `modux` (or `.modux`): the default is the old single-file store |
+| `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is (`modux/`, or `.modux/` when there is no `modux/`) |
+| `specFile` | `modux.specFile` | — | No | Deprecated: a store to write to instead of `modelPath` |
 | `serviceId` | `modux.serviceId` | — | No | Service ID to link the imported gateway to |
 
 ### Usage
 
 ```bash
 mvn modux:import-openapi \
-  -Dmodux.specFile=modux \
   -Dmodux.filePath=apis/payments.yaml \
   -Dmodux.serviceId=my-service-id
 ```
@@ -191,14 +191,14 @@ Reads an AsyncAPI 2.x YAML file and upserts domain events (publish channels) and
 | Parameter | Property | Default | Required | Description |
 |---|---|---|---|---|
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the AsyncAPI YAML file |
-| `specFile` | `modux.specFile` | `${project.basedir}/.dev/data/model-driven-store.yaml` | No | The model — pass `modux` (or `.modux`): the default is the old single-file store |
+| `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is (`modux/`, or `.modux/` when there is no `modux/`) |
+| `specFile` | `modux.specFile` | — | No | Deprecated: a store to write to instead of `modelPath` |
 | `boundedContextId` | `modux.boundedContextId` | — | No | Bounded context ID that owns these events/subscriptions |
 
 ### Usage
 
 ```bash
 mvn modux:import-asyncapi \
-  -Dmodux.specFile=modux \
   -Dmodux.filePath=events/orders-events.yaml \
   -Dmodux.boundedContextId=my-context-id
 ```

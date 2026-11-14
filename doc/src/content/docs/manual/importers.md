@@ -46,16 +46,16 @@ An OpenAPI file describes an external HTTP API your system depends on. Modux map
 
 ```bash
 mvn modux:import-openapi \
-  -Dmodux.specFile=modux \
   -Dmodux.filePath=/path/to/openapi.yaml \
   -Dmodux.serviceId=my-service-id
 ```
 
-`import-openapi` and `import-asyncapi` still default to the old single-file store
-(`.dev/data/model-driven-store.yaml`): pass `-Dmodux.specFile=modux` (or `.modux`) to
-point them at the model directory.
+They write into the project's model: `modux/` (or `.modux/` when there is no `modux/`);
+`-Dmodux.modelPath=…` points them elsewhere.
 
 `serviceId` is optional. When provided, the gateway is automatically added to the service's `gatewayIds` list.
+The gateway is written to the repository's model (`modux/`, or `.modux/` when there is no
+`modux/`), like every other goal; `-Dmodux.modelPath` points it elsewhere.
 
 ### What gets created
 
@@ -123,10 +123,11 @@ An AsyncAPI file describes the event-driven interface of a service: which events
 
 ```bash
 mvn modux:import-asyncapi \
-  -Dmodux.specFile=modux \
   -Dmodux.filePath=/path/to/asyncapi.yaml \
   -Dmodux.boundedContextId=my-context-id
 ```
+
+Like `import-openapi`, it writes to the repository's model (`-Dmodux.modelPath` to change it).
 
 ### What gets created
 
@@ -171,11 +172,11 @@ Running the importer again matches existing entities by `topicName`. If a matchi
 
 ```bash
 # Import external REST APIs as gateways
-mvn modux:import-openapi -Dmodux.specFile=modux -Dmodux.filePath=apis/payments.yaml -Dmodux.serviceId=orders-svc
-mvn modux:import-openapi -Dmodux.specFile=modux -Dmodux.filePath=apis/inventory.yaml -Dmodux.serviceId=orders-svc
+mvn modux:import-openapi -Dmodux.filePath=apis/payments.yaml -Dmodux.serviceId=orders-svc
+mvn modux:import-openapi -Dmodux.filePath=apis/inventory.yaml -Dmodux.serviceId=orders-svc
 
 # Import the async event contracts
-mvn modux:import-asyncapi -Dmodux.specFile=modux -Dmodux.filePath=events/orders-events.yaml -Dmodux.boundedContextId=orders-bc
+mvn modux:import-asyncapi -Dmodux.filePath=events/orders-events.yaml -Dmodux.boundedContextId=orders-bc
 
 # Generate the full project
 mvn modux:generate

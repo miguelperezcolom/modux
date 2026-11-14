@@ -34,8 +34,8 @@ public final class NewViewAction extends AnAction {
             return;
         }
         if (ModuxProject.catalogRootFor(dir) == null) {
-            Messages.showWarningDialog(project, "No hay un catálogo " + ModuxProject.CATALOG_DIR
-                    + "/ por encima. La vista se crea, pero no abrirá hasta que exista uno.", "Modux");
+            Messages.showWarningDialog(project, "No hay un catálogo " + ModuxProject.MODEL_DIR
+                    + "/ (ni " + ModuxProject.CATALOG_DIR + "/) por encima. La vista se crea, pero no abrirá hasta que exista uno.", "Modux");
         }
         // A curated view seeded empty: geometry fills in as you draw on the unified canvas.
         var content = "viewId: " + slug + "\ngeometry:\n  nodes: {}\n  edges: {}\n";
