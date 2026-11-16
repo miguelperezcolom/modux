@@ -71,7 +71,7 @@ def main(ep_dir):
     episode = json.load(open(os.path.join(ep_dir, "episode.json")))
     name = os.path.basename(os.path.normpath(ep_dir))
     root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build", name, "audio")
-    for lang in ("en", "es"):
+    for lang in episode.get("languages", ["en", "es"]):
         out_dir = os.path.join(root, lang)
         cache = os.path.join(root, "cache")
         os.makedirs(out_dir, exist_ok=True)

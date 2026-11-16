@@ -235,3 +235,10 @@ cualquier guardado reescribe todos los ficheros del modelo; al desplegar un cont
 la lente 3D ilegible en modelos medianos; etiquetas del editor en español aún en inglés (ACTOR, Value object).
 
 Folio vuelve a estar arrancado. Tickets y library, parados (sus volúmenes se conservan).
+
+## Desde el episodio 3: solo en inglés (2026-11-16)
+
+Decisión del propietario al retomar: se publican únicamente las versiones en inglés, con subtítulos en
+inglés. Los episodios 1 y 2 en español siguen publicados. `episode.json` lleva `"languages": ["en"]` y
+la locución, el montaje y los subtítulos solo se hacen en esos idiomas (sin el campo, `en` y `es`).
+El plan de más idiomas tras la serie queda en suspenso.

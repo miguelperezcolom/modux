@@ -1,5 +1,6 @@
 {
   "number": 3,
+  "languages": ["en"],
   "slug": "two-zones",
   "series": "modux in N minutes",
   "title": { "en": "Two zones: the code that is yours", "es": "Dos zonas: el código que es tuyo" },
