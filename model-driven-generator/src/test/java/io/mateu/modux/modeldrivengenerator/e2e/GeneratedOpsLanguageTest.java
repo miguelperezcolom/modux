@@ -84,6 +84,13 @@ class GeneratedOpsLanguageTest {
             assertTrue(pom.contains("Playwright-Java suite that drives the apps"), pom);
             assertTrue(Files.readString(out.resolve("e2e/src/test/java/e2e/BaseE2eTest.java"))
                     .contains("playwright install chromium failed"));
+            // a use case's page says it ran in the project's language (cancelarCompra returns nothing)
+            try (var files = Files.walk(out)) {
+                var page = files.filter(f -> f.getFileName().toString().equals("CancelarCompraPage.java")).findFirst().orElseThrow();
+                var source = Files.readString(page);
+                assertTrue(source.contains("resultado = \"CancelarCompra done\";"), source);
+                assertFalse(source.contains("ejecutado"), source);
+            }
             var yaml = Files.readString(out.resolve("gateway/src/main/resources/application.yaml"));
             assertTrue(yaml.contains("the routes come from the model"), yaml);
             assertFalse(yaml.contains("la shell (todo lo demás)"), yaml);

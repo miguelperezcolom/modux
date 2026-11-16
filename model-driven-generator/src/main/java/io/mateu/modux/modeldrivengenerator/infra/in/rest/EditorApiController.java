@@ -495,10 +495,27 @@ public class EditorApiController {
         return Map.of("version", currentVersion());
     }
 
+    /**
+     * The fingerprint is taken over each element AS STORED (its YAML), not over the in-memory
+     * object: an element we just wrote and the same element read back from its file must count
+     * as equal (an empty list is written as nothing and read back as null), or the store watcher
+     * re-reading our own write would look like an external change to every open editor.
+     */
     private String currentVersion() {
         var elements = repository.allElements();
-        var hash = elements.stream().mapToInt(Objects::hashCode).sum() * 31 + elements.size();
+        var hash = elements.stream().mapToInt(EditorApiController::storedHash).sum() * 31 + elements.size();
         return Integer.toHexString(hash);
+    }
+
+    private static final com.fasterxml.jackson.dataformat.yaml.YAMLMapper STORED =
+            io.mateu.modux.modeldrivengenerator.infra.out.persistence.file.storage.ModelYaml.writer();
+
+    private static int storedHash(Object element) {
+        try {
+            return element.getClass().getName().hashCode() * 31 + STORED.writeValueAsString(element).hashCode();
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return Objects.hashCode(element);
+        }
     }
 
     // The server used to push its fingerprint over SSE so clients never polled. There is no
@@ -1212,6 +1229,10 @@ public class EditorApiController {
             }
             case "actor" -> repository.findById(command.id(), RoleEntity.class)
                     .ifPresent(r -> repository.save(r.withName(command.name())));
+            case "notification" -> repository.findById(command.id(), NotificationEntity.class)
+                    .ifPresent(n -> repository.save(new NotificationEntity(n.id(), command.name(),
+                            n.ownerBoundedContextId(), n.eventId(), n.channels(), n.recipientRoleIds(),
+                            n.recipientExpression(), n.subject(), n.body(), n.projectId(), n.description())));
             case "external-system" -> {
                 var project = projects.owningProject();
                 projects.replaceExternalSystems(projects.externalSystems().stream()

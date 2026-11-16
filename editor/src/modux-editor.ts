@@ -12,6 +12,7 @@ import { aggregatesScene } from './views/aggregates.js';
 import { flowsScene } from './views/flows.js';
 import { processesScene } from './views/processes.js';
 import { eventstormingScene } from './views/eventstorming.js';
+import { RENAMEABLE_KINDS } from './renameable.js';
 import { workflowsScene } from './views/workflows.js';
 import { uiScene, parseMenuNodeId } from './views/ui.js';
 import { mappingsScene } from './views/mappings.js';
@@ -209,13 +210,6 @@ function drawerTypeLabel(type: string): string {
  * is renamed by its own command and is handled apart. Both the canvas rename and the drawer rename
  * gate on this — a kind not here has no rename affordance rather than a command that no-ops.
  */
-const RENAMEABLE_KINDS = new Set([
-  'note', 'area', 'ui', 'page', 'ui-app', 'url', 'boundedContext', 'system', 'cdc', 'aggregate', 'entity',
-  'value-object', 'operation', 'process-step', 'workflow', 'workflow-step', 'domain-event',
-  'read-model', 'domain-service', 'query-service', 'use-case', 'external-use-case',
-  'external-table', 'mcp-server', 'mcp-gateway', 'application-event', 'integration-event', 'external-system',
-  'actor', 'ai-agent', 'rag', 'api', 'proxy-api', 'api-operation',
-]);
 
 /** camelCase / kebab-case / snake_case → «Palabras legibles» for a field label. */
 function humanizeKey(key: string): string {
