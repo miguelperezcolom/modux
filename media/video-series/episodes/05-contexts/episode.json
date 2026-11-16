@@ -1,0 +1,232 @@
+{
+  "number": 5,
+  "slug": "contexts",
+  "series": "modux in N minutes",
+  "title": {
+    "en": "Contexts that talk to each other",
+    "es": "Contextos que hablan entre sí"
+  },
+  "thumbnail": {
+    "scene": "open",
+    "at": 3.95
+  },
+  "scenes": [
+    {
+      "id": "open",
+      "kind": "title",
+      "min": 4,
+      "title": "Contexts that talk to each other",
+      "subtitle": "Flows, events, read models."
+    },
+    {
+      "id": "map",
+      "kind": "live",
+      "script": "live/map.mjs",
+      "scale": 1.5,
+      "narration": {
+        "en": "Tickets has four bounded contexts: Catalog, Sales, Payments and Analytics. Each one is a service of its own, with its own database. The map shows how they depend on each other.",
+        "es": "Tickets tiene cuatro contextos: Catalog, Sales, Payments y Analytics. Cada uno es un servicio propio, con su propia base de datos. El mapa enseña cómo dependen unos de otros."
+      }
+    },
+    {
+      "id": "flows",
+      "kind": "split",
+      "label": "Flows",
+      "left": {
+        "file": "modux/flows/flow-charge.yaml",
+        "lang": "yaml",
+        "size": 22,
+        "code": "@file:../../../promo-video/app/modux/flows/flow-charge.yaml"
+      },
+      "right": {
+        "file": "modux/flows/flow-confirm.yaml",
+        "lang": "yaml",
+        "size": 22,
+        "code": "@file:../../../promo-video/app/modux/flows/flow-confirm.yaml"
+      },
+      "rightAt": 4.5,
+      "caption": "Say what happens. The wiring is derived.",
+      "narration": {
+        "en": "Sales and Payments talk through flows. When a purchase is placed in Sales, Payments charges it. When Payments accepts the payment, Sales confirms the purchase; when it declines it, Sales rejects it. A few lines each.",
+        "es": "Sales y Payments se hablan con flujos. Cuando se hace una compra en Sales, Payments la cobra. Cuando Payments acepta el pago, Sales confirma la compra; cuando lo rechaza, Sales la rechaza. Unas pocas líneas cada uno."
+      }
+    },
+    {
+      "id": "kafka",
+      "kind": "split",
+      "label": "Generated",
+      "left": {
+        "file": "sales-app/…/application.yaml · generated",
+        "lang": "yaml",
+        "size": 17,
+        "from": 53,
+        "to": 69,
+        "code": "@file:real/gen/sales-application.yaml"
+      },
+      "right": {
+        "file": "payments/…/PaymentsPurchasePlacedSubscription.java · generated",
+        "lang": "java",
+        "size": 14,
+        "from": 9,
+        "to": 41,
+        "code": "@file:real/gen/PaymentsPurchasePlacedSubscription.java"
+      },
+      "rightAt": 3.6,
+      "caption": "A topic per flow. An idempotent subscriber on the other side.",
+      "narration": {
+        "en": "Generation turns every flow into a Kafka topic, with a publisher on one side and a subscriber on the other. Here, Payments listens for placed purchases and calls its charge use case. The subscriber is idempotent: its inbox drops a message delivered twice.",
+        "es": "La generación convierte cada flujo en un topic de Kafka, con un publicador a un lado y un suscriptor al otro. Aquí, Payments escucha las compras hechas y llama a su caso de uso de cobro. El suscriptor es idempotente: su inbox descarta un mensaje entregado dos veces."
+      }
+    },
+    {
+      "id": "outbox",
+      "kind": "split",
+      "label": "Outbox",
+      "left": {
+        "file": "modux/services/svc-sales.yaml",
+        "lang": "yaml",
+        "size": 22,
+        "code": "@file:../../../promo-video/app/modux/services/svc-sales.yaml"
+      },
+      "right": {
+        "file": "sales-app/…/outbox/Outbox.java · generated",
+        "lang": "java",
+        "size": 15,
+        "from": 1,
+        "to": 38,
+        "code": "@file:real/gen/Outbox.java"
+      },
+      "rightAt": 2.6,
+      "caption": "outboxEnabled: one line in the service.",
+      "narration": {
+        "en": "Sales and Payments turn the outbox on, one line in the service. Every event they send is written to a table first, and a relay delivers it to Kafka, even after a restart. A purchase and its event commit together: if the purchase rolls back, its event never leaves.",
+        "es": "Sales y Payments activan el outbox, una línea en el servicio. Cada evento que envían se escribe antes en una tabla, y un relé lo entrega a Kafka, incluso después de un reinicio. Una compra y su evento se confirman juntos: si la compra se deshace, su evento no sale."
+      }
+    },
+    {
+      "id": "rest",
+      "kind": "split",
+      "label": "A call",
+      "left": {
+        "file": "modux/useCases/uc-buy.yaml",
+        "lang": "yaml",
+        "size": 22,
+        "to": 14,
+        "code": "@file:../../../promo-video/app/modux/useCases/uc-buy.yaml"
+      },
+      "right": {
+        "file": "sales/…/buy/BuyUseCase.java · generated",
+        "lang": "java",
+        "size": 16,
+        "from": 5,
+        "to": 35,
+        "code": "@file:real/gen/BuyUseCase.java"
+      },
+      "rightAt": 4.2,
+      "caption": "Another service: a REST call, with a generated client.",
+      "narration": {
+        "en": "Not everything is an event. To sell, Sales needs the current price, and the price lives in Catalog. The buy use case calls Catalog's lookup price. It runs in another service, so the call goes over REST, through a generated client. Nothing else to declare.",
+        "es": "No todo es un evento. Para vender, Sales necesita el precio actual, y el precio vive en Catalog. El caso de uso de compra llama a lookup price, de Catalog. Corre en otro servicio, así que la llamada va por REST, con un cliente generado. No hay nada más que declarar."
+      }
+    },
+    {
+      "id": "projection",
+      "kind": "split",
+      "label": "A read model",
+      "left": {
+        "file": "modux/projections/proj-concerts.yaml",
+        "lang": "yaml",
+        "size": 22,
+        "code": "@file:../../../promo-video/app/modux/projections/proj-concerts.yaml"
+      },
+      "right": {
+        "file": "sales/…/projection/ConcertsProjection.java · generated",
+        "lang": "java",
+        "size": 15,
+        "from": 1,
+        "to": 36,
+        "code": "@file:real/gen/ConcertsProjection.java"
+      },
+      "rightAt": 4.6,
+      "caption": "Catalog's concerts, copied into Sales.",
+      "narration": {
+        "en": "Sales also needs the concerts themselves, without asking Catalog every time. A projection keeps a copy: the concert's state, in a ConcertView read model that Sales owns. Every time a concert is saved, Catalog publishes its whole state, and this generated projection updates the copy.",
+        "es": "Sales también necesita los conciertos, sin preguntar a Catalog cada vez. Una proyección guarda una copia: el estado del concierto, en un modelo de lectura, ConcertView, que es de Sales. Cada vez que se guarda un concierto, Catalog publica su estado entero, y esta proyección generada actualiza la copia."
+      }
+    },
+    {
+      "id": "picker",
+      "kind": "code",
+      "lang": "java",
+      "file": "sales/…/ui/pages/buy/BuyPage.java · generated",
+      "code": "@file:real/gen/BuyPage.java",
+      "from": 10,
+      "to": 29,
+      "emph": [[3, 8]],
+      "box": { "x": 160, "y": 170, "w": 1600, "h": 660 },
+      "size": 22,
+      "caption": "A field named concertId: a picker over the copy.",
+      "narration": {
+        "en": "And that copy gives Sales' forms a picker. A field called concertId becomes a lookup over the read model, each concert shown by its artist.",
+        "es": "Y esa copia da un selector a los formularios de Sales. Un campo llamado concertId se convierte en una búsqueda sobre el modelo de lectura, con cada concierto por su artista."
+      }
+    },
+    {
+      "id": "concert",
+      "kind": "live",
+      "script": "live/concert.mjs",
+      "narration": {
+        "en": "Now, running. The promoter puts a new concert on sale, in Catalog.",
+        "es": "Ahora, en marcha. El promotor pone a la venta un concierto nuevo, en Catalog."
+      }
+    },
+    {
+      "id": "copy",
+      "kind": "terminal",
+      "cwd": "~/tickets",
+      "title": "terminal — tickets",
+      "command": "docker exec tickets-postgres-1 psql -U user_app -d sales -c \"select artist, venue, date, price, status from concert_view_read_model_entity\"",
+      "lines": "@lines:real/copy.txt",
+      "box": { "x": 120, "y": 300, "w": 1680, "h": 380 },
+      "size": 22,
+      "typing": 1.4,
+      "caption": "In Sales' own database.",
+      "narration": {
+        "en": "Catalog published it, and Sales already has its copy, in its own database.",
+        "es": "Catalog lo ha publicado, y Sales ya tiene su copia, en su propia base de datos."
+      }
+    },
+    {
+      "id": "buy",
+      "kind": "live",
+      "script": "live/buy.mjs",
+      "narration": {
+        "en": "So the customer's picker has it too. Three tickets, a card, buy. The price came from Catalog over REST, and the purchase is pending while Payments charges the card.",
+        "es": "Así que el selector del cliente también lo tiene. Tres entradas, una tarjeta, comprar. El precio ha llegado de Catalog por REST, y la compra queda pendiente mientras Payments cobra la tarjeta."
+      }
+    },
+    {
+      "id": "confirmed",
+      "kind": "live",
+      "script": "live/confirmed.mjs",
+      "narration": {
+        "en": "The bank accepts the charge. Payments' event leaves through its outbox, crosses Kafka, and Sales confirms the purchase. Search again: confirmed.",
+        "es": "El banco acepta el cobro. El evento de Payments sale por su outbox, cruza Kafka, y Sales confirma la compra. Al buscar de nuevo: confirmada."
+      }
+    },
+    {
+      "id": "close",
+      "kind": "close",
+      "title": "Say how contexts talk. The wiring is generated.",
+      "lines": [
+        "Next: business rules",
+        "modux.mateu.io"
+      ],
+      "min": 5,
+      "narration": {
+        "en": "Flows, a call and a projection, declared in the model; the topics, the clients, the outbox and the copy, generated. Next: business rules.",
+        "es": "Flujos, una llamada y una proyección, declarados en el modelo; los topics, los clientes, el outbox y la copia, generados. En el siguiente: las reglas del negocio."
+      }
+    }
+  ]
+}

@@ -27,12 +27,14 @@ _pipes = {}
 SAY_AS = {
     "en": {"YAML": "yamel", "modux.mateu.io": "modux dot mah teh oo dot io", "ai-complete": "A I complete",
            "CRUD": "crud", "UI": "U I", "API": "A P I", "APIs": "A P Is", "REST": "rest", "MIT": "M I T",
-           "Kubernetes": "Kubernetes", "e2e": "end to end", "ISBN": "I S B N", "CI": "C I"},
+           "Kubernetes": "Kubernetes", "e2e": "end to end", "ISBN": "I S B N", "CI": "C I", "concertId": "concert I D", "ConcertView": "concert view"},
     "es": {"YAML": "yamel", "modux.mateu.io": "modux punto mateu punto io", "ai-complete": "ei ai complit",
            "CRUD": "crud", "UI": "u i", "API": "a pe i", "APIs": "ápis", "REST": "rest", "MIT": "eme i te",
            "Docker": "dóquer", "Kafka": "cafca", "Kubernetes": "cubernetes", "outbox": "áutbox",
            "gateway": "gueitwey", "e2e": "de extremo a extremo", "Maven": "méiven", "Spring Boot": "spring but",
-           "ISBN": "i ese be ene", "CI": "ce i"},
+           "ISBN": "i ese be ene", "CI": "ce i", "Tickets": "tíkets", "Catalog": "cátalog", "Sales": "séils",
+           "Payments": "péimens", "Analytics": "análitics", "concertId": "concert ai di", "ConcertView": "concert viú",
+           "topic": "tópic", "topics": "tópics", "inbox": "ínbox", "lookup price": "luk ap prais"},
 }
 
 
