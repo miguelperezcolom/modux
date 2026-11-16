@@ -6,6 +6,7 @@ import type { Scene, SceneNode, SceneEdge, Point } from './scene.js';
 import { CONTAINER_HEADER, CONTAINER_INSET, containerMinSize } from './scene.js';
 import { orthogonalRoute } from './edge-routing.js';
 import { snapDragged, snapValue } from './snap.js';
+import { hasConnectHandles } from './connect-handles.js';
 import { LanguageController, t } from './i18n/index.js';
 
 /** Segment intersection with parameter t on (a→b); endpoints excluded. */
@@ -2013,64 +2014,7 @@ export class ModuxCanvas extends LitElement {
         ${selected &&
         this.connectable &&
         !this.archimate &&
-        (isChild
-          ? node.kind === 'menu-item' ||
-            node.kind === 'menu-group' ||
-            node.kind === 'wizard-step-row' ||
-            node.kind === 'etl-flow' ||
-            node.kind === 'scheduled-trigger' ||
-            node.kind === 'aggregate' ||
-            node.kind === 'domain-service' ||
-            node.kind === 'use-case' ||
-            node.kind === 'domain-event' ||
-            node.kind === 'application-event' ||
-            node.kind === 'integration-event' ||
-            node.kind === 'external-use-case' ||
-            node.kind === 'external-system' ||
-            node.kind === 'system' ||
-            node.kind === 'boundedContext' ||
-            node.kind === 'external-table' ||
-            node.kind === 'api-operation' ||
-            node.kind === 'api-op-occurrence' ||
-            node.kind === 'api' ||
-            node.kind === 'api-impl' ||
-            node.kind === 'proxy-api'
-          : node.kind === 'note' ||
-            node.kind === 'model' ||
-            node.kind === 'identity-provider' ||
-            node.kind === 'etl-flow' ||
-            node.kind === 'boundedContext' ||
-            node.kind === 'system' ||
-            node.kind === 'cdc' ||
-            node.kind === 'ui' ||
-            node.kind === 'ui-app' ||
-            node.kind === 'external-system' ||
-            node.kind === 'actor' ||
-            node.kind === 'ai-agent' ||
-            node.kind === 'rag' ||
-            node.kind === 'mcp-gateway' ||
-            node.kind === 'api' ||
-            node.kind === 'proxy-api' ||
-            node.kind === 'workflow' ||
-            node.kind === 'workflow-step' ||
-            node.kind === 'page' ||
-            node.kind === 'menu-item' ||
-            // Archi style: the ex-nested kinds are free boxes now — same handles.
-            node.kind === 'aggregate' ||
-            node.kind === 'domain-service' ||
-            node.kind === 'use-case' ||
-            node.kind === 'domain-event' ||
-            node.kind === 'application-event' ||
-            node.kind === 'integration-event' ||
-            node.kind === 'read-model' ||
-            node.kind === 'query-service' ||
-            node.kind === 'scheduled-trigger' ||
-            node.kind === 'external-use-case' ||
-            node.kind === 'external-table' ||
-            node.kind === 'api-operation' ||
-            node.kind === 'api-op-occurrence' ||
-            node.kind === 'api-impl' ||
-            node.kind === 'service')
+        hasConnectHandles(node.kind, isChild)
           ? [
               [hw, 0],
               [-hw, 0],

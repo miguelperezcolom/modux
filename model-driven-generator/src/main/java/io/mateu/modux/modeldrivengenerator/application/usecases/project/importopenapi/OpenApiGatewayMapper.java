@@ -168,7 +168,12 @@ public final class OpenApiGatewayMapper {
         if (operation.getResponses() == null) {
             return null;
         }
-        for (var code : List.of("200", "201", "202", "default")) {
+        // `default` is the answer for every code not declared — usually the error. It is the output
+        // only when the operation declares no success code at all (a 201 without a body is not a
+        // reason to type the operation with its error schema).
+        boolean declaresSuccess = operation.getResponses().keySet().stream().anyMatch(c -> c.startsWith("2"));
+        var codes = declaresSuccess ? List.of("200", "201", "202") : List.of("default");
+        for (var code : codes) {
             var response = operation.getResponses().get(code);
             if (response != null && response.getContent() != null) {
                 var id = schemaModelId(jsonSchema(response.getContent()), nameToModelId);

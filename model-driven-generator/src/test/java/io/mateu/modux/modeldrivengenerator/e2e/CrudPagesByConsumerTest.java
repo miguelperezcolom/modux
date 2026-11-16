@@ -183,6 +183,30 @@ class CrudPagesByConsumerTest {
     }
 
     @Test
+    void with_an_outbox_custom_steps_that_save_and_publish_are_one_transaction() throws Exception {
+        // custom code injects publishers itself (a payment saved, then PaymentAccepted): without a
+        // transaction the outbox row commits on its own and the state change can be lost after it
+        var store = Files.createTempFile("ui-crud-outbox-custom", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("moduleIds: [\"bc-catalogo-main\"]}", "moduleIds: [\"bc-catalogo-main\"], outboxEnabled: true}")
+                .replace("aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]",
+                        "aggregateIds: [\"agg-autor\", \"agg-tema\", \"agg-factura\"]\n  useCaseIds: [\"uc-cobrar\"]")
+                + """
+                useCases:
+                - id: "uc-cobrar"
+                  name: "Cobrar"
+                  steps:
+                  - {id: "s1", name: "cobrar", type: "Custom", intent: "Records the charge and publishes its outcome."}
+                """);
+        assertTrue(read(generate(store.toString()), "CobrarUseCase.java").contains("@Transactional"),
+                "what the custom step saves and publishes commits together");
+
+        var without = generate(Files.writeString(Files.createTempFile("ui-crud-custom", ".yaml"),
+                Files.readString(store).replace(", outboxEnabled: true}", "}")).toString());
+        assertFalse(read(without, "CobrarUseCase.java").contains("@Transactional"), "no outbox, nothing changes");
+    }
+
+    @Test
     void an_aggregate_with_operations_changes_only_through_them() throws Exception {
         var store = Files.createTempFile("ui-crud-operations", ".yaml");
         Files.writeString(store, Files.readString(STORE)
