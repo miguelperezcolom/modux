@@ -3,6 +3,12 @@ title: Graphical Editor Guide
 description: A hands-on walkthrough of the graphical editor — get around the canvas, add and wire elements, tidy the diagram, and carve focused views. Task by task, with links to the full reference.
 ---
 
+<div style="max-width: 920px; margin: 1.5rem 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;">
+  <iframe src="https://www.youtube-nocookie.com/embed/H7crXzm3wN8?rel=0" title="The graphical editor" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width: 100%; height: 100%; border: 0; display: block;"></iframe>
+</div>
+
+*The graphical editor* — the editor on a real system, recorded. [The whole series: modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
+
 This is a **task-oriented walkthrough** of the graphical editor: how to actually get
 things done on the canvas. It is the friendly companion to the
 [Graphical Editor reference](/manual/graphical-editor/), which documents every view
