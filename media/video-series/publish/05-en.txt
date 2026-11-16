@@ -1,0 +1,17 @@
+How the bounded contexts of a modux system talk to each other, on the real four-context Tickets system: the context map in the editor; Sales and Payments joined by flows, each turned into a Kafka topic with a publisher and an idempotent subscriber; the transactional outbox, switched on with one line per service; a synchronous call from Sales to Catalog's price lookup, over a generated REST client; and a projection that keeps Sales' own copy of every concert, which also gives Sales' forms a picker. Then all of it running: a concert put on sale in Catalog, its copy already in Sales' database, a purchase priced over REST and confirmed once Payments' event comes back through Kafka.
+
+Everything on screen is real: the model files, the code modux 0.6.7 generates from them, and the generated system running in Docker.
+
+0:00 The context map
+0:18 Flows between Sales and Payments
+0:35 Kafka topics, publishers and an idempotent inbox
+0:54 The outbox
+1:14 A call over REST
+1:34 A projection: Sales' own copy of the concerts
+1:56 A picker over the copy
+2:07 Running: a concert, its copy, a purchase
+2:40 Confirmed through Kafka
+
+Docs (flows): https://modux.mateu.io/manual/flows/
+Code: https://github.com/miguelperezcolom/modux (MIT)
+Series: modux in N minutes — one aspect of modux per episode.
