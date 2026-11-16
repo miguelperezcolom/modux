@@ -1,5 +1,8 @@
 {
   "number": 5,
+  "languages": [
+    "en"
+  ],
   "slug": "contexts",
   "series": "modux in N minutes",
   "title": {
@@ -162,8 +165,18 @@
       "code": "@file:real/gen/BuyPage.java",
       "from": 10,
       "to": 29,
-      "emph": [[3, 8]],
-      "box": { "x": 160, "y": 170, "w": 1600, "h": 660 },
+      "emph": [
+        [
+          3,
+          8
+        ]
+      ],
+      "box": {
+        "x": 160,
+        "y": 170,
+        "w": 1600,
+        "h": 660
+      },
       "size": 22,
       "caption": "A field named concertId: a picker over the copy.",
       "narration": {
@@ -187,7 +200,12 @@
       "title": "terminal — tickets",
       "command": "docker exec tickets-postgres-1 psql -U user_app -d sales -c \"select artist, venue, date, price, status from concert_view_read_model_entity\"",
       "lines": "@lines:real/copy.txt",
-      "box": { "x": 120, "y": 300, "w": 1680, "h": 380 },
+      "box": {
+        "x": 120,
+        "y": 300,
+        "w": 1680,
+        "h": 380
+      },
       "size": 22,
       "typing": 1.4,
       "caption": "In Sales' own database.",

@@ -27,7 +27,8 @@ _pipes = {}
 SAY_AS = {
     "en": {"YAML": "yamel", "modux.mateu.io": "modux dot mah teh oo dot io", "ai-complete": "A I complete",
            "CRUD": "crud", "UI": "U I", "API": "A P I", "APIs": "A P Is", "REST": "rest", "MIT": "M I T",
-           "Kubernetes": "Kubernetes", "e2e": "end to end", "ISBN": "I S B N", "CI": "C I", "F2": "F two", "PaymentDeclined": "Payment Declined"},
+           "Kubernetes": "Kubernetes", "e2e": "end to end", "ISBN": "I S B N", "CI": "C I", "F2": "F two", "PaymentDeclined": "Payment Declined",
+           "concertId": "concert I D", "ConcertView": "concert view"},
     "es": {"YAML": "yamel", "modux.mateu.io": "modux punto mateu punto io", "ai-complete": "ei ai complit",
            "CRUD": "crud", "UI": "u i", "API": "a pe i", "APIs": "ápis", "REST": "rest", "MIT": "eme i te",
            "Docker": "dóquer", "Kafka": "cafca", "Kubernetes": "cubernetes", "outbox": "áutbox",
