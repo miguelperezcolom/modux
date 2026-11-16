@@ -112,6 +112,12 @@ See [Deploying](/manual/deploying/) for environments, URLs and DNS providers.
 
 ## Goal: `hla`
 
+<div style="max-width: 920px; margin: 1.5rem 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;">
+  <iframe src="https://www.youtube-nocookie.com/embed/UtKlo1_AlF0?rel=0" title="Documentation from the model" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width: 100%; height: 100%; border: 0; display: block;"></iframe>
+</div>
+
+*Documentation from the model* — `hla` on a real system, recorded. [The whole series: modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
+
 **Default phase:** none (run explicitly)
 
 Writes the project's high-level architecture document, derived from the model: context and

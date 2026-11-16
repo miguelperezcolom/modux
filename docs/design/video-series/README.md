@@ -178,6 +178,9 @@ Lista: [modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
 lista, ordenada por inclusión). Los episodios 1 y 2 llevan subtítulos EN y ES, título y descripción en los dos idiomas; desde el 3, solo inglés
 (subtítulos EN). Al subir: esperar a que Studio confirme «Se ha publicado» (si aún comprueba, pide «Publicar de
 todas formas»); salir antes deja el vídeo en borrador y pierde el idioma.
+Subtítulos del idioma original: «Subir manualmente» los deja en BORRADOR; abrir «Editar subtítulos» y pulsar
+«Publicar» (comprobar en la página del vídeo que aparece la pista manual, `vssId` `.en`, no solo `a.en`).
+La subida solo entra con la pestaña en primer plano.
 
 | # | EN | ES | Docs |
 |---|---|---|---|
@@ -186,6 +189,7 @@ todas formas»); salir antes deja el vídeo en borrador y pierde el idioma.
 | 3 | [Two zones: the code that is yours](https://youtu.be/m6yMS5Ad4uA) (2:36) | — (solo EN) | `manual/generating-code` |
 | 4 | [The graphical editor](https://youtu.be/H7crXzm3wN8) (2:11) | — (solo EN) | `manual/graphical-editor-guide` |
 | 5 | [Contexts that talk to each other](https://youtu.be/jmWmywtmez0) (3:03) | — (solo EN) | `manual/flows` |
+| 13 | [Documentation from the model](https://youtu.be/UtKlo1_AlF0) (2:19) | — (solo EN) | `reference/maven-plugin#goal-hla` |
 
 Lo que los pilotos destaparon en modux (arreglado en 0.6.6 salvo lo marcado): el proyecto Compose compartido
 entre sistemas, la URL que imprime `deploy`, los modelos sueltos en el mapa del sistema, `modux/` en IntelliJ,
