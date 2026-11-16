@@ -1,9 +1,11 @@
 <#assign uiEs = ((project.defaultLocale!"")?has_content?then(project.defaultLocale!"", (project.locales![])?has_content?then((project.locales![""])[0], "")))?lower_case?starts_with("es")>
 package ${project.packageName}.${module.slug}.application.usecases.${usecase.name?lower_case?replace("[^a-z0-9]","",'r')};
-<#-- With an outbox the event is stored with the state change, so a publishing use case is one transaction;
-     a correlative number (SEQUENCE) is taken inside the transaction that saves it -->
+<#-- With an outbox the event is stored with the state change, so a use case that may publish is one
+     transaction: a PublishDomainEvent step, a save (the repository publishes the aggregate's state) or
+     custom steps (they inject publishers themselves); a correlative number (SEQUENCE) is taken inside
+     the transaction that saves it -->
 <#assign usecaseTransactional = (usecase.transactionBoundary?? && usecase.transactionBoundary?has_content)
-    || ((service.outboxEnabled!false) && (usecase.steps![])?filter(s -> s.type == "PublishDomainEvent")?has_content)
+    || ((service.outboxEnabled!false) && (usecase.steps![])?filter(s -> s.type == "PublishDomainEvent" || s.type == "SaveAggregate" || s.type == "Custom")?has_content)
     || (usecase.usesSequences!false)>
 <#-- Aggregate-level imports for ReadAggregate / SaveAggregate / CallAggregateOperation steps -->
 <#assign aggregateImports = []>
