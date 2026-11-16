@@ -352,6 +352,31 @@ class CrudPagesByConsumerTest {
         assertTrue(read(out, "Home.java").contains("LogViewListing"));
     }
 
+    @Test
+    void a_listing_shows_an_enum_with_the_label_of_its_detail_view() throws Exception {
+        // the row carries the enum itself, not its name: Mateu labels the column as it labels the
+        // detail's field («On sale», not ON_SALE)
+        var store = Files.createTempFile("ui-crud-enum", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("{id: \"f-a\", name: \"nombre\", basicType: true, type: \"string\"}",
+                        "{id: \"f-a\", name: \"nombre\", basicType: true, type: \"string\"}, {id: \"f-e\", name: \"estado\", enumId: \"enum-estado\"}")
+                + """
+
+                enums:
+                - id: "enum-estado"
+                  values:
+                  - {id: "ON_SALE", name: "ON_SALE"}
+                  - {id: "SOLD_OUT", name: "SOLD_OUT"}
+                """);
+        var out = generate(store.toString());
+        var row = read(out, "AutorRow.java");
+        assertTrue(row.contains("es.editorial.catalogo.domain.aggregates.autor.vo.Estado estado"), row);
+        var queries = read(out, "AutorDBQueryService.java").replaceAll("\\s+", "");
+        assertTrue(queries.contains("enumOf(es.editorial.catalogo.domain.aggregates.autor.vo.Estado.class,rs.getObject(\"col_estado\"))"), queries);
+        // no enum, no helper
+        assertFalse(read(out, "TemaDBQueryService.java").contains("enumOf("));
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();
