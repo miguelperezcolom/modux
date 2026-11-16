@@ -117,8 +117,9 @@ See [Deploying](/manual/deploying/) for environments, URLs and DNS providers.
 Writes the project's high-level architecture document, derived from the model: context and
 objective (`project.objective`), decisions, structural view, sequence and state diagrams,
 transversal concerns, exposed contracts and open points. To see what a change does to it,
-`git diff` the regenerated file. (Today the document comes out in Spanish whatever the model's
-language.)
+`git diff` the regenerated file. The document's own words follow the project's language (Spanish
+when its `defaultLocale` — or its first locale — is Spanish, English otherwise); the prose comes from
+the model as written.
 
 | Parameter | Property | Default | Description |
 |---|---|---|---|

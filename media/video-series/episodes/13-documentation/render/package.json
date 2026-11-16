@@ -1,0 +1,9 @@
+{
+  "name": "modux-ep13-render",
+  "private": true,
+  "description": "Renders the generated HLA.generated.md (Markdown + Mermaid) to a static HTML page for the episode's live shots.",
+  "dependencies": {
+    "marked": "15.0.12",
+    "mermaid": "11.4.1"
+  }
+}

@@ -1,0 +1,21 @@
+diff --git a/modux/decisions/adr-1.yaml b/modux/decisions/adr-1.yaml
+new file mode 100644
+index 0000000..a886f1e
+--- /dev/null
++++ b/modux/decisions/adr-1.yaml
+@@ -0,0 +1,7 @@
++---
++id: "adr-1"
++name: "Outbox for Catalog"
++decision: "Catalog stores its events in an outbox, like Sales and Payments."
++rationale: "Sales keeps its own view of the concerts: a lost event leaves it selling on stale data."
++status: "ACCEPTED"
++projectId: "tickets"
+diff --git a/modux/services/svc-catalog.yaml b/modux/services/svc-catalog.yaml
+index 4e0101f..cf10369 100644
+--- a/modux/services/svc-catalog.yaml
++++ b/modux/services/svc-catalog.yaml
+@@ -4,2 +4,3 @@ name: "Catalog"
+ port: 8091
++outboxEnabled: true
+ moduleIds:

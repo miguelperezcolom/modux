@@ -63,6 +63,8 @@
   /* `wrap: true` on a scene (or a pane): long lines wrap with a hanging indent instead of being cut */
   .body.wrap .row { white-space: pre-wrap; overflow-wrap: anywhere; padding-left: 2ch; text-indent: -2ch; }
   .row { opacity: 0; animation: fade .18s ease forwards; }
+  .body.code .row:empty::before { content: '\200b'; }   /* code scenes: a blank line keeps its height */
+  .body.code.wrap .row { padding-left: 3ch; }   /* wrapped code: clear of the highlight bar */
   .ln { display: inline-block; width: 44px; color: #4a4570; text-align: right; margin-right: 22px; user-select: none; }
   .emph { background: rgba(167,139,250,.16); box-shadow: inset 4px 0 0 var(--violet); }
   .add { background: rgba(57,217,138,.12); } .del { background: rgba(255,117,151,.12); }
@@ -132,7 +134,14 @@ function hlSql(line) {
 function hlXml(line) {
   return esc(line).replace(/(&lt;\/?)([\w.:-]+)/g, '$1<span class="k">$2</span>').replace(/(&gt;)([^&]+)(&lt;)/g, '$1<span class="s">$2</span>$3');
 }
-const HL = { yaml: hlYaml, java: hlJava, sql: hlSql, xml: hlXml, text: esc,
+/** Markdown: headings, the blockquote and fences dimmed, bold kept plain; Mermaid inside fences as text. */
+function hlMd(line) {
+  if (/^#{1,6} /.test(line)) return `<span class="k">${esc(line)}</span>`;
+  if (/^```/.test(line)) return `<span style="color:#9d98c4">${esc(line)}</span>`;
+  if (/^> /.test(line)) return `<span class="c">${esc(line)}</span>`;
+  return esc(line).replace(/(--&gt;|-\.-&gt;)/g, '<span class="p">$1</span>');
+}
+const HL = { yaml: hlYaml, md: hlMd, java: hlJava, sql: hlSql, xml: hlXml, text: esc,
   diff: (l) => l.startsWith('+') ? hlYaml(l) : l.startsWith('-') ? hlYaml(l) : hlYaml(l) };
 
 /** The lines a code scene shows: the real file, Java's package/imports folded away, optionally a range. */
@@ -204,7 +213,7 @@ const KINDS = {
     const { x = 120, y = 100, w = 1680, h = 840 } = S.box || {};
     stage.innerHTML = `${S.label ? `<div class="label kicker in">${esc(S.label)}</div>` : ''}
       <div class="win pop" style="left:${x}px; top:${y}px; width:${w}px; height:${h}px">${bar(S.file)}
-      <div class="body" style="font-size:${S.size || 21}px; line-height:${Math.round((S.size || 21) * 1.55)}px">${rows}</div></div>
+      <div class="body code${S.wrap ? ' wrap' : ''}" style="font-size:${S.size || 21}px; line-height:${Math.round((S.size || 21) * 1.55)}px">${rows}</div></div>
       ${caption(S.caption, t0 + lines.length * per + .4)}`;
   },
   /** Two files side by side (an interface and its implementation; a model and its code). */
