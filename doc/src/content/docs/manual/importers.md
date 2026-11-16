@@ -9,7 +9,7 @@ Instead of defining every gateway, operation, event and subscription by hand, Mo
 |---|---|---|
 | `import-api` | OpenAPI 3.x YAML / JSON, or WSDL 1.1 | A **first-class API** with its operations (+ typed models for OpenAPI) |
 | `import-openapi` | OpenAPI 3.x YAML / JSON | A **gateway** + its operations (something the system calls) |
-| `import-asyncapi` | AsyncAPI 2.x YAML | Domain events + subscriptions |
+| `import-asyncapi` | AsyncAPI 2.x / 3.x YAML | Domain events + subscriptions of a bounded context (+ payload models) |
 
 All importers use **upsert** semantics with deterministic ids: if an entity with the same id/name/topic already exists it is updated in place; otherwise a new entity is created. You can re-import as the external spec evolves and Modux will keep the model in sync.
 
@@ -114,20 +114,30 @@ Running the importer again with the same file updates the gateway's operations a
 
 ## AsyncAPI → Domain Events and Subscriptions
 
-An AsyncAPI file describes the event-driven interface of a service: which events it publishes and which it consumes. Modux maps:
+An AsyncAPI file describes the event-driven interface of an application: which messages it sends and which it receives. Modux reads it from the point of view of that application, as the AsyncAPI spec defines it, and writes the elements into a bounded context:
 
-- `publish` channels → **DomainEventEntity** (this service sends the event)
-- `subscribe` channels → **SubscriptionEntity** (this service consumes the event)
+| AsyncAPI 2.x | AsyncAPI 3.x | Becomes |
+|---|---|---|
+| `subscribe` (the application **sends**) | `action: send` | a **domain event** published on the channel's topic (`publishAsIntegrationEvent: true`) |
+| `publish` (the application **receives**) | `action: receive` | a **subscription** to the channel's topic (idempotent) |
+| the message `payload` (an object schema) | the message `payload` | a **model**: the event's `modelId`, the subscription's `inputModelId` |
+
+:::caution
+In AsyncAPI 2.x the verbs are from the point of view of the *other* side: `publish` means
+"others publish here, the application consumes". Earlier versions of Modux read them the other way round.
+:::
 
 ### From the command line
 
 ```bash
-mvn modux:import-asyncapi \
-  -Dmodux.filePath=/path/to/asyncapi.yaml \
-  -Dmodux.boundedContextId=my-context-id
+mvn modux:import-asyncapi -Dmodux.filePath=contracts/streetlights.yml
 ```
 
-Like `import-openapi`, it writes to the repository's model (`-Dmodux.modelPath` to change it).
+The bounded context that owns what is imported is `-Dmodux.boundedContextId=<id>`. When the model
+has exactly one bounded context it is that one; when it has several the goal fails, listing them,
+and writes nothing. The context lists every event and subscription it owns (`domainEventIds`,
+`subscriptionIds`), so they are generated with it. Like `import-openapi`, it writes to the
+repository's model (`-Dmodux.modelPath` to change it).
 
 ### What gets created
 
@@ -139,27 +149,41 @@ info:
   title: Order Service
 channels:
   order.created:
-    publish:
+    subscribe:            # the application sends
       operationId: publishOrderCreated
       message:
         name: OrderCreated
+        payload:
+          type: object
+          properties:
+            orderId: {type: string}
   order.shipped:
-    subscribe:
+    publish:              # the application receives
       operationId: onOrderShipped
       message:
         name: OrderShipped
 ```
 
-Modux creates:
+Modux creates, and adds to the bounded context:
 
-- One `DomainEvent` named **OrderCreated** with `topicName = order.created`
-- One `Subscription` named **onOrderShipped** with `topicName = order.shipped`
+- `domainEvents/ev-publish-order-created.yaml`: the domain event **PublishOrderCreated**, `topicName: order.created`, `modelId: model-aapi-order-created-payload`
+- `models/model-aapi-order-created-payload.yaml`: **OrderCreatedPayload** with its `orderId` field
+- `subscriptions/sub-on-order-shipped.yaml`: the subscription **OnOrderShipped**, `eventName: OrderShipped`, `topicName: order.shipped`
 
-The `modelId` and `inputModelId` fields are left blank — fill them in once the corresponding models are defined.
+Names come from the `operationId` (else the message name, else the channel), PascalCase. A payload
+that `$ref`s a schema is named after it (`model-aapi-<schema>`); an inline one after its message.
+A subscription is created without actions: wire what it does (call a use case, feed a projection…)
+in the model.
+
+A channel with parameters (`orders.{region}.created`) is kept verbatim as the topic, with a warning:
+a Kafka topic name cannot contain braces, so set the real topic in the model.
 
 ### Re-importing
 
-Running the importer again matches existing entities by `topicName`. If a matching entity is found it is updated (name refreshed); otherwise a new one is created.
+Ids are deterministic (`ev-<name>`, `sub-<name>`, `model-aapi-<name>`), so importing an evolved
+contract again updates the same elements: the topic, name, payload model and description are
+refreshed; what you configured afterwards (actions, consumer group, retries, DLQ…) is kept. An
+element imported earlier under another id is found by its topic and updated in place.
 
 ---
 
@@ -176,7 +200,7 @@ mvn modux:import-openapi -Dmodux.filePath=apis/payments.yaml -Dmodux.serviceId=o
 mvn modux:import-openapi -Dmodux.filePath=apis/inventory.yaml -Dmodux.serviceId=orders-svc
 
 # Import the async event contracts
-mvn modux:import-asyncapi -Dmodux.filePath=events/orders-events.yaml -Dmodux.boundedContextId=orders-bc
+mvn modux:import-asyncapi -Dmodux.filePath=events/orders-events.yaml -Dmodux.boundedContextId=bc-orders
 
 # Generate the full project
 mvn modux:generate

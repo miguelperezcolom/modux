@@ -7,6 +7,10 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
+/**
+ * Imports an AsyncAPI (2.x or 3.x) contract into a bounded context: what the application sends becomes
+ * a domain event on the channel's topic, what it receives a subscription, the message payloads models.
+ */
 @Mojo(name = "import-asyncapi")
 public class ImportAsyncApiMojo extends AbstractMojo {
 
@@ -17,6 +21,10 @@ public class ImportAsyncApiMojo extends AbstractMojo {
     @Parameter(property = "modux.specFile")
     private String specFile;
 
+    /**
+     * The bounded context that owns the imported events and subscriptions. Optional when the model
+     * has exactly one; required (the goal fails, naming them) when it has several.
+     */
     @Parameter(property = "modux.boundedContextId")
     private String boundedContextId;
 
