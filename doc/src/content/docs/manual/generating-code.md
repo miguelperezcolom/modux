@@ -29,7 +29,7 @@ To regenerate on every build, bind it to `generate-sources`:
 <plugin>
     <groupId>io.mateu.modux</groupId>
     <artifactId>modux-maven-plugin</artifactId>
-    <version>0.6.7</version>
+    <version>0.6.8</version>
     <executions>
         <execution>
             <goals><goal>generate</goal></goals>
@@ -64,6 +64,7 @@ For each aggregate, Modux:
 ```
 {output-path}/
 ├── README.md
+├── .gitignore                       # build output, .env, IDE files (never the *-custom modules)
 ├── docker-compose.yml               # every service + PostgreSQL + Kafka
 ├── up.sh / down.sh                  # the same, without compose
 ├── deploy/targets.json              # what mvn modux:deploy can target

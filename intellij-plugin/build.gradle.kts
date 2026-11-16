@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "io.mateu.modux"
-version = "0.6.7"
+version = "0.6.8"
 
 repositories {
     mavenCentral()
@@ -58,6 +58,13 @@ intellijPlatform {
         // Shown in the Marketplace listing and in the IDE's plugin updates dialog. HTML, and it
         // must be about THIS version — the full history belongs in the repository.
         changeNotes = """
+            <h4>0.6.8</h4>
+            <ul>
+              <li>Generated listings show an enum with the same label as its detail view.</li>
+              <li>Generated systems get a .gitignore (build outputs, .env, IDE files; the custom modules stay versioned).</li>
+              <li>import-asyncapi: what it imports belongs to a bounded context, under readable ids, with AsyncAPI's direction read right; payloads become models.</li>
+              <li>The HLA document says what actually leaves each context, draws calls and projections, numbers its sections and adds a deployment section.</li>
+            </ul>
             <h4>0.6.7</h4>
             <ul>
               <li>The editor no longer reloads the model when nothing changed on disk.</li>

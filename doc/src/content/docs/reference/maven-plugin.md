@@ -14,7 +14,7 @@ IntelliJ plugin creates) — and carries the generator inside, so any template a
 ```xml
 <groupId>io.mateu.modux</groupId>
 <artifactId>modux-maven-plugin</artifactId>
-<version>0.6.7</version>
+<version>0.6.8</version>
 ```
 
 ## Goal: `validate`
@@ -185,7 +185,7 @@ See [Importing Existing Specs](/manual/importers/) for the full guide.
 
 **Default phase:** none (run explicitly)
 
-Reads an AsyncAPI 2.x YAML file and upserts domain events (publish channels) and subscriptions (subscribe channels) into the model.
+Reads an AsyncAPI 2.x or 3.x YAML file and upserts, into a bounded context, a domain event for each message the application sends (2.x `subscribe`, 3.x `send`), a subscription for each one it receives (2.x `publish`, 3.x `receive`), and a model for each object payload. Ids are deterministic (`ev-`, `sub-`, `model-aapi-`), so a re-import updates.
 
 ### Parameters
 
@@ -194,14 +194,14 @@ Reads an AsyncAPI 2.x YAML file and upserts domain events (publish channels) and
 | `filePath` | `modux.filePath` | — | **Yes** | Path to the AsyncAPI YAML file |
 | `modelPath` | `modux.modelPath` | the repository's model directory | No | Where the model is (`modux/`, or `.modux/` when there is no `modux/`) |
 | `specFile` | `modux.specFile` | — | No | Deprecated: a store to write to instead of `modelPath` |
-| `boundedContextId` | `modux.boundedContextId` | — | No | Bounded context ID that owns these events/subscriptions |
+| `boundedContextId` | `modux.boundedContextId` | the only bounded context | When the model has several | The bounded context that owns the imported events and subscriptions (it lists them in `domainEventIds` / `subscriptionIds`). With several and none given, the goal fails listing them and writes nothing |
 
 ### Usage
 
 ```bash
 mvn modux:import-asyncapi \
   -Dmodux.filePath=events/orders-events.yaml \
-  -Dmodux.boundedContextId=my-context-id
+  -Dmodux.boundedContextId=bc-orders
 ```
 
 See [Importing Existing Specs](/manual/importers/) for the full guide.
