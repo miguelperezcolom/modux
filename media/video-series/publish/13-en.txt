@@ -1,6 +1,6 @@
 The architecture document of a modux system, generated from the same model the system is generated from. On the four-context Tickets system, mvn modux:hla writes HLA.generated.md: plain Markdown with Mermaid diagrams. Rendered, it carries the project's objective, the structural view (services, bounded contexts, apps, external systems, and the relations and events between contexts), each context's aggregates and use cases described by the intent written in the model, a state diagram per lifecycle, the cross-cutting concerns read from the model's flags, the exposed contracts and the open points. Then the team records a decision in the model and turns the outbox on for Catalog: hla again, and the document's diff shows the new decision and the outbox; generate again, and the code gets the outbox too.
 
-Everything on screen is real: the commands' actual output, the files as modux 0.6.7 writes them, and the generated document rendered as a Markdown viewer with Mermaid draws it.
+Everything on screen is real: the commands' actual output, the files as modux 0.6.8 writes them, and the generated document rendered as a Markdown viewer with Mermaid draws it.
 
 0:00 One command: mvn modux:hla
 0:17 Markdown, with Mermaid diagrams

@@ -6,7 +6,7 @@ import { open, heading, glide, node } from './doc.mjs';
 export default async function ({ film, hand, page, epDir }) {
   await open(page, epDir);
   await film.play(1.4);
-  await glide(film, page, heading(page, '3. Structural view'), 1.6);
+  await glide(film, page, heading(page, 'Structural view'), 1.6);
   await film.play(0.6);
   await hand.moveTo(node(page, 'service Analytics'), 0.6); await film.play(0.3);
   await hand.moveTo(node(page, 'service Catalog'), 0.6); await film.play(1.4);

@@ -10,7 +10,8 @@ export async function open(page, epDir) {
   await page.goto(pathToFileURL(resolve(epDir, 'real/hla.html')).href);
 }
 
-export const heading = (page, text) => page.getByRole('heading', { name: text, exact: true });
+// Headings are numbered since 0.6.8 («4.3 Payments»): match the text with or without its number.
+export const heading = (page, text) => page.getByRole('heading', { name: new RegExp('^(\\d+(\\.\\d+)*\\.?\\s+)?' + text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$') });
 
 async function targetY(page, locator, offset) {
   const b = await locator.boundingBox();

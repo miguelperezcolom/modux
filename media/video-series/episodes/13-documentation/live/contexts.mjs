@@ -4,7 +4,7 @@ import { open, heading, jump, glide } from './doc.mjs';
 
 export default async function ({ film, hand, page, epDir }) {
   await open(page, epDir);
-  await jump(page, heading(page, '4. Responsibilities per container'));
+  await jump(page, heading(page, 'Responsibilities per container'));
   await film.play(0.6);
   await glide(film, page, heading(page, 'Payments'), 1.4);
   await hand.moveTo(page.locator('li', { hasText: 'Payment:' }).first(), 0.6); await film.play(0.6);

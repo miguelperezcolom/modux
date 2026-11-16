@@ -14,62 +14,58 @@ _No decisions recorded._
 
 ```mermaid
 flowchart LR
-  subgraph svc_payments["service Payments"]
-    bc_payments["Payments · GENERIC"]
-  end
-  subgraph svc_analytics["service Analytics"]
-    bc_analytics["Analytics · GENERIC"]
-  end
   subgraph svc_catalog["service Catalog"]
     bc_catalog["Catalog · GENERIC"]
   end
   subgraph svc_sales["service Sales"]
     bc_sales["Sales · GENERIC"]
   end
-  ui_catalog[/"app Catalog"/]
-  ui_catalog --> bc_catalog
-  ui_sales[/"app Sales"/]
-  ui_sales --> bc_sales
+  subgraph svc_payments["service Payments"]
+    bc_payments["Payments · GENERIC"]
+  end
+  subgraph svc_analytics["service Analytics"]
+    bc_analytics["Analytics · GENERIC"]
+  end
   ui_analytics[/"app Analytics"/]
+  ui_catalog[/"app Catalog"/]
   ui_catalog_reports[/"app CatalogReports"/]
-  ui_catalog_reports --> bc_catalog
   ui_payments[/"app Payments"/]
-  ui_payments --> bc_payments
+  ui_sales[/"app Sales"/]
   ext_legacy[["Legacy"]]
   ext_paygate[["Paygate"]]
-  bc_sales -->|CUSTOMER_SUPPLIER| bc_payments
+  ui_analytics --> bc_analytics
+  ui_catalog --> bc_catalog
+  ui_catalog_reports --> bc_catalog
+  ui_payments --> bc_payments
+  ui_sales --> bc_sales
   bc_payments -->|CUSTOMER_SUPPLIER| bc_sales
-  bc_payments -.->|PaymentDeclined| bc_sales
-  bc_payments -.->|PaymentAccepted| bc_sales
+  bc_sales -->|CUSTOMER_SUPPLIER| bc_payments
   bc_sales -.->|PurchasePlaced| bc_payments
+  bc_payments -.->|PaymentAccepted| bc_sales
+  bc_payments -.->|PaymentDeclined| bc_sales
+  bc_sales -->|LookupPrice| bc_catalog
+  bc_payments -->|charge| ext_paygate
+  bc_catalog ==>|AnalyticsConcerts| bc_analytics
+  bc_catalog ==>|Concerts| bc_sales
+  bc_sales ==>|Purchases| bc_analytics
+  ext_paygate ==>|Transactions| bc_payments
+  ext_legacy ==>|Venues| bc_catalog
 ```
+
+_Arrows: solid — context-map relation (its type) or synchronous call (what it calls); dotted — event carried by a flow; thick — data a projection copies._
 
 ## 4. Responsibilities per container
 
 | Container | Subdomain | Responsibility |
 |---|---|---|
-| Analytics | GENERIC | — |
-| Payments | GENERIC | — |
 | Catalog | GENERIC | — |
 | Sales | GENERIC | — |
+| Payments | GENERIC | — |
+| Analytics | GENERIC | — |
 | Legacy _(external)_ | — | The old box-office system: its venues table is still the source of truth. |
 | Paygate _(external)_ | — | The bank's payment gateway: charges a card and says whether it accepts the charge. |
 
-### Analytics
-
-### Payments
-
-**Aggregates**
-
-- **Payment**: purchaseId, amount, status, reason
-
-**Use cases** (besides each aggregate's CRUD)
-
-| Use case | What it does |
-|---|---|
-| Charge | With the gateway's answer, records the Payment (purchaseId, amount, ACCEPTED if the gateway accepts it or DECLINED with the reason it gives) and publishes PaymentAccepted or PaymentDeclined. |
-
-### Catalog
+### 4.1 Catalog
 
 **Aggregates**
 
@@ -87,7 +83,15 @@ flowchart LR
 | SearchConcerts | Reads the concerts. |
 | ConcertDetails | Reads the concerts. |
 
-### Sales
+**Read models**
+
+- **VenueView** ← projection Venues: table `venues` of Legacy
+
+**Queries**
+
+- **Venues**: venues → Venue
+
+### 4.2 Sales
 
 **Aggregates**
 
@@ -103,7 +107,42 @@ flowchart LR
 | CancelPurchase | — |
 | ConfirmManually | — |
 
-## 6. Lifecycles
+**Read models**
+
+- **ConcertView** ← projection Concerts: state of Concert (Catalog)
+
+### 4.3 Payments
+
+**Aggregates**
+
+- **Payment**: purchaseId, amount, status, reason
+
+**Use cases** (besides each aggregate's CRUD)
+
+| Use case | What it does |
+|---|---|
+| Charge | With the gateway's answer, records the Payment (purchaseId, amount, ACCEPTED if the gateway accepts it or DECLINED with the reason it gives) and publishes PaymentAccepted or PaymentDeclined. |
+
+**Read models**
+
+- **TransactionView** ← projection Transactions: `transactions` of Paygate
+
+**Queries**
+
+- **Transactions**: transactions → Transaction
+
+### 4.4 Analytics
+
+**Read models**
+
+- **ConcertView** ← projection AnalyticsConcerts: state of Concert (Catalog)
+- **PurchaseView** ← projection Purchases: state of Purchase (Sales)
+
+**Queries**
+
+- **Dashboard**: purchases → Purchase (grouped by `concertId`, only `status=CONFIRMED`)
+
+## 5. Lifecycles
 
 ### Purchase
 
@@ -118,12 +157,16 @@ stateDiagram-v2
   CANCELLED --> [*]
 ```
 
-## 7. Cross-cutting concerns
+## 6. Cross-cutting concerns
 
-- **Events**: 12 domain events, 0 published as integration events, 0 with a DLQ.
-- **Outbox**: Payments, Sales stores each event in the same transaction as the state change, and a relay sends it; Analytics, Catalog publishes directly: a failure between saving and publishing loses the event.
+- **Events**: 12 domain events. Flows carry 3 of them through Kafka, each with a DLQ: PurchasePlaced (Sales → Payments), PaymentAccepted (Payments → Sales), PaymentDeclined (Payments → Sales). Projections copy the state of 2 aggregates: Concert (Catalog → Sales, Analytics), Purchase (Sales → Analytics). The other 9 stay inside their context.
+- **Outbox**: Sales and Payments store each event in the same transaction as the state change, and a relay sends it; Catalog publishes directly: a failure between saving and publishing loses the event.
 
-## 8. Exposed contracts
+## 7. Exposed contracts
+
+### Application Analytics
+
+- Sales dashboard
 
 ### Application Catalog
 
@@ -135,16 +178,6 @@ stateDiagram-v2
 - To review
 - Search
 
-### Application Sales
-
-- Buy tickets
-- Cancel a purchase
-- Purchases
-
-### Application Analytics
-
-- Sales dashboard
-
 ### Application CatalogReports
 
 - Concerts
@@ -154,14 +187,11 @@ stateDiagram-v2
 - Payments
 - Gateway transactions
 
-### API PurchaseAPI
+### Application Sales
 
-| Method | Path | Operation |
-|---|---|---|
-| POST | `/purchase` | CreatePurchase |
-| PUT | `/purchase/{id}` | UpdatePurchase |
-| DELETE | `/purchase/{id}` | DeletePurchase |
-| GET | `/purchase` | ListPurchase |
+- Buy tickets
+- Cancel a purchase
+- Purchases
 
 ### API ConcertAPI
 
@@ -180,6 +210,32 @@ stateDiagram-v2
 | PUT | `/payment/{id}` | UpdatePayment |
 | DELETE | `/payment/{id}` | DeletePayment |
 | GET | `/payment` | ListPayment |
+
+### API PurchaseAPI
+
+| Method | Path | Operation |
+|---|---|---|
+| POST | `/purchase` | CreatePurchase |
+| PUT | `/purchase/{id}` | UpdatePurchase |
+| DELETE | `/purchase/{id}` | DeletePurchase |
+| GET | `/purchase` | ListPurchase |
+
+## 8. Deployment
+
+Images are pushed to `docker.io/miguelperezcolom`. Providers: email SMTP.
+
+| Environment | Target | Where | Ingress |
+|---|---|---|---|
+| PROD | Kubernetes | namespace `tickets` · context `cloudfleet-hetzner` | `ec1.mateu.io` · TLS (letsencrypt) · DNS NETLIFY |
+
+Every environment runs every service:
+
+| Service | Port | Contexts |
+|---|---|---|
+| Catalog | 8091 | Catalog |
+| Sales | 8092 | Sales |
+| Payments | 8093 | Payments |
+| Analytics | 8094 | Analytics |
 
 ## 9. Open points
 
