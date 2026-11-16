@@ -3,6 +3,12 @@ title: Generating Code
 description: How to run the Modux code generator — the Maven plugin, from the project that holds the model
 ---
 
+<div style="max-width: 920px; margin: 1.5rem 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;">
+  <iframe src="https://www.youtube-nocookie.com/embed/m6yMS5Ad4uA?rel=0" title="Two zones: the code that is yours" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width: 100%; height: 100%; border: 0; display: block;"></iframe>
+</div>
+
+*Two zones: the code that is yours* — generation, the custom zone and ai-complete, recorded. [The whole series: modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
+
 Generation is a goal of the [Maven plugin](/reference/maven-plugin/), run from the project
 that holds the model:
 

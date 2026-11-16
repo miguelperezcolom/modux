@@ -30,7 +30,8 @@ const ep = JSON.parse(readFileSync(join(epDir, 'episode.json'), 'utf8'));
 const build = resolve(here, 'build', name);
 mkdirSync(join(build, 'scenes'), { recursive: true });
 const LEAD = 0.5, TAIL = 0.9;
-const LANGS = ['en', 'es'];
+// The languages an episode is voiced in: episode.json "languages" (from ep 3 on, English only).
+const LANGS = ep.languages ?? ['en', 'es'];
 
 const logo = readFileSync(resolve(here, '../../doc/public/favicon.svg'), 'utf8')
   .replace(/^[\s\S]*?(<svg)/, '$1').replace(/<style>[\s\S]*?<\/style>/g, '');

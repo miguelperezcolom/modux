@@ -175,12 +175,16 @@ El propietario delegó las preguntas abiertas; quedan así:
 ## Publicados
 
 Lista: [modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U) (pública; EN y ES en la misma
-lista, ordenada por inclusión). Cada vídeo lleva subtítulos EN y ES, título y descripción en los dos idiomas.
+lista, ordenada por inclusión). Los episodios 1 y 2 llevan subtítulos EN y ES, título y descripción en los dos idiomas; desde el 3, solo inglés
+(subtítulos EN). Al subir: esperar a que Studio confirme «Se ha publicado» (si aún comprueba, pide «Publicar de
+todas formas»); salir antes deja el vídeo en borrador y pierde el idioma.
 
 | # | EN | ES | Docs |
 |---|---|---|---|
 | 1 | [modux in 3 minutes](https://youtu.be/36YZd8HI0bk) (3:22) | [modux en 3 minutos](https://youtu.be/bhxzFJl-W58) | `getting-started/introduction` |
 | 2 | [From one aggregate to a running app](https://youtu.be/xqIx8CE_-KE) (2:08) | [De un agregado a una aplicación](https://youtu.be/8zNfZ23hKx8) | `getting-started/quick-start` |
+| 3 | [Two zones: the code that is yours](https://youtu.be/m6yMS5Ad4uA) (2:36) | — (solo EN) | `manual/generating-code` |
+| 4 | [The graphical editor](https://youtu.be/H7crXzm3wN8) (2:11) | — (solo EN) | `manual/graphical-editor-guide` |
 
 Lo que los pilotos destaparon en modux (arreglado en 0.6.6 salvo lo marcado): el proyecto Compose compartido
 entre sistemas, la URL que imprime `deploy`, los modelos sueltos en el mapa del sistema, `modux/` en IntelliJ,
@@ -188,3 +192,57 @@ los importadores, el HLA en español; pendiente: el sistema generado no trae `.g
 git), el listado CRUD no se refresca solo cuando cambia el estado (hay que buscar otra vez), los nombres internos
 de los eventos de estado siguen en español en proyectos ingleses (`ConcertBorrado`), y Mateu avisa de un campo
 `final` en el view model generado.
+
+## Después de la serie: más idiomas
+
+Decisión del propietario (2026-11-14, la misma que para la serie de Mateu). Con la serie completa en
+EN/ES, versiones con voz y subtítulos, en este orden:
+
+1. Portugués de Brasil.
+2. Chino, solo si hay alguien que lo mueva en Bilibili.
+3. Francés e italiano.
+4. Ruso, solo si aparece una demanda concreta.
+
+El pipeline ya lo admite: una narración más por escena en `episode.json`, su voz en `lib/narrate.py`
+(Kokoro tiene voces femeninas en portugués de Brasil, chino, francés e italiano; ruso no: Piper) y una
+pista más en el montaje. La imagen es la misma.
+
+## Estado al pausar (2026-11-14, por consumo)
+
+Retomar por aquí, en orden:
+
+1. **PR #63** (fix/english-ai-complete, worktree `../modux-fix067`): CI en verde, **sin mergear**. Mergear y
+   publicar **0.6.7** (rama release/0.6.7: versiones en los pom, docs `cicd.md`/`maven-plugin.md`/quick-start/
+   installation/generating-code, `intellij-plugin/build.gradle.kts` + changeNotes, `media/video-series/02-first-app/pom.xml`;
+   PR, merge, tag `v0.6.7`), instalarla en local desde la etiqueta (`mvn install -DskipTests -Dgpg.skip` en
+   generator y plugin) y desplegar la doc a mano (Netlify, ver la memoria `reference_docs_deploy`).
+2. **Capítulo 3** (dos zonas, `episodes/03-two-zones`, rama `feat/video-series`, commit `a9b14a5d`): renderizado
+   sin la escena de `ai-complete`. Con 0.6.7: `STAGE=ai capture.sh`, añadir la escena, regrabar el aviso de
+   edición a mano y el `withdraw` (el aviso y el «…ejecutado» salen bien en 0.6.7), volver a renderizar.
+3. **Capítulo 4** (editor, worktree `../modux-ep04`, rama `feat/video-ep04`, 3 commits): renderizado (2:11) con
+   los arreglos que entran en 0.6.7. Publicable en cuanto salga 0.6.7. Textos en `publish/04-*.txt`.
+4. **Capítulo 5** (contextos, worktree `../modux-ep05`, rama `feat/video-ep05`): a medias, agente parado
+   durante el render. Revisar qué hay en `episodes/05-contexts` y `build/05-contexts` antes de seguir.
+5. **Capítulo 11** (importadores, worktree `../modux-ep11`, rama `feat/video-ep11`): a medias; el agente había
+   encontrado que `import-asyncapi` ignora `boundedContextId` (arreglo en curso, sin confirmar). Revisar.
+6. Publicar 3 y 4 (EN y ES, lista PLUJRhYAO8b3U, subtítulos EN/ES por vídeo — idioma del vídeo sin marcar
+   «predeterminado para mi canal» —, miniatura, título y descripción traducidos), enlazarlos desde su página
+   de docs, merge y despliegue de la doc.
+7. Seguir con 6–10 y 12–15 (un agente con Docker a la vez, con el cerrojo `build/.docker-lock`; otro sin
+   Docker en paralelo), y al acabar, el email al propietario.
+
+Pendientes de modux vistos y sin arreglar: listados CRUD que no se refrescan solos; enums en crudo en los
+listados (AVAILABLE) frente a la etiqueta en el formulario; el sistema generado sin `.gitignore`; nombres
+internos de eventos en español (`ConcertBorrado`); aviso de campo `final` en el view model; tooltips y docs del
+editor que describen gestos que ya no existen; el selector de relación muestra el id de un query service;
+cualquier guardado reescribe todos los ficheros del modelo; al desplegar un contexto sus hijos se solapan;
+la lente 3D ilegible en modelos medianos; etiquetas del editor en español aún en inglés (ACTOR, Value object).
+
+Folio vuelve a estar arrancado. Tickets y library, parados (sus volúmenes se conservan).
+
+## Desde el episodio 3: solo en inglés (2026-11-16)
+
+Decisión del propietario al retomar: se publican únicamente las versiones en inglés, con subtítulos en
+inglés. Los episodios 1 y 2 en español siguen publicados. `episode.json` lleva `"languages": ["en"]` y
+la locución, el montaje y los subtítulos solo se hacen en esos idiomas (sin el campo, `en` y `es`).
+El plan de más idiomas tras la serie queda en suspenso.

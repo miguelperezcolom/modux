@@ -1,0 +1,14 @@
+The modux graphical editor on a real four-context system (Tickets): the system map with its actors, bounded contexts, APIs and external systems; a context unfolded; auto-layout; the Yugo surface and its search; then a real change made with the mouse — a notification dropped from the palette, named, wired to the event that fires it and to the role it goes to — and the YAML file the editor wrote, as git shows it. The same editor in Spanish, and inside the IntelliJ plugin.
+
+Everything on screen is real: the editor web component running against a modux server over a copy of the model, and the git output of that model after the gestures.
+
+0:00 The system map
+0:20 Unfold a context, auto-layout
+0:45 Yugo: the model as a tree, and search
+0:56 A change with the mouse: a notification, wired
+1:20 What the editor wrote: git status and the diff
+1:43 In Spanish, and inside IntelliJ
+
+Docs (graphical editor guide): https://modux.mateu.io/manual/graphical-editor-guide/
+Code: https://github.com/miguelperezcolom/modux (MIT)
+Series: modux in N minutes — one aspect of modux per episode.

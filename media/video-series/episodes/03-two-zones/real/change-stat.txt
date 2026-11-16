@@ -1,0 +1,18 @@
+ .../com/example/library/catalog/application/query/dto/BookDto.java  |  1 +
+ .../com/example/library/catalog/application/query/dto/BookRow.java  |  1 +
+ .../catalog/application/usecases/book/create/CreateBookCommand.java |  1 +
+ .../catalog/application/usecases/book/create/CreateBookUseCase.java |  1 +
+ .../catalog/application/usecases/book/update/UpdateBookCommand.java |  1 +
+ .../com/example/library/catalog/domain/aggregates/book/Book.java    | 13 +++++++++++++
+ .../catalog/domain/aggregates/book/BookOperationContext.java        |  4 ++++
+ .../library/catalog/infra/in/ui/pages/book/BookViewModel.java       |  5 +++++
+ .../library/catalog/infra/out/persistence/BookDBQueryService.java   |  9 ++++++---
+ .../library/catalog/infra/out/persistence/BookDBRepository.java     |  7 +++++--
+ .../example/library/catalog/infra/out/persistence/BookEntity.java   |  3 +++
+ .../application/usecases/book/create/CreateBookUseCaseTest.java     |  2 +-
+ .../application/usecases/book/update/UpdateBookUseCaseTest.java     |  2 +-
+ .../src/test/java/com/example/library/catalog/bdd/BookSteps.java    |  5 +++--
+ .../src/test/java/com/example/library/catalog/e2e/BookE2ETest.java  |  1 +
+ .../library-app/src/main/resources/db/migration-pg/R__get_procs.sql |  2 +-
+ .../src/main/resources/db/migration/V2__model_changes.sql           |  6 ++++++
+ 17 files changed, 54 insertions(+), 10 deletions(-)

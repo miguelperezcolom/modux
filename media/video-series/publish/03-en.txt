@@ -1,0 +1,15 @@
+The two zones of modux: the code that is yours, and the code that is generated. The library from episode 2 gets a custom operation, withdraw, whose intent is written in the model in plain words. Generation declares a hook and scaffolds a default implementation in a module of your own; you write the rule there, or let mvn modux:ai-complete draft it from the intent with the AI command line on your machine. Then the model changes, generation runs again, and your module is untouched; a generated file edited by hand is reported and put back. Finally, the rule running in the deployed system.
+
+Everything on screen is real: the commands' actual output, the files as modux 0.6.7 writes them, and the generated system running in Docker.
+
+0:00 An operation with an intent
+0:23 Generate: a hook, and a module of your own
+0:46 The business rule
+0:58 Or a draft from ai-complete
+1:20 The model changes; your code doesn't
+1:40 Generated code is not for editing
+2:01 Deploy and try the rule
+
+Docs (two-zone code generation): https://modux.mateu.io/manual/generating-code/
+Code: https://github.com/miguelperezcolom/modux (MIT)
+Series: modux in N minutes — one aspect of modux per episode.
