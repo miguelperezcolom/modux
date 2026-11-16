@@ -175,12 +175,16 @@ El propietario delegó las preguntas abiertas; quedan así:
 ## Publicados
 
 Lista: [modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U) (pública; EN y ES en la misma
-lista, ordenada por inclusión). Cada vídeo lleva subtítulos EN y ES, título y descripción en los dos idiomas.
+lista, ordenada por inclusión). Los episodios 1 y 2 llevan subtítulos EN y ES, título y descripción en los dos idiomas; desde el 3, solo inglés
+(subtítulos EN). Al subir: esperar a que Studio confirme «Se ha publicado» (si aún comprueba, pide «Publicar de
+todas formas»); salir antes deja el vídeo en borrador y pierde el idioma.
 
 | # | EN | ES | Docs |
 |---|---|---|---|
 | 1 | [modux in 3 minutes](https://youtu.be/36YZd8HI0bk) (3:22) | [modux en 3 minutos](https://youtu.be/bhxzFJl-W58) | `getting-started/introduction` |
 | 2 | [From one aggregate to a running app](https://youtu.be/xqIx8CE_-KE) (2:08) | [De un agregado a una aplicación](https://youtu.be/8zNfZ23hKx8) | `getting-started/quick-start` |
+| 3 | [Two zones: the code that is yours](https://youtu.be/m6yMS5Ad4uA) (2:36) | — (solo EN) | `manual/generating-code` |
+| 4 | [The graphical editor](https://youtu.be/H7crXzm3wN8) (2:11) | — (solo EN) | `manual/graphical-editor-guide` |
 
 Lo que los pilotos destaparon en modux (arreglado en 0.6.6 salvo lo marcado): el proyecto Compose compartido
 entre sistemas, la URL que imprime `deploy`, los modelos sueltos en el mapa del sistema, `modux/` en IntelliJ,
