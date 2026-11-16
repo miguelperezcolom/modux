@@ -1,0 +1,5 @@
+[INFO] Modux: library: 1 pending hook(s).
+[INFO] Modux: library compiles (attempt 1).
+[INFO] Modux: 1 file(s) written to the custom zone. Review them before committing.
+[INFO] BUILD SUCCESS
+[INFO] Total time:  12.513 s

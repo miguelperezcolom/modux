@@ -1,0 +1,16 @@
+diff --git a/modux/notifications/a8351e4c-3e76-4977-a502-114d87b6026a.yaml b/modux/notifications/a8351e4c-3e76-4977-a502-114d87b6026a.yaml
+new file mode 100644
+index 0000000..21157ac
+--- /dev/null
++++ b/modux/notifications/a8351e4c-3e76-4977-a502-114d87b6026a.yaml
+@@ -0,0 +1,10 @@
++---
++id: "a8351e4c-3e76-4977-a502-114d87b6026a"
++name: "CardDeclined"
++ownerBoundedContextId: "bc-payments"
++eventId: "ev-payment-declined"
++channels:
++- "EMAIL"
++recipientRoleIds:
++- "role-customer"
++projectId: "tickets"

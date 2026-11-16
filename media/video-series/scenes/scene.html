@@ -60,6 +60,8 @@
   .bar i { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
   .bar .title { position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; color: var(--muted); font-weight: 500; pointer-events: none; }
   .body { padding: 22px 28px; font-family: var(--mono); font-size: 22px; line-height: 34px; white-space: pre; color: #d9d6ee; }
+  /* `wrap: true` on a scene (or a pane): long lines wrap with a hanging indent instead of being cut */
+  .body.wrap .row { white-space: pre-wrap; overflow-wrap: anywhere; padding-left: 2ch; text-indent: -2ch; }
   .row { opacity: 0; animation: fade .18s ease forwards; }
   .ln { display: inline-block; width: 44px; color: #4a4570; text-align: right; margin-right: 22px; user-select: none; }
   .emph { background: rgba(167,139,250,.16); box-shadow: inset 4px 0 0 var(--violet); }
@@ -185,7 +187,7 @@ const KINDS = {
     const { x = 120, y = 110, w = 1680, h = 820 } = S.box || {};
     stage.innerHTML = `${S.label ? `<div class="label kicker in">${esc(S.label)}</div>` : ''}
       <div class="win pop" style="left:${x}px; top:${y}px; width:${w}px; height:${h}px">${bar(S.title || 'terminal')}
-      <div class="body" style="font-size:${S.size || 22}px; line-height:${(S.size || 22) * 1.55}px"><div><span class="prompt">${esc(S.cwd || '~/library')} $</span> <span class="typed">${cmd}</span></div>${rows}</div></div>
+      <div class="body${S.wrap ? ' wrap' : ''}" style="font-size:${S.size || 22}px; line-height:${(S.size || 22) * 1.55}px"><div><span class="prompt">${esc(S.cwd || '~/library')} $</span> <span class="typed">${cmd}</span></div>${rows}</div></div>
       ${caption(S.caption, t0 + typing + .3 + (S.lines || []).length * perLine + .3)}`;
   },
   /** A file: real content, coloured, optional highlighted lines appearing in order. */
@@ -210,7 +212,7 @@ const KINDS = {
     const pane = (p, x, d) => {
       const hl = HL[p.lang || 'yaml'];
       const rows = shown(p).map((l, i) => `<div class="row" style="${at(d + i * .02)}">${hl(l)}</div>`).join('');
-      return `<div class="win pop" style="${at(d - .2)}; left:${x}px; top:150px; width:850px; height:800px">${bar(p.file)}<div class="body" style="font-size:${p.size || 18}px; line-height:${Math.round((p.size || 18) * 1.55)}px">${rows}</div></div>`;
+      return `<div class="win pop" style="${at(d - .2)}; left:${x}px; top:150px; width:850px; height:800px">${bar(p.file)}<div class="body${p.wrap ? ' wrap' : ''}" style="font-size:${p.size || 18}px; line-height:${Math.round((p.size || 18) * 1.55)}px">${rows}</div></div>`;
     };
     stage.innerHTML = `${S.label ? `<div class="label kicker in">${esc(S.label)}</div>` : ''}${pane(S.left, 80, .3)}${pane(S.right, 990, S.rightAt ?? 1.6)}${caption(S.caption, (S.rightAt ?? 1.6) + .8)}`;
   },

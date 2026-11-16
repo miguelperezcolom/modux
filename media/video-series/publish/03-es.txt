@@ -1,0 +1,15 @@
+Dónde vive la lógica de negocio en un sistema generado con modux. Una operación custom se declara en el modelo con su intención en palabras normales; la generación la convierte en un punto de enganche —una interfaz en el código generado— y crea una implementación por defecto, una sola vez, en un módulo propio. La regla se escribe ahí, en Java normal. Cambias el modelo y vuelves a generar: el código generado sigue al modelo y el módulo custom no se toca nunca. Si editas a mano un fichero generado, la siguiente generación avisa y vuelve a poner la versión generada. Y la regla, en marcha: un libro retirado, y rechazado la segunda vez.
+
+Todo lo que sale es real: los ficheros del modelo, la salida de cada comando mvn modux, el código generado y el escrito a mano, y la aplicación generada en marcha. El ejemplo es la biblioteca del capítulo 2.
+
+0:00 La operación y su intención
+0:23 Generar: el punto de enganche y su implementación por defecto
+0:46 La regla de negocio, en el módulo custom
+0:58 El modelo cambia: volver a generar
+1:18 Un fichero generado editado a mano
+1:39 Desplegar: la regla funcionando
+2:02 En el siguiente: el editor gráfico
+
+Documentación (generar código, dos zonas): https://modux.mateu.io/manual/generating-code/
+Código: https://github.com/miguelperezcolom/modux (MIT)
+Serie: modux en N minutos, un aspecto de modux por capítulo.

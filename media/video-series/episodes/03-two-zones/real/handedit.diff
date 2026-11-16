@@ -1,0 +1,13 @@
+diff --git a/system/library/catalog/src/main/java/com/example/library/catalog/domain/aggregates/book/Book.java b/system/library/catalog/src/main/java/com/example/library/catalog/domain/aggregates/book/Book.java
+index 61db083..f6394e4 100644
+--- a/system/library/catalog/src/main/java/com/example/library/catalog/domain/aggregates/book/Book.java
++++ b/system/library/catalog/src/main/java/com/example/library/catalog/domain/aggregates/book/Book.java
+@@ -60,3 +60,7 @@ public class Book extends AggregateRoot {
+ 
+-  private void checkWithdrawPreconditions() {}
++  private void checkWithdrawPreconditions() {
++    if (status == Status.WITHDRAWN) {
++      throw new IllegalStateException("The book is already withdrawn");
++    }
++  }
+ 
