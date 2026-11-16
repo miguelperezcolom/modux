@@ -112,13 +112,20 @@ See [Deploying](/manual/deploying/) for environments, URLs and DNS providers.
 
 ## Goal: `hla`
 
+<div style="max-width: 920px; margin: 1.5rem 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;">
+  <iframe src="https://www.youtube-nocookie.com/embed/UtKlo1_AlF0?rel=0" title="Documentation from the model" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width: 100%; height: 100%; border: 0; display: block;"></iframe>
+</div>
+
+*Documentation from the model* — `hla` on a real system, recorded. [The whole series: modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
+
 **Default phase:** none (run explicitly)
 
 Writes the project's high-level architecture document, derived from the model: context and
 objective (`project.objective`), decisions, structural view, sequence and state diagrams,
 transversal concerns, exposed contracts and open points. To see what a change does to it,
-`git diff` the regenerated file. (Today the document comes out in Spanish whatever the model's
-language.)
+`git diff` the regenerated file. The document's own words follow the project's language (Spanish
+when its `defaultLocale` — or its first locale — is Spanish, English otherwise); the prose comes from
+the model as written.
 
 | Parameter | Property | Default | Description |
 |---|---|---|---|

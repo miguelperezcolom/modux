@@ -1,0 +1,155 @@
+{
+  "number": 13,
+  "languages": ["en"],
+  "slug": "documentation",
+  "series": "modux in N minutes",
+  "title": {
+    "en": "Documentation from the model"
+  },
+  "thumbnail": {
+    "scene": "open",
+    "at": 3.55
+  },
+  "scenes": [
+    {
+      "id": "open",
+      "kind": "title",
+      "min": 3.6,
+      "title": "Documentation<br>from the model",
+      "subtitle": "The architecture document, generated from the model the system comes from."
+    },
+    {
+      "id": "hla",
+      "kind": "terminal",
+      "cwd": "~/tickets",
+      "title": "terminal — tickets",
+      "command": "mvn modux:hla",
+      "lines": "@lines:real/hla.txt",
+      "box": { "x": 160, "y": 330, "w": 1600, "h": 300 },
+      "size": 26,
+      "perLine": 0.3,
+      "narration": {
+        "en": "Tickets, from episode five: four contexts, five apps, two external systems. One command, hla, writes its architecture document to a single file, next to the pom."
+      }
+    },
+    {
+      "id": "raw",
+      "kind": "code",
+      "lang": "md",
+      "file": "HLA.generated.md",
+      "code": "@file:real/HLA.generated.md",
+      "from": 1,
+      "to": 28,
+      "numbers": false,
+      "wrap": true,
+      "emph": [[7, 7], [15, 28]],
+      "box": { "x": 140, "y": 60, "w": 1640, "h": 940 },
+      "size": 18,
+      "narration": {
+        "en": "It is Markdown. The objective is the one written in the model. The diagrams are Mermaid: plain text, so when the document changes, the change reads in a diff, like code."
+      }
+    },
+    {
+      "id": "structure",
+      "kind": "live",
+      "script": "live/structure.mjs",
+      "narration": {
+        "en": "Rendered, with its diagrams drawn, the structural view. Each service, with its bounded context. The apps. The external systems. And between Sales and Payments, the relations and the events they exchange."
+      }
+    },
+    {
+      "id": "contexts",
+      "kind": "live",
+      "script": "live/contexts.mjs",
+      "narration": {
+        "en": "Then, context by context: the aggregates, with their fields, and the use cases, each one described by the intent written in the model. Where the model says nothing, the document shows a dash. It never makes anything up."
+      }
+    },
+    {
+      "id": "concerns",
+      "kind": "live",
+      "script": "live/concerns.mjs",
+      "narration": {
+        "en": "A state diagram for each aggregate with a lifecycle. And the cross-cutting concerns, read from the flags in the model. Sales and Payments use an outbox. Catalog publishes directly, and the document says what that risks."
+      }
+    },
+    {
+      "id": "contracts",
+      "kind": "live",
+      "script": "live/contracts.mjs",
+      "narration": {
+        "en": "Then what the system exposes: each app with its menu, each API with its operations. And last, the open points: the decisions still proposed."
+      }
+    },
+    {
+      "id": "change",
+      "kind": "code",
+      "lang": "diff",
+      "file": "git diff — modux/",
+      "numbers": false,
+      "wrap": true,
+      "code": "@file:real/change-model.diff",
+      "emph": [[20, 20]],
+      "box": { "x": 140, "y": 100, "w": 1640, "h": 840 },
+      "size": 21,
+      "narration": {
+        "en": "So the team decides. The decision goes into the model, as one more file. And Catalog's service turns its outbox on."
+      }
+    },
+    {
+      "id": "rehla",
+      "kind": "terminal",
+      "cwd": "~/tickets",
+      "title": "terminal — tickets",
+      "command": "mvn modux:hla",
+      "lines": "@lines:real/change-hla.txt",
+      "box": { "x": 160, "y": 330, "w": 1600, "h": 300 },
+      "size": 26,
+      "perLine": 0.25,
+      "typing": 0.6,
+      "narration": {
+        "en": "Run hla again."
+      }
+    },
+    {
+      "id": "docdiff",
+      "kind": "code",
+      "lang": "diff",
+      "file": "git diff — HLA.generated.md",
+      "numbers": false,
+      "wrap": true,
+      "code": "@file:real/change-hla.diff",
+      "from": 5,
+      "box": { "x": 120, "y": 130, "w": 1680, "h": 760 },
+      "size": 21,
+      "narration": {
+        "en": "The decision is in the table. The outbox line now names Catalog. Nobody edited the document: it followed the model."
+      }
+    },
+    {
+      "id": "code",
+      "kind": "terminal",
+      "cwd": "~/tickets",
+      "title": "terminal — tickets",
+      "command": "mvn modux:generate && git diff --stat",
+      "lines": ["@lines:real/change-generate.txt", "@lines:real/change-stat.txt"],
+      "box": { "x": 120, "y": 120, "w": 1680, "h": 780 },
+      "size": 22,
+      "perLine": 0.18,
+      "caption": "The same model, the same change.",
+      "narration": {
+        "en": "And generate takes the same change to the code: Catalog gets an outbox, its relay, and a migration for its table."
+      }
+    },
+    {
+      "id": "close",
+      "kind": "close",
+      "title": "One model.<br>The system, and its documentation.",
+      "min": 6,
+      "lines": ["mvn modux:hla → HLA.generated.md"],
+      "narration": {
+        "en": "The code and the architecture document come from the same model. When the model changes, run hla again, and review the document's diff like any other."
+      }
+    }
+  ]
+}

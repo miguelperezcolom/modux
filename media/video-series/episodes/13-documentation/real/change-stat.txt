@@ -1,0 +1,11 @@
+ .../io/tickets/infra/out/outbox/Outbox.java   | 81 +++++++++++++++++++
+ .../tickets/infra/out/outbox/OutboxRelay.java | 67 +++++++++++++++
+ .../db/migration/V2__model_changes.sql        | 12 +++
+ .../usecases/closesale/CloseSaleUseCase.java  |  2 +
+ .../concertdetails/ConcertDetailsUseCase.java |  2 +
+ .../usecases/listings/ListingsUseCase.java    |  2 +
+ .../lookupprice/LookupPriceUseCase.java       |  2 +
+ .../salesdashboard/SalesDashboardUseCase.java |  2 +
+ .../searchconcerts/SearchConcertsUseCase.java |  2 +
+ .../usecases/toreview/ToReviewUseCase.java    |  2 +
+ 10 files changed, 174 insertions(+)
