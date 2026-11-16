@@ -73,13 +73,15 @@ class ImportGatewayMojosTest {
         var model = tmp.resolve(ModuxModel.DEFAULT_PATH);
         Files.createDirectories(model);
         Files.writeString(model.resolve("index.yaml"), "formatVersion: 1\ncounts: {}\n");
+        Files.createDirectories(model.resolve("boundedContexts"));
+        Files.writeString(model.resolve("boundedContexts/bc-orders.yaml"), "id: bc-orders\nname: Orders\n");
         var contract = tmp.resolve("orders-events.yaml");
         Files.writeString(contract, """
                 asyncapi: 2.6.0
                 info: {title: Orders events, version: 1.0.0}
                 channels:
                   orders.placed:
-                    publish:
+                    subscribe:
                       message: {name: OrderPlaced}
                 """);
 
@@ -88,11 +90,10 @@ class ImportGatewayMojosTest {
         set(mojo, "filePath", contract.toString());
         mojo.execute();
 
-        var events = model.resolve("domainEvents");
-        assertTrue(Files.isDirectory(events), "the event did not land in the model");
-        try (var files = Files.list(events)) {
-            assertTrue(files.findAny().isPresent());
-        }
+        assertTrue(Files.exists(model.resolve("domainEvents/ev-order-placed.yaml")),
+                "the event did not land in the model under its readable id");
+        // the only bounded context owns it: an element nobody lists is never generated
+        assertTrue(Files.readString(model.resolve("boundedContexts/bc-orders.yaml")).contains("ev-order-placed"));
         assertFalse(Files.exists(tmp.resolve(".dev")), "nothing written to the old default store");
     }
 }
