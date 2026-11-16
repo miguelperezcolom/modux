@@ -1,75 +1,299 @@
 {
   "number": 3,
-  "languages": ["en"],
+  "languages": [
+    "en"
+  ],
   "slug": "two-zones",
   "series": "modux in N minutes",
-  "title": { "en": "Two zones: the code that is yours", "es": "Dos zonas: el código que es tuyo" },
-  "thumbnail": { "scene": "open", "at": 3.55 },
+  "title": {
+    "en": "Two zones: the code that is yours",
+    "es": "Dos zonas: el código que es tuyo"
+  },
+  "thumbnail": {
+    "scene": "open",
+    "at": 3.55
+  },
   "scenes": [
-    { "id": "open", "kind": "title", "min": 3.6, "title": "Two zones:<br>the code that is yours",
-      "subtitle": "Generated code follows the model. Business logic stays yours." },
-
-    { "id": "intent", "kind": "code", "lang": "yaml", "file": "modux/aggregates/agg-book.yaml", "code": "@file:real/model/agg-book.yaml",
-      "emph": [[5, 11]], "box": { "x": 200, "y": 200, "w": 1520, "h": 560 }, "size": 26,
-      "narration": { "en": "The library from the last episode can now withdraw a book. In the model, that operation is custom, and its intent says what it means, in plain words. An available book becomes withdrawn, with no copies left. One that is already withdrawn is refused.",
-                     "es": "La biblioteca del capítulo anterior ahora puede retirar un libro. En el modelo, esa operación es custom, y su intención dice lo que significa, con palabras normales. Un libro disponible pasa a retirado, sin ejemplares. Uno que ya está retirado se rechaza." } },
-
-    { "id": "generate", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:generate",
-      "lines": "@lines:real/generate.txt", "box": { "x": 160, "y": 300, "w": 1600, "h": 340 }, "size": 24,
-      "narration": { "en": "No code can be derived from that sentence. So when you generate…",
-                     "es": "De esa frase no se puede derivar código. Así que, al generar…" } },
-
-    { "id": "zones", "kind": "split", "label": "Two zones",
-      "left": { "file": "catalog/…/book/WithdrawBookOperation.java · generated", "lang": "java", "size": 19, "wrap": true, "code": "@file:real/zones/WithdrawBookOperation.java" },
-      "right": { "file": "library-custom/…/DefaultWithdrawBookOperation.java · yours", "lang": "java", "size": 16, "wrap": true, "code": "@file:real/zones/DefaultWithdrawBookOperation.java" },
+    {
+      "id": "open",
+      "kind": "title",
+      "min": 3.6,
+      "title": "Two zones:<br>the code that is yours",
+      "subtitle": "Generated code follows the model. Business logic stays yours."
+    },
+    {
+      "id": "intent",
+      "kind": "code",
+      "lang": "yaml",
+      "file": "modux/aggregates/agg-book.yaml",
+      "code": "@file:real/model/agg-book.yaml",
+      "emph": [
+        [
+          5,
+          11
+        ]
+      ],
+      "box": {
+        "x": 200,
+        "y": 200,
+        "w": 1520,
+        "h": 560
+      },
+      "size": 26,
+      "narration": {
+        "en": "The library from the last episode can now withdraw a book. In the model, that operation is custom, and its intent says what it means, in plain words. An available book becomes withdrawn, with no copies left. One that is already withdrawn is refused.",
+        "es": "La biblioteca del capítulo anterior ahora puede retirar un libro. En el modelo, esa operación es custom, y su intención dice lo que significa, con palabras normales. Un libro disponible pasa a retirado, sin ejemplares. Uno que ya está retirado se rechaza."
+      }
+    },
+    {
+      "id": "generate",
+      "kind": "terminal",
+      "cwd": "~/library",
+      "title": "terminal — library",
+      "command": "mvn modux:generate",
+      "lines": "@lines:real/generate.txt",
+      "box": {
+        "x": 160,
+        "y": 300,
+        "w": 1600,
+        "h": 340
+      },
+      "size": 24,
+      "narration": {
+        "en": "No code can be derived from that sentence. So when you generate…",
+        "es": "De esa frase no se puede derivar código. Así que, al generar…"
+      }
+    },
+    {
+      "id": "zones",
+      "kind": "split",
+      "label": "Two zones",
+      "left": {
+        "file": "catalog/…/book/WithdrawBookOperation.java · generated",
+        "lang": "java",
+        "size": 19,
+        "wrap": true,
+        "code": "@file:real/zones/WithdrawBookOperation.java"
+      },
+      "right": {
+        "file": "library-custom/…/DefaultWithdrawBookOperation.java · yours",
+        "lang": "java",
+        "size": 16,
+        "wrap": true,
+        "code": "@file:real/zones/DefaultWithdrawBookOperation.java"
+      },
       "rightAt": 4.2,
-      "narration": { "en": "…the generated code declares a hook: an interface, with the intent as its documentation. Next to it, in a module of its own, a default implementation, written once and never again. Until someone implements it, it says so.",
-                     "es": "…el código generado declara un punto de enganche: una interfaz, con la intención como documentación. Al lado, en un módulo propio, una implementación por defecto, que se escribe una vez y nunca más. Mientras nadie la implemente, lo dice." } },
-
-    { "id": "rule", "kind": "code", "lang": "java", "file": "library-custom/…/custom/DefaultWithdrawBookOperation.java · yours",
+      "narration": {
+        "en": "…the generated code declares a hook: an interface, with the intent as its documentation. Next to it, in a module of its own, a default implementation, written once and never again. Until someone implements it, it says so.",
+        "es": "…el código generado declara un punto de enganche: una interfaz, con la intención como documentación. Al lado, en un módulo propio, una implementación por defecto, que se escribe una vez y nunca más. Mientras nadie la implemente, lo dice."
+      }
+    },
+    {
+      "id": "rule",
+      "kind": "code",
+      "lang": "java",
+      "file": "library-custom/…/custom/DefaultWithdrawBookOperation.java · yours",
       "code": "@file:../../02-first-app/system/library/library-custom/src/main/java/com/example/library/custom/DefaultWithdrawBookOperation.java",
-      "emph": [[10, 14]], "box": { "x": 200, "y": 130, "w": 1520, "h": 730 }, "size": 24,
+      "emph": [
+        [
+          10,
+          14
+        ]
+      ],
+      "box": {
+        "x": 200,
+        "y": 130,
+        "w": 1520,
+        "h": 730
+      },
+      "size": 24,
       "caption": "The business rule: the only code you write.",
-      "narration": { "en": "This is where the business rule goes. Plain Java, on the book's state: refuse a book that is already withdrawn; otherwise, withdraw it and drop its copies to zero.",
-                     "es": "Aquí va la regla de negocio. Java normal, sobre el estado del libro: rechaza un libro que ya está retirado; si no, lo retira y deja sus ejemplares a cero." } },
-
-    { "id": "change", "kind": "code", "lang": "diff", "file": "git diff — modux/models/model-book.yaml", "numbers": false,
-      "code": "@file:real/change-model.diff", "box": { "x": 200, "y": 200, "w": 1520, "h": 480 }, "size": 24,
-      "narration": { "en": "Then the model changes. Every book gets a language.",
-                     "es": "Luego el modelo cambia. Cada libro tiene un idioma." } },
-
-    { "id": "regenerate", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:generate && git diff --stat",
-      "lines": ["@lines:real/change-generate.txt", "@lines:real/change-stat.txt"], "box": { "x": 100, "y": 70, "w": 1720, "h": 860 }, "size": 21, "perLine": 0.22,
+      "narration": {
+        "en": "This is where the business rule goes. Plain Java, on the book's state: refuse a book that is already withdrawn; otherwise, withdraw it and drop its copies to zero.",
+        "es": "Aquí va la regla de negocio. Java normal, sobre el estado del libro: rechaza un libro que ya está retirado; si no, lo retira y deja sus ejemplares a cero."
+      }
+    },
+    {
+      "id": "aicomplete",
+      "kind": "terminal",
+      "cwd": "~/library",
+      "title": "terminal — library",
+      "command": "mvn modux:ai-complete",
+      "lines": "@lines:real/aicomplete.txt",
+      "box": {
+        "x": 160,
+        "y": 280,
+        "w": 1600,
+        "h": 380
+      },
+      "size": 24,
+      "perLine": 0.35,
+      "caption": "Opt-in: it uses the AI command line on your machine.",
+      "narration": {
+        "en": "Or, if you prefer, ai-complete drafts it for you. It finds the hook still pending, writes it from the intent with the AI tool on your machine, and checks that it compiles."
+      }
+    },
+    {
+      "id": "aidraft",
+      "kind": "code",
+      "lang": "java",
+      "file": "library-custom/…/custom/DefaultWithdrawBookOperation.java · drafted",
+      "code": "@file:real/ai/DefaultWithdrawBookOperation.java",
+      "emph": [
+        [
+          14,
+          18
+        ]
+      ],
+      "box": {
+        "x": 200,
+        "y": 130,
+        "w": 1520,
+        "h": 730
+      },
+      "size": 21,
+      "caption": "A draft in your zone: review it like any other code.",
+      "narration": {
+        "en": "The same rule, in your module, never in the generated code. It is a draft: you review it, and commit it like any other code."
+      }
+    },
+    {
+      "id": "change",
+      "kind": "code",
+      "lang": "diff",
+      "file": "git diff — modux/models/model-book.yaml",
+      "numbers": false,
+      "code": "@file:real/change-model.diff",
+      "box": {
+        "x": 200,
+        "y": 200,
+        "w": 1520,
+        "h": 480
+      },
+      "size": 24,
+      "narration": {
+        "en": "Then the model changes. Every book gets a language.",
+        "es": "Luego el modelo cambia. Cada libro tiene un idioma."
+      }
+    },
+    {
+      "id": "regenerate",
+      "kind": "terminal",
+      "cwd": "~/library",
+      "title": "terminal — library",
+      "command": "mvn modux:generate && git diff --stat",
+      "lines": [
+        "@lines:real/change-generate.txt",
+        "@lines:real/change-stat.txt"
+      ],
+      "box": {
+        "x": 100,
+        "y": 70,
+        "w": 1720,
+        "h": 860
+      },
+      "size": 21,
+      "perLine": 0.22,
       "caption": "Not one file of library-custom.",
-      "narration": { "en": "Generate again. Seventeen generated files follow the model, from the entity to a new migration. Not one of them is in the custom module: your rule is untouched.",
-                     "es": "Vuelves a generar. Diecisiete ficheros generados siguen al modelo, desde la entidad hasta una migración nueva. Ninguno está en el módulo custom: tu regla sigue intacta." } },
-
-    { "id": "handedit", "kind": "code", "lang": "diff", "file": "git diff — catalog/…/book/Book.java · generated", "numbers": false,
-      "code": "@file:real/handedit.diff", "from": 3, "box": { "x": 200, "y": 200, "w": 1520, "h": 520 }, "size": 22,
-      "narration": { "en": "Generated code is not for editing. Say someone puts the rule straight into the generated aggregate.",
-                     "es": "El código generado no se edita. Imagina que alguien mete la regla directamente en el agregado generado." } },
-
-    { "id": "tamper", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:generate && git status",
-      "lines": ["@lines:real/handedit-generate.txt", "@lines:real/handedit-status.txt"], "box": { "x": 120, "y": 200, "w": 1680, "h": 600 }, "size": 22, "wrap": true, "perLine": 0.3,
-      "narration": { "en": "The next generation reports the file by name, and puts the generated version back. Nothing is left to commit. The rule belongs in the custom module.",
-                     "es": "La siguiente generación avisa del fichero por su nombre y vuelve a poner la versión generada. No queda nada que confirmar. La regla va en el módulo custom." } },
-
-    { "id": "deploy", "kind": "terminal", "cwd": "~/library", "title": "terminal — library", "command": "mvn modux:deploy",
-      "lines": "@lines:real/deploy.txt", "box": { "x": 160, "y": 240, "w": 1600, "h": 440 }, "size": 24, "perLine": 0.3,
-      "narration": { "en": "Now deploy it, and try the rule.",
-                     "es": "Ahora despliégalo y prueba la regla." } },
-
-    { "id": "withdraw", "kind": "live", "script": "live/withdraw.mjs",
-      "narration": { "en": "A book on the shelf: available, two copies. Withdraw it. Done. In the list, it is now withdrawn, with no copies.",
-                     "es": "Un libro en la estantería: disponible, dos ejemplares. Lo retiras, y ya está. En la lista ya aparece retirado, sin ejemplares." } },
-
-    { "id": "again", "kind": "live", "script": "live/again.mjs",
-      "narration": { "en": "Withdraw it again, and your rule refuses it, with its own message.",
-                     "es": "Lo retiras otra vez, y tu regla lo rechaza, con su propio mensaje." } },
-
-    { "id": "close", "kind": "close", "title": "Generated code follows the model.<br>Yours stays yours.", "min": 6,
-      "lines": ["Next: the graphical editor."],
-      "narration": { "en": "Regenerate as often as you like: the generated code follows the model, and the code that is yours stays yours. Next, the graphical editor.",
-                     "es": "Regenera tantas veces como quieras: el código generado sigue al modelo, y el código que es tuyo sigue siendo tuyo. En el siguiente, el editor gráfico." } }
+      "narration": {
+        "en": "Generate again. Seventeen generated files follow the model, from the entity to a new migration. Not one of them is in the custom module: your rule is untouched.",
+        "es": "Vuelves a generar. Diecisiete ficheros generados siguen al modelo, desde la entidad hasta una migración nueva. Ninguno está en el módulo custom: tu regla sigue intacta."
+      }
+    },
+    {
+      "id": "handedit",
+      "kind": "code",
+      "lang": "diff",
+      "file": "git diff — catalog/…/book/Book.java · generated",
+      "numbers": false,
+      "code": "@file:real/handedit.diff",
+      "from": 3,
+      "box": {
+        "x": 200,
+        "y": 200,
+        "w": 1520,
+        "h": 520
+      },
+      "size": 22,
+      "narration": {
+        "en": "Generated code is not for editing. Say someone puts the rule straight into the generated aggregate.",
+        "es": "El código generado no se edita. Imagina que alguien mete la regla directamente en el agregado generado."
+      }
+    },
+    {
+      "id": "tamper",
+      "kind": "terminal",
+      "cwd": "~/library",
+      "title": "terminal — library",
+      "command": "mvn modux:generate && git status",
+      "lines": [
+        "@lines:real/handedit-generate.txt",
+        "@lines:real/handedit-status.txt"
+      ],
+      "box": {
+        "x": 120,
+        "y": 200,
+        "w": 1680,
+        "h": 600
+      },
+      "size": 22,
+      "wrap": true,
+      "perLine": 0.3,
+      "narration": {
+        "en": "The next generation reports the file by name, and puts the generated version back. Nothing is left to commit. The rule belongs in the custom module.",
+        "es": "La siguiente generación avisa del fichero por su nombre y vuelve a poner la versión generada. No queda nada que confirmar. La regla va en el módulo custom."
+      }
+    },
+    {
+      "id": "deploy",
+      "kind": "terminal",
+      "cwd": "~/library",
+      "title": "terminal — library",
+      "command": "mvn modux:deploy",
+      "lines": "@lines:real/deploy.txt",
+      "box": {
+        "x": 160,
+        "y": 240,
+        "w": 1600,
+        "h": 440
+      },
+      "size": 24,
+      "perLine": 0.3,
+      "narration": {
+        "en": "Now deploy it, and try the rule.",
+        "es": "Ahora despliégalo y prueba la regla."
+      }
+    },
+    {
+      "id": "withdraw",
+      "kind": "live",
+      "script": "live/withdraw.mjs",
+      "narration": {
+        "en": "A book on the shelf: available, two copies. Withdraw it. Done. In the list, it is now withdrawn, with no copies.",
+        "es": "Un libro en la estantería: disponible, dos ejemplares. Lo retiras, y ya está. En la lista ya aparece retirado, sin ejemplares."
+      }
+    },
+    {
+      "id": "again",
+      "kind": "live",
+      "script": "live/again.mjs",
+      "narration": {
+        "en": "Withdraw it again, and your rule refuses it, with its own message.",
+        "es": "Lo retiras otra vez, y tu regla lo rechaza, con su propio mensaje."
+      }
+    },
+    {
+      "id": "close",
+      "kind": "close",
+      "title": "Generated code follows the model.<br>Yours stays yours.",
+      "min": 6,
+      "lines": [
+        "Next: the graphical editor."
+      ],
+      "narration": {
+        "en": "Regenerate as often as you like: the generated code follows the model, and the code that is yours stays yours. Next, the graphical editor.",
+        "es": "Regenera tantas veces como quieras: el código generado sigue al modelo, y el código que es tuyo sigue siendo tuyo. En el siguiente, el editor gráfico."
+      }
+    }
   ]
 }
