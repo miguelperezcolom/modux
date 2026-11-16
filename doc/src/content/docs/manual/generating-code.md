@@ -64,6 +64,7 @@ For each aggregate, Modux:
 ```
 {output-path}/
 ├── README.md
+├── .gitignore                       # build output, .env, IDE files (never the *-custom modules)
 ├── docker-compose.yml               # every service + PostgreSQL + Kafka
 ├── up.sh / down.sh                  # the same, without compose
 ├── deploy/targets.json              # what mvn modux:deploy can target
