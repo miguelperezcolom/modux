@@ -225,7 +225,7 @@ ${req}    ${lbl}String ${field.name}Id;
         resultado = <#if (outputGrids?has_content || outputRendered?has_content) && !scalarOut?has_content && !outputGrids?has_content>"${usecase.title!usecase.className}"<#elseif outputGrids?has_content && !scalarOut?has_content><#list outputGrids as f>"${((f.label?? && f.label?has_content)?then(f.label, f.name?cap_first))?j_string}: " + ${f.name}Resultado.size()<#sep> + " · " + </#sep></#list><#else><#list scalarOut as f>"${(f.label?? && f.label?has_content)?then(f.label, f.name?cap_first)}: " + <#if (f.type!"") == "money">java.util.Optional.ofNullable(result.${f.name}()).map(v -> v.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()).orElse("")<#else>result.${f.name}<#if !(f.basicType?? && f.basicType) && (f.type!"") != "array" && !(f.enumId?has_content)>Id</#if>()</#if><#sep> + " · " + </#sep></#list><#if !(outputModel.fields?? && outputModel.fields?has_content)>String.valueOf(result)</#if></#if>;
 <#else>
         useCase.handle(new ${ucClass}Command(${args}));
-        resultado = "${usecase.name} ejecutado";
+        resultado = "${usecase.name} <#if uiEs>ejecutado<#else>done</#if>";
 </#if>
         return List.of(new Message("${usecase.title!usecase.className}: <#if uiEs>hecho<#else>done</#if>"), new State(this));
     }

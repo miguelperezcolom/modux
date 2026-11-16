@@ -22,7 +22,12 @@ import java.util.stream.Stream;
  */
 final class HookImplementer {
 
-    static final Pattern PENDING = Pattern.compile("Pendiente de implementar|// TODO: ");
+    /**
+     * What a scaffolded hook says until it is implemented: the exception the scaffold throws, in the
+     * project's language ("Pendiente de implementar …" in Spanish, "«withdraw» of Book is not
+     * implemented yet" in English), or a TODO.
+     */
+    static final Pattern PENDING = Pattern.compile("Pendiente de implementar|»[^\"\\n]* is not implemented yet|// TODO: ");
     private static final Pattern FILE_BLOCK =
             Pattern.compile("===FILE: *(\\S+) *\\R(.*?)\\R===END", Pattern.DOTALL);
     private static final String CUSTOM_ROOT = "src/main/java";
