@@ -39,7 +39,8 @@ public class GenerateHlaUseCase {
         var markdown = render();
         Files.createDirectories(target.toAbsolutePath().getParent());
         Files.writeString(target, markdown);
-        log.info("HLA document written to {}", target.toAbsolutePath());
+        // the caller says where it went (the Maven goal logs it once, in its own words)
+        log.debug("HLA document written to {}", target.toAbsolutePath());
         return target;
     }
 }

@@ -72,6 +72,89 @@ class GenerateHlaTest {
         }
     }
 
+    /**
+     * The Tickets model (the promo video's): four contexts, flows Sales ⇄ Payments, outbox on Sales
+     * and Payments, two external systems, state projections out of Catalog and Sales, a deployment.
+     * The document must say what actually travels between contexts, and only blame the services
+     * that publish. Pass -DhlaTicketsOut=<path> to also write the document.
+     */
+    @Test
+    void the_tickets_document_says_what_leaves_each_context() throws Exception {
+        repository.loadFrom(copyOfTickets().toAbsolutePath().toString());
+
+        var md = generateHla.render();
+        var out = System.getProperty("hlaTicketsOut");
+        if (out != null && !out.isBlank()) Files.writeString(Path.of(out), md);
+
+        // 1. events: what the flows carry and the state the projections copy, not "0 published"
+        assertFalse(md.contains("0 published as integration events"), md);
+        assertTrue(md.contains("PurchasePlaced (Sales → Payments)"), md);
+        assertTrue(md.contains("PaymentAccepted (Payments → Sales)"), md);
+        assertTrue(md.contains("Concert (Catalog → Sales, Analytics)"), md);
+        assertTrue(md.contains("Purchase (Sales → Analytics)"), md);
+        // 2. outbox: natural plural, and only the services that publish (Analytics publishes nothing)
+        assertTrue(md.contains("- **Outbox**: Sales and Payments store each event"), md);
+        assertTrue(md.contains("Catalog publishes directly"), md);
+        var outboxLine = md.lines().filter(l -> l.startsWith("- **Outbox**")).findFirst().orElseThrow();
+        assertFalse(outboxLine.contains("Analytics"), outboxLine);
+        // 3. structural view: external systems, projections and the Analytics app are connected
+        assertTrue(md.contains("bc_payments -->|charge| ext_paygate"), md);
+        assertTrue(md.contains("ext_legacy ==>|Venues| bc_catalog"), md);
+        assertTrue(md.contains("bc_catalog ==>|Concerts| bc_sales"), md);
+        assertTrue(md.contains("bc_catalog ==>|AnalyticsConcerts| bc_analytics"), md);
+        assertTrue(md.contains("ui_analytics --> bc_analytics"), md);
+        assertTrue(md.contains("bc_sales -->|LookupPrice| bc_catalog"), md);
+        // 4. sections numbered without gaps (no business processes here), contexts as subsections
+        var headings = md.lines().filter(l -> l.matches("## \\d+\\. .*")).toList();
+        for (int i = 0; i < headings.size(); i++) {
+            assertTrue(headings.get(i).startsWith("## " + (i + 1) + ". "), headings.toString());
+        }
+        assertTrue(md.contains("### 4.1 Catalog") && md.contains("### 4.4 Analytics"), md);
+        // 5. Analytics is not an empty heading: its read models and its dashboard
+        var analytics = md.substring(md.indexOf("### 4.4 Analytics"), md.indexOf("## 5. "));
+        assertTrue(analytics.contains("PurchaseView") && analytics.contains("Dashboard"), analytics);
+        // 6. the deployment the model declares
+        assertTrue(md.contains("Deployment\n"), md);
+        assertTrue(md.contains("cloudfleet-hetzner"), md);
+    }
+
+    /** The same document for a Spanish project: the event and outbox lines agree in number in Spanish too. */
+    @Test
+    void the_tickets_document_in_spanish() throws Exception {
+        var model = copyOfTickets();
+        var project = model.resolve("projects").resolve("tickets.yaml");
+        Files.writeString(project, Files.readString(project) + "defaultLocale: \"es\"\n");
+        repository.loadFrom(model.toAbsolutePath().toString());
+
+        var md = generateHla.render();
+
+        assertTrue(md.contains("Los flujos llevan 3 de ellos por Kafka, cada uno con DLQ: PurchasePlaced (Sales → Payments)"), md);
+        assertTrue(md.contains("Las proyecciones copian el estado de 2 agregados: Concert (Catalog → Sales, Analytics)"), md);
+        assertTrue(md.contains("Los otros 9 se quedan en su contexto."), md);
+        assertTrue(md.contains("- **Outbox**: Sales y Payments guardan cada evento"), md);
+        assertTrue(md.contains("Catalog publica directamente"), md);
+        assertTrue(md.contains("### 4.4 Analytics") && md.contains("**Modelos de lectura**"), md);
+        assertTrue(md.contains("## 8. Despliegue") && md.contains("## 9. Puntos abiertos"), md);
+        for (var englishWord : java.util.List.of("Responsibilities", "Read models", "Queries", "Deployment",
+                "publishes directly", "state of", "Arrows:", "Every environment")) {
+            assertFalse(md.contains(englishWord), "still in English: " + englishWord);
+        }
+    }
+
+    /** A copy of the Tickets model (the promo video's), so that loading it never touches the original. */
+    private static Path copyOfTickets() throws java.io.IOException {
+        var source = Path.of("..", "media", "promo-video", "app", "modux");
+        var temp = Files.createTempDirectory("hla-doc-test-tickets").resolve("modux");
+        try (var walk = Files.walk(source)) {
+            for (var path : walk.toList()) {
+                var target = temp.resolve(source.relativize(path).toString());
+                if (Files.isDirectory(path)) Files.createDirectories(target);
+                else Files.copy(path, target);
+            }
+        }
+        return temp;
+    }
+
     /** The document's own words follow the project's language: English unless it speaks Spanish. */
     @Test
     void an_english_model_gets_an_english_document() throws Exception {
