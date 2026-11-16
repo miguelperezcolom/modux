@@ -63,6 +63,8 @@ intellijPlatform {
               <li>The editor no longer reloads the model when nothing changed on disk.</li>
               <li>ai-complete finds the hooks pending in English projects too; generated use-case pages and the hand-edit warning are in English.</li>
               <li>Notifications: renamed and wired to the events that send them.</li>
+              <li>Generated systems: with an outbox, a use case whose custom steps save and publish runs in one transaction.</li>
+              <li>import-openapi: an operation that declares a 2xx response is no longer typed by its default error.</li>
             </ul>
             <h4>0.6.6</h4>
             <ul>
