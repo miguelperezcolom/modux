@@ -1,0 +1,5 @@
+         artist          |    venue     |    date    |  price  | status  
+-------------------------+--------------+------------+---------+---------
+ Northern Lights Quartet | Harbour Hall | 2027-09-18 | 35.0000 | ON_SALE
+(1 row)
+

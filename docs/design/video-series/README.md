@@ -185,6 +185,7 @@ todas formas»); salir antes deja el vídeo en borrador y pierde el idioma.
 | 2 | [From one aggregate to a running app](https://youtu.be/xqIx8CE_-KE) (2:08) | [De un agregado a una aplicación](https://youtu.be/8zNfZ23hKx8) | `getting-started/quick-start` |
 | 3 | [Two zones: the code that is yours](https://youtu.be/m6yMS5Ad4uA) (2:36) | — (solo EN) | `manual/generating-code` |
 | 4 | [The graphical editor](https://youtu.be/H7crXzm3wN8) (2:11) | — (solo EN) | `manual/graphical-editor-guide` |
+| 5 | [Contexts that talk to each other](https://youtu.be/jmWmywtmez0) (3:03) | — (solo EN) | `manual/flows` |
 
 Lo que los pilotos destaparon en modux (arreglado en 0.6.6 salvo lo marcado): el proyecto Compose compartido
 entre sistemas, la URL que imprime `deploy`, los modelos sueltos en el mapa del sistema, `modux/` en IntelliJ,

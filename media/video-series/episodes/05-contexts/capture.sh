@@ -25,6 +25,6 @@ if [ "${STAGE:-generate}" = generate ]; then
   cat "$out/generate.txt"
 else
   docker exec tickets-postgres-1 psql -U user_app -d sales \
-    -c "select artist, venue, date, price, status from concert_view_read_model_entity" > "$out/copy.txt"
+    -c "select col_artist as artist, col_venue as venue, col_date as date, col_price as price, col_status as status from concert_view_read_model_entity" > "$out/copy.txt"
   cat "$out/copy.txt"
 fi

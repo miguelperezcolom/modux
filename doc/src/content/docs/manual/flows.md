@@ -3,6 +3,12 @@ title: Flows
 description: Declare cross-context interactions by intent and let Modux derive the building blocks
 ---
 
+<div style="max-width: 920px; margin: 1.5rem 0; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden;">
+  <iframe src="https://www.youtube-nocookie.com/embed/jmWmywtmez0?rel=0" title="Contexts that talk to each other" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen style="width: 100%; height: 100%; border: 0; display: block;"></iframe>
+</div>
+
+*Contexts that talk to each other* — flows, Kafka, the outbox, a REST call and a projection on a real system, recorded. [The whole series: modux in N minutes](https://www.youtube.com/playlist?list=PLUJRhYAO8b3U)
+
 A **flow** lets you declare a cross-context interaction by its **intent** instead of wiring every
 structural piece by hand. You say *what* should happen — for example, *"recording a booking in the
 Bookings context materializes the locator and holder in the FrontOffice context"* — and Modux
