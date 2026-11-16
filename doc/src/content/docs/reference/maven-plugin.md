@@ -14,7 +14,7 @@ IntelliJ plugin creates) — and carries the generator inside, so any template a
 ```xml
 <groupId>io.mateu.modux</groupId>
 <artifactId>modux-maven-plugin</artifactId>
-<version>0.6.7</version>
+<version>0.6.8</version>
 ```
 
 ## Goal: `validate`
