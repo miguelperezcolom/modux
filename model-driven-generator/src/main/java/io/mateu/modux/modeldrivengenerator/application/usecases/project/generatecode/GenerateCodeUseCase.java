@@ -152,9 +152,11 @@ public class GenerateCodeUseCase {
         // but no deployment yet — shared with the deploy pipeline.
         var services = effectiveServices(project);
 
-        // The README is the one thing EVERY project gets — an empty project generates
-        // its folder with just this file (plus the manifest).
+        // The README and the .gitignore are what EVERY project gets — an empty project generates
+        // its folder with just these files (plus the manifest); the .gitignore keeps the build
+        // output of the generated system out of git.
         generateReadme(project, services);
+        generateGitignore(project);
 
         services.forEach(service -> generateService(project, service, command.sourceOnly()));
 
@@ -262,6 +264,11 @@ public class GenerateCodeUseCase {
                 .toList());
         model.put("contexts", projectContexts(project).stream().map(BoundedContextEntity::name).toList());
         createFile(project.outputPath(), model, "readme.ftl", "README.md");
+    }
+
+    /** Generated zone like the README: rewritten each run, tracked in the manifest. */
+    private void generateGitignore(ProjectEntity project) {
+        createFile(project.outputPath(), new HashMap<>(), "gitignore.ftl", ".gitignore");
     }
 
     private static String expandTilde(String path) {

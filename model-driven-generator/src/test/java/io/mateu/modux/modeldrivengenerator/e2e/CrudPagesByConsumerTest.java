@@ -352,6 +352,67 @@ class CrudPagesByConsumerTest {
         assertTrue(read(out, "Home.java").contains("LogViewListing"));
     }
 
+    @Test
+    void a_listing_shows_an_enum_with_the_label_of_its_detail_view() throws Exception {
+        // the row carries the enum itself, not its name: Mateu labels the column as it labels the
+        // detail's field («On sale», not ON_SALE)
+        var store = Files.createTempFile("ui-crud-enum", ".yaml");
+        Files.writeString(store, Files.readString(STORE)
+                .replace("{id: \"f-a\", name: \"nombre\", basicType: true, type: \"string\"}",
+                        "{id: \"f-a\", name: \"nombre\", basicType: true, type: \"string\"}, {id: \"f-e\", name: \"estado\", enumId: \"enum-estado\"}")
+                + """
+
+                enums:
+                - id: "enum-estado"
+                  values:
+                  - {id: "ON_SALE", name: "ON_SALE"}
+                  - {id: "SOLD_OUT", name: "SOLD_OUT"}
+                """);
+        var out = generate(store.toString());
+        var row = read(out, "AutorRow.java");
+        assertTrue(row.contains("es.editorial.catalogo.domain.aggregates.autor.vo.Estado estado"), row);
+        var queries = read(out, "AutorDBQueryService.java").replaceAll("\\s+", "");
+        assertTrue(queries.contains("enumOf(es.editorial.catalogo.domain.aggregates.autor.vo.Estado.class,rs.getObject(\"col_estado\"))"), queries);
+        // no enum, no helper
+        assertFalse(read(out, "TemaDBQueryService.java").contains("enumOf("));
+    }
+
+    @Test
+    void the_generated_system_ignores_its_build_output_but_not_its_code() throws Exception {
+        var out = generateAll(STORE.toString());
+        var gitignore = out.resolve(".gitignore");
+        assertTrue(Files.exists(gitignore), "the generated system has no .gitignore");
+        // generated zone: tracked in the manifest like any other generated file
+        assertTrue(Files.readString(out.resolve(".modux/generated-manifest.json")).contains("\".gitignore\""));
+
+        org.junit.jupiter.api.Assumptions.assumeTrue(git(out, "init", "-q") == 0, "git is not available");
+        assertTrue(ignored(out, "editorial/catalogo/target/classes/A.class"), "a module's build output");
+        assertTrue(ignored(out, "editorial/target/x.jar"));
+        assertTrue(ignored(out, ".env"), "the Compose pin mvn modux:deploy writes, and any secret");
+        assertFalse(ignored(out, "editorial/editorial-custom/src/main/java/es/editorial/custom/Foo.java"),
+                "the custom module is the developer's code");
+        assertFalse(ignored(out, "editorial/catalogo/src/main/java/es/editorial/catalogo/domain/aggregates/target/Target.java"),
+                "an aggregate named Target is source, not build output");
+        assertFalse(ignored(out, ".modux/generated-manifest.json"), "the manifest tells regeneration what it generated");
+    }
+
+    private static boolean ignored(Path repo, String path) throws Exception {
+        return git(repo, "check-ignore", "-q", "--no-index", path) == 0;
+    }
+
+    private static int git(Path dir, String... args) {
+        try {
+            var command = new java.util.ArrayList<String>();
+            command.add("git");
+            command.addAll(java.util.List.of(args));
+            var process = new ProcessBuilder(command).directory(dir.toFile()).redirectErrorStream(true).start();
+            process.getInputStream().readAllBytes();
+            return process.waitFor();
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
     private static Optional<Path> file(Path root, String name) throws Exception {
         try (var s = Files.walk(root)) {
             return s.filter(p -> p.getFileName().toString().equals(name)).findFirst();

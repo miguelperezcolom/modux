@@ -1,6 +1,8 @@
 package ${project.packageName}.${module.name?lower_case?replace("[^a-z0-9]","",'r')}.infra.out.persistence;
 <#assign safeFields = aggregate.fields?filter(f -> f.name != "id")>
 <#assign visibleFields = safeFields?filter(f -> f.searchable || f.visible)>
+<#assign enumPackage = project.packageName + "." + module.name?lower_case?replace("[^a-z0-9]","",'r') + ".domain.aggregates." + aggregate.name?lower_case + ".vo.">
+<#assign rowEnums = visibleFields?filter(f -> (f.isEnum!false) && f.type != "Entity")>
 <#assign firstStringField = safeFields?filter(f -> f.type == "Wrapper" && (f.primitiveType == "string" || f.primitiveType == "email" || f.primitiveType == "url"))?first!"">
 <#-- the listing search matches any text column (a status, a name…), not just the first one -->
 <#assign searchFields = safeFields?filter(f -> f.type == "Wrapper" && (f.primitiveType == "string" || f.primitiveType == "email" || f.primitiveType == "url"))>
@@ -85,6 +87,21 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
         return money ? value.setScale(2, java.math.RoundingMode.HALF_EVEN).toPlainString()
                 : value.stripTrailingZeros().toPlainString();
     }
+<#if rowEnums?has_content>
+
+    /**
+     * The enum constant a column holds, so the listing shows it with the same label as the detail
+     * view (Mateu labels enum columns); null when the column holds no known constant.
+     */
+    private static <E extends Enum<E>> E enumOf(Class<E> type, Object value) {
+        if (value == null) return null;
+        try {
+            return Enum.valueOf(type, value.toString());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+</#if>
 
     private ${aggregate.name}Row toRow(${aggregate.name}Entity entity) {
         return new ${aggregate.name}Row(
@@ -92,6 +109,8 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
 <#list visibleFields as field>
     <#if field.type == "Entity">
                 entity.get${field.name?cap_first}Id()<#sep>,</#sep>
+    <#elseif field.isEnum!false>
+                enumOf(${enumPackage}${field.name?cap_first}.class, entity.get${field.name?cap_first}())<#sep>,</#sep>
     <#elseif (rowLookups!{})[field.name]??>
                 label(${field.name}Labels, entity.get${field.name?cap_first}())<#sep>,</#sep>
     <#elseif field.type == "Wrapper" && field.primitiveType == "decimal">
@@ -212,12 +231,29 @@ public class ${aggregate.name}DBQueryService implements ${aggregate.name}QuerySe
         return money ? value.setScale(2, java.math.RoundingMode.HALF_EVEN).toPlainString()
                 : value.stripTrailingZeros().toPlainString();
     }
+<#if rowEnums?has_content>
+
+    /**
+     * The enum constant a column holds, so the listing shows it with the same label as the detail
+     * view (Mateu labels enum columns); null when the column holds no known constant.
+     */
+    private static <E extends Enum<E>> E enumOf(Class<E> type, Object value) {
+        if (value == null) return null;
+        try {
+            return Enum.valueOf(type, value.toString());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+</#if>
 
     private ${aggregate.name}Row toRow(ResultSet rs) throws SQLException {
         return new ${aggregate.name}Row(
                 String.valueOf(rs.getLong("id"))<#if visibleFields?has_content>,</#if>
 <#list visibleFields as field>
-    <#if (rowLookups!{})[field.name]??>
+    <#if field.isEnum!false>
+                enumOf(${enumPackage}${field.name?cap_first}.class, rs.getObject("${field.columnName}"))<#sep>,</#sep>
+    <#elseif (rowLookups!{})[field.name]??>
                 label(${field.name}Labels, rs.getObject("${field.columnName}"))<#sep>,</#sep>
     <#elseif field.type == "Wrapper" && (field.primitiveType == "string" || field.primitiveType == "email" || field.primitiveType == "password" || field.primitiveType == "url" || field.primitiveType == "color" || field.primitiveType == "image" || field.primitiveType == "file" || field.primitiveType == "json")>
                 rs.getString("${field.columnName}")<#sep>,</#sep>
