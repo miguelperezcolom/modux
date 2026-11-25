@@ -78,6 +78,7 @@ function relationTypes(): { id: string; label: string; hint: string }[] {
     { id: 'ui-composition', label: t('gestures.relation.uiComposition.label'), hint: t('gestures.relation.uiComposition.hint') },
     { id: 'ui-serving', label: t('gestures.relation.uiServing.label'), hint: t('gestures.relation.uiServing.hint') },
     { id: 'actor-app', label: t('gestures.relation.actorApp.label'), hint: t('gestures.relation.actorApp.hint') },
+    { id: 'api-op-impl', label: t('gestures.relation.apiOpImpl.label'), hint: t('gestures.relation.apiOpImpl.hint') },
     { id: 'aggregate-composition', label: t('gestures.relation.aggregateComposition.label'), hint: t('gestures.relation.aggregateComposition.hint') },
     { id: 'system-composition', label: t('gestures.relation.systemComposition.label'), hint: t('gestures.relation.systemComposition.hint') },
     { id: 'projection', label: t('gestures.relation.projection.label'), hint: t('gestures.relation.projection.hint') },
@@ -196,6 +197,20 @@ export function connectionOptions(
           host.command({ kind: 'add-actor-app', actorId: other, appId: app });
         }
       });
+    }
+  }
+  {
+    // API operation ⇆ use case or context (either direction): who implements the operation — the
+    // use case is the fine wiring, the context the coarse one.
+    const apiOf = (id: string) => (m.apis ?? []).find((a) => a.operations.some((o) => o.id === id));
+    const opApi = apiOf(sourceId) ?? apiOf(targetId);
+    const op = apiOf(sourceId) ? sourceId : targetId;
+    const other = op === sourceId ? targetId : sourceId;
+    if (opApi && (ucIds.has(other) || isContext(other))) {
+      offer('api-op-impl', () => host.command({
+        kind: 'set-api-operation-target', apiId: opApi.id, id: op,
+        ...(ucIds.has(other) ? { targetUseCaseId: other } : { boundedContextId: other }),
+      }));
     }
   }
   // app → aggregate: the UI surface of the CRUD (the generator emits its pages because of this)

@@ -131,6 +131,12 @@ export function catalogEntries(m: ModuxModel): CatalogEntry[] {
     const kind = UNOWNED_KIND[el.type];
     if (kind) put({ id: el.id, kind, label: el.name || el.id, renameType: RENAME_TYPE_OF[el.type], contextType: CONTEXT_TYPE_OF[el.type] });
   }
+  // API operations: owned by their API (drawn composed by it when both are on the view).
+  for (const api of m.apis ?? [])
+    for (const op of api.operations ?? []) put({ id: op.id, kind: 'api-operation', label: op.name || op.id, ownerId: api.id });
+  // ArchiMate elements with no modux concept: drawn as `am:<concept>`, so the relation matrix applies.
+  for (const ae of m.archimateElements ?? [])
+    put({ id: ae.id, kind: `am:${ae.concept}`, label: ae.name || ae.id, renameType: 'archimate-element' });
   for (const le of m.looseElements ?? []) put({ id: le.id, kind: LOOSE_KIND[le.elementType] ?? le.elementType, label: le.name || le.id, renameType: le.elementType, loose: true });
   const entries = [...byId.values()];
   catalogCache.set(m, entries);

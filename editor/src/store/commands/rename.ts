@@ -26,6 +26,7 @@ interface Nested {
 
 const TOP_LEVEL: Record<string, TopLevel> = {
   'boundedContext': { type: 'boundedContexts' },
+  'archimate-element': { type: 'archimateElements' },
   'system': { type: 'systems' },
   'cdc': { type: 'cdcs' },
   // a note IS its text: it has nothing else to be called

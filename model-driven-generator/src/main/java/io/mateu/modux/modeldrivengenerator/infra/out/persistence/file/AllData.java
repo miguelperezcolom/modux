@@ -62,6 +62,8 @@ public record AllData(
         /** Systems outside the project's boundary, referenced by it. */
         List<ExternalSystemEntity> externalSystems,
         List<ArchimateRelationEntity> archimateRelations,
+        /** ArchiMate elements modux has no concept for (nodes, databases, topics…): documentation only. */
+        List<ArchimateElementEntity> archimateElements,
         List<UiEntity> uis,
         List<UrlEntity> urls,
         List<InteractionEntity> interactions
@@ -135,6 +137,7 @@ public record AllData(
         contextMapRelations = contextMapRelations != null ? contextMapRelations : List.of();
         externalSystems = externalSystems != null ? externalSystems : List.of();
         archimateRelations = archimateRelations != null ? archimateRelations : List.of();
+        archimateElements = archimateElements != null ? archimateElements : List.of();
         uis = uis != null ? uis : List.of();
         urls = urls != null ? urls : List.of();
         interactions = interactions != null ? interactions : List.of();

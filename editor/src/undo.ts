@@ -553,6 +553,18 @@ export function inverseOf(host: UndoHost, c: ModuxCommand): ModuxCommand[] | nul
       }
       case 'add-system':
         return [{ kind: 'remove-system', id: c.id }];
+      case 'add-archimate-element':
+        return [{ kind: 'remove-archimate-element', id: c.id }];
+      case 'remove-archimate-element': {
+        const e = (host.model.archimateElements ?? []).find((x) => x.id === c.id);
+        return e ? [{ kind: 'add-archimate-element', id: e.id, name: e.name, concept: e.concept }] : null;
+      }
+      case 'add-archimate-relation':
+        return [{ kind: 'remove-archimate-relation', id: c.id }];
+      case 'remove-archimate-relation': {
+        const r = (host.model.archimateRelations ?? []).find((x) => x.id === c.id);
+        return r ? [{ kind: 'add-archimate-relation', id: r.id, sourceId: r.sourceId, targetId: r.targetId, type: r.type, ...(r.label ? { name: r.label } : {}) }] : null;
+      }
       case 'remove-system': {
         const s = (host.model.systems ?? []).find((x) => x.id === c.id);
         return s ? [{ kind: 'add-system', id: s.id, name: s.name, ...(s.parentSystemId ? { parentSystemId: s.parentSystemId } : {}) }] : null;

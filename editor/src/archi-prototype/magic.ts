@@ -52,6 +52,15 @@ const KIND_TO_CONCEPT: Record<string, string> = {
   saga: 'ApplicationProcess',
   projector: 'ApplicationFunction',
   scheduler: 'ApplicationFunction',
+  // Visual extras that are ArchiMate concepts too
+  group: 'Grouping',
+  junction: 'Junction',
+  // modux kinds reached from the catalog
+  system: 'ApplicationComponent',
+  'query-service': 'ApplicationService',
+  model: 'DataObject',
+  notification: 'ApplicationEvent',
+  process: 'BusinessProcess',
 };
 
 type Matrix = Record<string, Record<string, string[]>>;
@@ -106,8 +115,13 @@ export interface RelOption {
   reverse: boolean;
 }
 
+/** The ArchiMate concept a node kind is checked as: modux's mapping, or the concept an `am:` kind names. */
+function conceptFor(kind: string): string | undefined {
+  return KIND_TO_CONCEPT[kind] ?? (kind.startsWith('am:') ? kind.slice(3) : undefined);
+}
+
 function relsBetween(srcKind: string, tgtKind: string): string[] {
-  const s = KIND_TO_CONCEPT[srcKind], t = KIND_TO_CONCEPT[tgtKind];
+  const s = conceptFor(srcKind), t = conceptFor(tgtKind);
   if (!s || !t) return [];
   return M[s]?.[t] ?? [];
 }

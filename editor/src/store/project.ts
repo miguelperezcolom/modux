@@ -42,7 +42,7 @@ export function projectedTypes(): string[] {
   return [
     'projects', 'services', 'modules', 'boundedContexts', 'aggregates', 'entities',
     'valueObjects', 'useCases', 'domainEvents', 'applicationEvents', 'integrationEvents', 'domainServices',
-    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'roles', 'externalSystems', 'systems', 'cdcs',
+    'readModels', 'models', 'contextMapRelations', 'archimateRelations', 'archimateElements', 'roles', 'externalSystems', 'systems', 'cdcs',
     'notes', 'areas', 'urls', 'views', 'apis', 'proxyApis', 'queryServices', 'projections',
     'scheduledTriggers', 'flows', 'looseElements',
     ...UI_PROJECTED_TYPES,
@@ -114,6 +114,12 @@ export function project(store: ModelStore): ModuxModel {
     })),
     areas: store.all('areas').map((a) => ({ id: a.id, name: str(a.title) ?? name(a) })),
     urls: store.all('urls').map((u) => ({ id: u.id, name: name(u), uri: str(u.url) ?? '' })),
+    archimateElements: store.all('archimateElements').map((e) => ({
+      id: e.id,
+      name: name(e),
+      concept: str(e.concept) ?? '',
+      ...(str(e.description) ? { description: str(e.description) } : {}),
+    })),
     archimateRelations: store.all('archimateRelations').map((r) => ({
       id: r.id,
       sourceId: str(r.sourceId) ?? '',

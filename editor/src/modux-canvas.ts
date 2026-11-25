@@ -8,6 +8,7 @@ import { orthogonalRoute } from './edge-routing.js';
 import { snapDragged, snapValue } from './snap.js';
 import { hasConnectHandles } from './connect-handles.js';
 import { LanguageController, t } from './i18n/index.js';
+import { archimateConcept } from './archi-prototype/archimate-concepts.js';
 
 /** Segment intersection with parameter t on (a→b); endpoints excluded. */
 function segIntersect(
@@ -209,6 +210,48 @@ export const SYMBOLS: Record<string, ReturnType<typeof svg>> = {
   plug: svg`<path d="M4 0.5 V3.5"></path><path d="M8 0.5 V3.5"></path>
     <path d="M2.5 3.5 H9.5 V6 A3.5 3.5 0 0 1 2.5 6 Z"></path>
     <path d="M6 9.5 V11.5"></path>`,
+  // ArchiMate elements with no modux concept (archimateElements) — Archi's type icons, simplified.
+  'amx-role': svg`<ellipse cx="9" cy="6" rx="2.2" ry="3.6"></ellipse>
+    <path d="M9 2.4 H3 A2.2 3.6 0 0 0 3 9.6 H9"></path>`,
+  'amx-collaboration': svg`<circle cx="4.2" cy="6" r="3.6"></circle><circle cx="7.8" cy="6" r="3.6"></circle>`,
+  'amx-interaction': svg`<path d="M5.2 1.6 A4.4 4.4 0 0 0 5.2 10.4 Z"></path><path d="M6.8 1.6 A4.4 4.4 0 0 1 6.8 10.4 Z"></path>`,
+  'amx-contract': svg`<rect x="0.8" y="1.5" width="10.4" height="9"></rect>
+    <line x1="0.8" y1="4" x2="11.2" y2="4"></line><line x1="0.8" y1="7.2" x2="11.2" y2="7.2"></line>`,
+  'amx-representation': svg`<path d="M0.8 1.5 H11.2 V9.4 Q8.6 7.6 6 9.4 Q3.4 11.2 0.8 9.4 Z"></path>
+    <line x1="0.8" y1="4" x2="11.2" y2="4"></line>`,
+  'amx-product': svg`<rect x="0.8" y="1.5" width="10.4" height="9"></rect><path d="M0.8 4 H5.6 V1.5"></path>`,
+  'amx-node': svg`<path d="M0.8 3.6 L3.2 1.2 H11.2 V8.4 L8.8 10.8 H0.8 Z"></path>
+    <path d="M0.8 3.6 H8.8 V10.8 M8.8 3.6 L11.2 1.2"></path>`,
+  'amx-device': svg`<rect x="1.5" y="1" width="9" height="6.6" rx="1"></rect><path d="M3 11 L4.4 7.6 H7.6 L9 11 Z"></path>`,
+  'amx-system-software': svg`<circle cx="5.2" cy="6.8" r="4.4"></circle><path d="M4.4 2.5 A4.4 4.4 0 0 1 9.4 7.6"></path>`,
+  'amx-path': svg`<line x1="2.5" y1="6" x2="9.5" y2="6" stroke-dasharray="1.6 1.2"></line>
+    <path d="M3.4 3.6 L1 6 L3.4 8.4 M8.6 3.6 L11 6 L8.6 8.4"></path>`,
+  'amx-network': svg`<path d="M3 3 H11 M1 9 H9 M3 3 L1 9 M11 3 L9 9"></path>
+    <circle cx="3" cy="3" r="1"></circle><circle cx="11" cy="3" r="1"></circle><circle cx="1" cy="9" r="1"></circle><circle cx="9" cy="9" r="1"></circle>`,
+  'amx-artifact': svg`<path d="M2 0.8 H7.4 L10 3.4 V11.2 H2 Z"></path><path d="M7.4 0.8 V3.4 H10"></path>`,
+  'amx-facility': svg`<path d="M0.8 11.2 V3 L4 5.2 V3 L7.2 5.2 V0.8 H9.2 V11.2 Z"></path>`,
+  'amx-distribution': svg`<path d="M0.8 4.5 H11.2 M0.8 7.5 H11.2"></path><path d="M3 2.3 L0.8 4.5 L3 6.7 M9 5.3 L11.2 7.5 L9 9.7"></path>`,
+  'amx-material': svg`<path d="M3.4 1.4 H8.6 L11.2 6 L8.6 10.6 H3.4 L0.8 6 Z"></path>`,
+  'amx-driver': svg`<circle cx="6" cy="6" r="4.2"></circle><circle cx="6" cy="6" r="1"></circle>
+    <path d="M6 0.5 V11.5 M0.5 6 H11.5 M2.1 2.1 L9.9 9.9 M9.9 2.1 L2.1 9.9"></path>`,
+  'amx-goal': svg`<circle cx="6" cy="6" r="5"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="6" r="1"></circle>`,
+  'amx-outcome': svg`<circle cx="5.4" cy="6.6" r="4.4"></circle><circle cx="5.4" cy="6.6" r="2.2"></circle>
+    <path d="M5.4 6.6 L11 1 M8.6 1 H11 V3.4"></path>`,
+  'amx-principle': svg`<rect x="2.4" y="0.8" width="7.2" height="10.4"></rect><path d="M6 2.8 V7.4 M6 8.8 V9.4"></path>`,
+  'amx-requirement': svg`<path d="M3 2.5 H11.2 L9 9.5 H0.8 Z"></path>`,
+  'amx-constraint': svg`<path d="M3 2.5 H11.2 L9 9.5 H0.8 Z"></path><line x1="5" y1="2.5" x2="2.8" y2="9.5"></line>`,
+  'amx-meaning': svg`<path d="M3 9 Q0.6 9 0.8 6.8 Q0.6 4.4 3 4.6 Q3.4 1.6 6.4 2.2 Q8.6 1.2 9.6 3.6 Q11.6 4.4 11 6.8 Q11.2 9.2 8.6 9 Z"></path>`,
+  'amx-value': svg`<ellipse cx="6" cy="6" rx="5.2" ry="3.4"></ellipse>`,
+  'amx-resource': svg`<rect x="0.8" y="3" width="9.4" height="6" rx="1.2"></rect><path d="M10.2 5 H11.2 V7 H10.2 M3 4.6 V7.4 M5 4.6 V7.4 M7 4.6 V7.4"></path>`,
+  'amx-capability': svg`<path d="M0.8 11.2 H11.2 V0.8 H7.8 V4.2 H4.2 V7.8 H0.8 Z"></path>
+    <path d="M4.2 7.8 H11.2 M7.8 4.2 H11.2 M4.2 7.8 V11.2 M7.8 4.2 V11.2"></path>`,
+  'amx-value-stream': svg`<path d="M0.8 2.5 H8.4 L11.2 6 L8.4 9.5 H0.8 L3.4 6 Z"></path>`,
+  'amx-course': svg`<circle cx="7" cy="5" r="4.2"></circle><circle cx="7" cy="5" r="2"></circle>
+    <path d="M0.8 11.2 Q1.4 7.2 5 6.4 M3.2 5.8 L5 6.4 L4.4 8.2"></path>`,
+  'amx-deliverable': svg`<path d="M0.8 1.5 H11.2 V9.4 Q8.6 7.6 6 9.4 Q3.4 11.2 0.8 9.4 Z"></path>`,
+  'amx-plateau': svg`<path d="M4 2.4 H11.2 M2.4 6 H9.6 M0.8 9.6 H8"></path>`,
+  'amx-gap': svg`<ellipse cx="6" cy="6" rx="4.6" ry="3.6"></ellipse><path d="M0.4 4.8 H11.6 M0.4 7.2 H11.6"></path>`,
+  'amx-location': svg`<path d="M6 11.4 C2.4 7 1.8 5.6 1.8 4.4 A4.2 4.2 0 0 1 10.2 4.4 C10.2 5.6 9.6 7 6 11.4 Z"></path>`,
 };
 
 // Container inner margins (CONTAINER_HEADER/CONTAINER_INSET) are shared with the
@@ -245,6 +288,8 @@ const ARCHIMATE_BEHAVIOUR_KINDS = new Set([
 ]);
 const ARCHIMATE_SERVICE_KINDS = new Set(['service', 'query-service']);
 function archimateCornerRadius(kind: string, halfHeight: number): number {
+  const am = archimateConcept(kind);
+  if (am) return am.rounded ? Math.min(9, halfHeight) : 0;
   return ARCHIMATE_SERVICE_KINDS.has(kind) || ARCHIMATE_BEHAVIOUR_KINDS.has(kind) ? Math.min(9, halfHeight) : 0;
 }
 /** Archi's default colours: connections black; an element's border is its fill darkened ×0.7. */

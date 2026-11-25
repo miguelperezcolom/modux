@@ -430,6 +430,32 @@
       "required" : [ "id" ],
       "additionalProperties" : false
     },
+    "ArchimateElementEntity" : {
+      "type" : "object",
+      "properties" : {
+        "concept" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id of this element in the model; other elements reference it via *Id fields. No spaces (kebab-case recommended).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        },
+        "name" : {
+          "type" : "string"
+        },
+        "projectId" : {
+          "type" : "string",
+          "description" : "Reference to an existing 'project' id (referential integrity is checked by the linter).",
+          "pattern" : "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+        }
+      },
+      "required" : [ "id" ],
+      "additionalProperties" : false
+    },
     "ArchimateRelationEntity" : {
       "type" : "object",
       "properties" : {
@@ -5636,6 +5662,12 @@
       "type" : "array",
       "items" : {
         "$ref" : "#/$defs/ApplicationEventEntity"
+      }
+    },
+    "archimateElements" : {
+      "type" : "array",
+      "items" : {
+        "$ref" : "#/$defs/ArchimateElementEntity"
       }
     },
     "archimateRelations" : {

@@ -976,6 +976,11 @@ export interface ModuxModel {
     pageIds?: string[];
     actorIds?: string[];
   }[];
+  /**
+   * ArchiMate elements modux has no concept for (a node, a database, a topic, a business
+   * process…): documentation only, drawn as `am:<concept>`, generating no code.
+   */
+  archimateElements?: { id: string; name: string; concept: string; description?: string }[];
   /** Hand-drawn ArchiMate relationships between any two elements (documentation intent). */
   archimateRelations?: {
     id: string;

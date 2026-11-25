@@ -5,6 +5,7 @@
  */
 import type { Scene } from '../scene.js';
 import { t, type MessageKey } from '../i18n/index.js';
+import { ARCHIMATE_CONCEPTS, archimateKind } from './archimate-concepts.js';
 
 /** ArchiMate-ish pastel fills, mapped to modux concept groups (the "layers"). */
 export const LAYER = {
@@ -18,6 +19,15 @@ export const LAYER = {
   ai:           { fill: '#F3E8FF', stroke: '#9333EA', nameKey: 'archi.layer.ai' },
   ui:           { fill: '#CCFBF1', stroke: '#0D9488', nameKey: 'archi.layer.ui' },
   tech:         { fill: '#DCFCE7', stroke: '#16A34A', nameKey: 'archi.layer.tech' },
+  // ArchiMate elements with no modux concept, in Archi's own layer colours.
+  'am-business':       { fill: '#FFFFB5', stroke: '#B2B27E', nameKey: 'archi.layer.am.business' },
+  'am-application':    { fill: '#B5FFFF', stroke: '#7EB2B2', nameKey: 'archi.layer.am.application' },
+  'am-technology':     { fill: '#C9E7B7', stroke: '#8CA180', nameKey: 'archi.layer.am.technology' },
+  'am-physical':       { fill: '#C9E7B7', stroke: '#8CA180', nameKey: 'archi.layer.am.physical' },
+  'am-motivation':     { fill: '#CCCCFF', stroke: '#8E8EB2', nameKey: 'archi.layer.am.motivation' },
+  'am-strategy':       { fill: '#F5DEAA', stroke: '#AB9B76', nameKey: 'archi.layer.am.strategy' },
+  'am-implementation': { fill: '#FFE0E0', stroke: '#B29C9C', nameKey: 'archi.layer.am.implementation' },
+  'am-other':          { fill: '#FBB875', stroke: '#AF8051', nameKey: 'archi.layer.am.other' },
 } as const satisfies Record<string, { fill: string; stroke: string; nameKey: MessageKey }>;
 
 export type LayerKey = keyof typeof LAYER;
@@ -74,6 +84,8 @@ export const ARCHIMATE_SYMBOL: Record<string, string> = {
   // Catalog-only kinds: no palette tool (they are reached from the catalog tree), but a view can show them.
   'query-service': 'am-service', model: 'am-object', system: 'am-component',
   gateway: 'am-gateway', subscription: 'plug', notification: 'am-event', process: 'process',
+  // ArchiMate elements with no modux concept: `am:<Concept>` → its type icon.
+  ...Object.fromEntries(ARCHIMATE_CONCEPTS.map((c) => [archimateKind(c.concept), c.symbol])),
 };
 
 const N = (

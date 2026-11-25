@@ -372,6 +372,14 @@ export const CORE_COMMANDS: Record<string, Handler> = {
   }),
 
   'remove-archimate-relation': remove({ type: 'archimateRelations' }),
+
+  // ---- ArchiMate elements with no modux concept (documentation only) ----------------------
+
+  'add-archimate-element': add({
+    type: 'archimateElements',
+    init: (c) => ({ concept: c.concept }),
+  }),
+  'remove-archimate-element': remove({ type: 'archimateElements' }),
   'set-archimate-relation-type': setField({ type: 'archimateRelations', field: 'type' }),
   'set-archimate-relation-nature': setField({ type: 'archimateRelations', field: 'nature' }),
 

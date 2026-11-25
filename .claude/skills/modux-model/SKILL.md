@@ -49,6 +49,28 @@ A bounded context is born with a **main module** (`{contextId}-main`), and a ser
 that module. If you add a context by hand, add its main module too, and add the module's id to
 a service's `moduleIds` — otherwise the context exists but nothing deploys it.
 
+### Describing what modux does not build
+
+Any system can be described, not only the parts modux generates. What has no modux concept —
+a database or a cache (`SystemSoftware`), a topic (`Artifact`), a server (`Node`), a business
+process, a data object, a location… — is an **ArchiMate element**, one file in
+`archimateElements/` with its concept in Archi's spelling:
+
+```yaml
+id: pagos-db
+name: pagos-db
+concept: SystemSoftware
+description: The payments database
+```
+
+It relates to anything (modux elements included) through an **ArchiMate relation** in
+`archimateRelations/` (`sourceId`, `targetId`, `type`: composition, aggregation, assignment,
+realization, serving, access, influence, triggering, flow, specialization, association), valid
+when Archi's relationship matrix allows it for the two concepts. Both are documentation: they
+are drawn and they generate no code. Reach for them only when no modux concept fits — an API, an
+external system or a use case still says more than its ArchiMate equivalent. An actor is never
+a relation's source: it is only ever served.
+
 ## The rules the schema cannot express
 
 The schema guards shape. These are the ones that break a model while still validating:

@@ -25,6 +25,15 @@ export type ModuxCommand =
     }
   | { kind: 'set-archimate-relation-type'; id: string; type: string }
   | {
+      /** An ArchiMate element modux has no concept for — documentation only, generates no code. */
+      kind: 'add-archimate-element';
+      id: string;
+      name: string;
+      /** Archi's concept name: Node, SystemSoftware, Artifact, BusinessProcess, DataObject… */
+      concept: string;
+    }
+  | { kind: 'remove-archimate-element'; id: string }
+  | {
       /** Override the structural intent/fact classification (null clears the override). */
       kind: 'set-archimate-relation-nature';
       id: string;

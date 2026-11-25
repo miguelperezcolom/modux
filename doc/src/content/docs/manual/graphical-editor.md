@@ -389,6 +389,20 @@ shown as the server sends them. Keyboard shortcuts are the same in both language
   1px borders in the fill's darker shade, rounded corners on behaviour (use cases,
   services, events…), names wrapped over several lines, and black connections that curve
   slightly at bends and hop where they cross.
+
+  **Any system can be described there, not only what modux builds.** Besides modux's own
+  elements, the palette carries every ArchiMate element modux has no concept for — grouped by
+  layer (business, application, technology, physical, motivation, strategy, implementation,
+  location): a database or cache is *System software*, a topic an *Artifact*, a server a *Node*,
+  plus business processes, data objects, requirements, capabilities… They are documentation:
+  stored one file each in `archimateElements/`, drawn in Archi's layer colours, and they generate
+  no code. Lines follow the same idea: the magic connector offers what a line *means* to modux
+  (a CRUD API, a flow, who implements an API operation…) and, past that, **any ArchiMate
+  relation** Archi's relationship matrix allows between the two ends; arming a relation in the
+  palette draws exactly that one. Those relations are stored in `archimateRelations/`, and **Del**
+  on a selected relation deletes it. An actor is never a relation's source — it is only served.
+  **System** (strategic) groups contexts; an **API operation** is created by dropping it on its
+  API.
 - **The modux server** (see [Installation](/getting-started/installation/#the-modux-server-optional))
   serves the same component as a bundle, `/modux-editor/modux-editor.js`, which defines
   `<modux-editor-connected base="/modux/editor">` — a host that talks to the server's

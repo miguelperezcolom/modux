@@ -21,7 +21,8 @@ type ViewMembers = { members: { id: string; x: number; y: number; w: number; h: 
 import { EXAMPLE_SCENE, LAYER, ARCHIMATE_SYMBOL, layerName, type LayerKey } from './example-scene.js';
 import { validRelations, canDraw, REL_NOTATION, REL_TYPES, relLabel, type RelOption } from './magic.js';
 import { connectionOptions, type GestureHost } from '../gestures.js';
-import { LanguageController, t, type MessageKey } from '../i18n/index.js';
+import { LanguageController, language, t, type MessageKey } from '../i18n/index.js';
+import { ARCHIMATE_CONCEPTS, archimateConcept, archimateKind, conceptLabel, conceptOfKind } from './archimate-concepts.js';
 
 /** A meaning the traced line can take in the model (from the editor's gesture vocabulary). */
 interface ConnectOption { id: string; label: string; hint: string; apply(): void }
@@ -32,13 +33,18 @@ interface ConnectOption { id: string; label: string; hint: string; apply(): void
  */
 interface ElementTool { kind: string; defaultName: string; layer: LayerKey; w: number; h: number; container?: boolean; group: PaletteGroup; }
 /** Element palette groups, in display order — new (high-level) groups slot in here. */
-const ELEMENT_GROUPS = ['strategic', 'domain', 'behavior', 'orchestration', 'integration', 'external', 'ai', 'ui', 'deployment', 'modules', 'other'] as const;
+const ELEMENT_GROUPS = ['strategic', 'domain', 'behavior', 'orchestration', 'integration', 'external', 'ai', 'ui', 'deployment', 'modules', 'other',
+  'am-business', 'am-application', 'am-technology', 'am-physical', 'am-motivation', 'am-strategy', 'am-implementation', 'am-other'] as const;
 type PaletteGroup = (typeof ELEMENT_GROUPS)[number] | 'extras';
 const PALETTE_GROUP_KEY: Record<PaletteGroup, MessageKey> = {
   strategic: 'archi.group.strategic', domain: 'archi.group.domain', behavior: 'archi.group.behavior',
   orchestration: 'archi.group.orchestration', integration: 'archi.group.integration', external: 'archi.group.external',
   ai: 'archi.group.ai', ui: 'archi.group.ui', deployment: 'archi.group.deployment', modules: 'archi.group.modules',
   other: 'archi.group.other', extras: 'archi.group.extras',
+  'am-business': 'archi.group.am.business', 'am-application': 'archi.group.am.application',
+  'am-technology': 'archi.group.am.technology', 'am-physical': 'archi.group.am.physical',
+  'am-motivation': 'archi.group.am.motivation', 'am-strategy': 'archi.group.am.strategy',
+  'am-implementation': 'archi.group.am.implementation', 'am-other': 'archi.group.am.other',
 };
 /**
  * Like Archi: every element is dropped at the same default size — its shape and icon say what it is.
@@ -47,6 +53,7 @@ const PALETTE_GROUP_KEY: Record<PaletteGroup, MessageKey> = {
 const ARCHI_W = 120;
 const ARCHI_H = 55;
 const ELEMENT_TOOLS: ElementTool[] = [
+  { kind: 'system', defaultName: 'Sistema', layer: 'context', w: 280, h: 170, container: true, group: 'strategic' },
   { kind: 'component', defaultName: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'strategic' },
   { kind: 'aggregate', defaultName: 'Agregado', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
   { kind: 'entity', defaultName: 'Entidad', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
@@ -85,6 +92,11 @@ const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'junction', defaultName: 'Junction', layer: 'behavior', w: 16, h: 16, group: 'other' },
 ];
 
+// The ArchiMate elements modux has no concept for — documentation only (archimateElements).
+for (const c of ARCHIMATE_CONCEPTS) {
+  ELEMENT_TOOLS.push({ kind: archimateKind(c.concept), defaultName: c.es, layer: `am-${c.layer}` as LayerKey, w: ARCHI_W, h: ARCHI_H, group: `am-${c.layer}` as PaletteGroup });
+}
+
 /** Non-ArchiMate extras (Archi's Note/Group section of the palette). */
 const EXTRA_TOOLS: ElementTool[] = [
   { kind: 'group', defaultName: 'Grupo', layer: 'context', w: 240, h: 150, container: true, group: 'extras' },
@@ -98,7 +110,7 @@ const TOOL_LABEL_KEY: Record<string, MessageKey> = {
   policy: 'archi.element.policy', event: 'archi.element.event', usecase: 'archi.element.useCase',
   service: 'archi.element.service', person: 'archi.element.actor', workflow: 'archi.element.workflow',
   'workflow-step': 'archi.element.workflowStep', 'etl-flow': 'archi.element.etlFlow', api: 'archi.element.api',
-  'api-operation': 'archi.element.apiOperation', 'proxy-api': 'archi.element.proxyApi',
+  'api-operation': 'archi.element.apiOperation', system: 'archi.kind.system', 'proxy-api': 'archi.element.proxyApi',
   'integration-event': 'archi.element.integrationEvent', 'external-system': 'archi.element.externalSystem',
   'identity-provider': 'archi.element.identityProvider', 'ai-agent': 'archi.element.aiAgent',
   'mcp-gateway': 'archi.element.mcpGateway', rag: 'archi.element.rag', 'ui-app': 'archi.element.uiApp',
@@ -110,6 +122,7 @@ const TOOL_LABEL_KEY: Record<string, MessageKey> = {
 };
 /** What the palette (and the hints and menus) call a tool, in the current language. */
 function toolLabel(el: ElementTool): string {
+  if (conceptOfKind(el.kind)) return conceptLabel(el.kind, language());
   const key = TOOL_LABEL_KEY[el.kind];
   return key ? t(key) : el.defaultName;
 }
@@ -126,7 +139,11 @@ const KIND_LAYER: Record<string, LayerKey> = {
   'ui-app': 'ui', page: 'ui', 'menu-item': 'ui',
   deployment: 'tech', module: 'tech', bff: 'tech', acl: 'tech', 'api-gateway': 'tech', adapter: 'tech', saga: 'tech', projector: 'tech', scheduler: 'tech',
 };
-function kindLayer(kind: string): LayerKey { return KIND_LAYER[kind] ?? 'domain'; }
+function kindLayer(kind: string): LayerKey {
+  const am = archimateConcept(kind);
+  if (am) return `am-${am.layer}` as LayerKey;
+  return KIND_LAYER[kind] ?? 'domain';
+}
 
 /**
  * Bound-mode wiring (free-form view over a real catalog): palette kind → the real modux command
@@ -136,6 +153,7 @@ function kindLayer(kind: string): LayerKey { return KIND_LAYER[kind] ?? 'domain'
  * módulos» — until the schema carries a module pattern.
  */
 const BOUND_CREATE: Record<string, (id: string, name: string) => Record<string, unknown>> = {
+  system: (id, name) => ({ kind: 'add-system', id, name }),
   component: (id, name) => ({ kind: 'add-boundedContext', id, name, subdomainType: 'GENERIC' }),
   aggregate: (id, name) => ({ kind: 'add-aggregate', id, name }),
   // a domain event: dropped inside a context it joins it (BOUND_CONTEXT_TYPE)
@@ -179,6 +197,7 @@ const CATALOG_KIND_LABEL_KEY: Record<string, MessageKey> = {
   process: 'archi.kind.process',
 };
 function catalogKindLabel(kind: string): string {
+  if (conceptOfKind(kind)) return conceptLabel(kind, language());
   const key = CATALOG_KIND_LABEL_KEY[kind];
   return key ? t(key) : kind;
 }
@@ -191,6 +210,16 @@ const BOUND_CONTEXT_TYPE: Record<string, string> = {
 
 /** The basic field types a model field can take in the properties panel. */
 const FIELD_TYPES = ['string', 'integer', 'number', 'money', 'bool', 'date', 'time', 'dateTime'];
+
+/**
+ * Which way an ArchiMate relation can be drawn between two node kinds, if at all: as traced
+ * (forward) or reversed. An actor is only ever served, so it is never the relation's source.
+ */
+function archiDirection(rel: string, s: string, t: string): 'forward' | 'reverse' | null {
+  if (s !== 'person' && canDraw(rel, s, t) === 'forward') return 'forward';
+  if (t !== 'person' && canDraw(rel, t, s) === 'forward') return 'reverse';
+  return null;
+}
 
 /** The size a kind is placed at: its palette tool's, or a plain box for catalog-only kinds. */
 function defaultSize(kind: string): { w: number; h: number } {
@@ -303,6 +332,9 @@ export class ArchiShell extends LitElement {
     // What else a context nests (use cases, events, read models, query services…): composed by it too.
     for (const e of catalogEntries(m)) if (e.ownerId && e.kind !== 'aggregate' && ids.has(e.id) && ids.has(e.ownerId) && !nestedIn(e.id, e.ownerId))
       edges.push({ id: `nest-ctx:${e.id}`, sourceId: e.ownerId, targetId: e.id, kind: 'composition', markerStart: 'diamond' });
+    // Hand-drawn ArchiMate relations, in their notation.
+    for (const r of m.archimateRelations ?? []) if (ids.has(r.sourceId) && ids.has(r.targetId))
+      edges.push({ id: `ar:${r.id}`, sourceId: r.sourceId, targetId: r.targetId, kind: r.type, label: r.label, ...(REL_NOTATION[r.type] ?? {}) } as SceneEdge);
     // A UI app serves the actors that open it.
     for (const u of m.actorAppUses ?? []) if (ids.has(u.appId) && ids.has(u.actorId))
       edges.push({ id: `actor-app:${u.actorId}->${u.appId}`, sourceId: u.appId, targetId: u.actorId, kind: 'serving', markerEnd: 'open-arrow' });
@@ -496,10 +528,9 @@ export class ArchiShell extends LitElement {
     this.toastTimer = window.setTimeout(() => (this.toast = null), 2600);
   }
   private validator = (s: string, t: string, rel: string | null) => {
-    if (this.bound) {
-      const pair = (a: string, b: string) => (s === a && t === b) || (s === b && t === a);
-      return (s === 'component' && t === 'component') || pair('component', 'aggregate') || pair('aggregate', 'entity') || pair('aggregate', 'value-object');
-    }
+    // bound: the magic connector asks the model what a line means; an armed relation must fit
+    // the ArchiMate matrix (and never start at an actor)
+    if (this.bound) return rel === null || archiDirection(rel, s, t) !== null;
     return rel === null ? validRelations(s, t).length > 0 : canDraw(rel, s, t) !== null;
   };
 
@@ -701,7 +732,14 @@ export class ArchiShell extends LitElement {
   };
   private removeElements(ids: string[], commit = true) {
     if (this.bound) {
-      // Del removes from the VIEW (the element stays in the model), like Archi.
+      // A selected model relation is deleted from the model (its line has no other existence)…
+      for (const id of ids) {
+        let mm: RegExpExecArray | null;
+        if (id.startsWith('ar:')) this.emit('modux-command', { command: { kind: 'remove-archimate-relation', id: id.slice(3) } });
+        else if ((mm = /^actor-app:(.+)->(.+)$/.exec(id))) this.emit('modux-command', { command: { kind: 'remove-actor-app', actorId: mm[1], appId: mm[2] } });
+        else if ((mm = /^rel:(.+)->(.+)$/.exec(id))) this.emit('modux-command', { command: { kind: 'remove-relation', sourceId: mm[1], targetId: mm[2] } });
+      }
+      // …and an element, from the VIEW (it stays in the model), like Archi.
       const set = new Set(ids);
       this.view = { members: this.view.members.filter((mem) => !set.has(mem.id)) };
       this.emit('view-changed', { view: this.view });
@@ -929,6 +967,15 @@ export class ArchiShell extends LitElement {
     if (this.bound) {
       const S = src.kind, T = tgt.kind;
       const cmd = (command: unknown) => this.emit('modux-command', { command });
+      // A relation armed in the palette is that ArchiMate relation, as drawn — documentation that
+      // relates anything to anything the ArchiMate matrix allows.
+      if (d.rel) {
+        const dir = archiDirection(d.rel, S, T);
+        if (!dir) this.flash(t('archi.toast.relationNotValid', { relation: relLabel(d.rel), source: src.label, target: tgt.label }));
+        else this.addArchimateRelation(d.rel, dir === 'forward' ? src : tgt, dir === 'forward' ? tgt : src);
+        this.afterConnect();
+        return;
+      }
       const agg = S === 'aggregate' ? src : T === 'aggregate' ? tgt : null;
       const mem = ['entity', 'value-object'].includes(S) ? src : ['entity', 'value-object'].includes(T) ? tgt : null;
       if (S === 'component' && T === 'component') cmd({ kind: 'add-relation', sourceId: src.id, targetId: tgt.id, type: 'CUSTOMER_SUPPLIER' });
@@ -940,7 +987,10 @@ export class ArchiShell extends LitElement {
       else {
         // Everything else means what the editor's gesture vocabulary says it means — the same
         // rules the classic canvas applies (CRUD API, use case → aggregate, emissions, flows…).
-        const options = connectionOptions(this.gestureHost(), src.id, tgt.id) as ConnectOption[];
+        // Past modux's own meanings, any ArchiMate relation the matrix allows: what has no meaning
+        // for the generator can still be documented, so any system can be described.
+        const typed = connectionOptions(this.gestureHost(), src.id, tgt.id) as ConnectOption[];
+        const options = typed.length === 1 ? typed : [...typed, ...this.archimateConnectOptions(src, tgt)];
         if (!options.length) this.flash(t('archi.toast.cannotConnect', { source: src.label, target: tgt.label }));
         else if (options.length === 1) this.applyConnect(options[0], src, tgt);
         else { this.connectMenu = { x: d.x, y: d.y, src, tgt, options }; return; }
@@ -972,10 +1022,29 @@ export class ArchiShell extends LitElement {
 
   private addNodeAt(el: ElementTool, x: number, y: number): SceneNode {
     if (this.bound) {
-      const id = `${el.kind}-${Date.now()}`;
+      // an id becomes a file name: an ArchiMate kind (`am:Node`) mints `node-…`, no colon
+      const id = `${(conceptOfKind(el.kind) ?? el.kind).replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}-${Date.now()}`;
       // the default name follows the UI language (the user renames it anyway)
       const name = toolLabel(el);
-      const build = BOUND_CREATE[el.kind];
+      const concept = conceptOfKind(el.kind);
+      // An API operation only exists inside its API: dropped on an API box, it is added to it.
+      if (el.kind === 'api-operation') {
+        const api = this.scene.nodes.find((n) => n.kind === 'api' && Math.abs(x - n.x) <= n.w / 2 + 8 && Math.abs(y - n.y) <= n.h / 2 + 8);
+        if (!api) {
+          this.flash(t('archi.toast.dropOperationOnApi'));
+          return { id, label: toolLabel(el), kind: el.kind, symbol: el.kind, x, y, w: el.w, h: el.h } as SceneNode;
+        }
+        const name = toolLabel(el);
+        this.emit('modux-command', { command: { kind: 'add-api-operation', apiId: api.id, id, name } });
+        const at = { x: api.x, y: api.y + api.h / 2 + el.h / 2 + 30 };
+        this.view = { members: [...this.view.members, { id, ...at, w: el.w, h: el.h }] };
+        this.emit('view-changed', { view: this.view });
+        this.pendingKinds.set(id, el.kind);
+        this.select(id);
+        return { id, label: name, kind: el.kind, symbol: el.kind, ...at, w: el.w, h: el.h } as SceneNode;
+      }
+      const build = BOUND_CREATE[el.kind]
+        ?? (concept ? (bid: string, bname: string) => ({ kind: 'add-archimate-element', id: bid, name: bname, concept }) : undefined);
       if (build) {
         this.emit('modux-command', { command: build(id, name) });
         this.view = { members: [...this.view.members, { id, x, y, w: el.w, h: el.h }] };
@@ -1516,6 +1585,24 @@ export class ArchiShell extends LitElement {
     this.flash(this.gestureNotice ?? t('archi.toast.connected', { action: o.label, source: src.label, target: tgt.label }));
   }
   private gestureNotice: string | null = null;
+
+  /** A hand-drawn ArchiMate relation between two elements of the model (`archimateRelations`). */
+  private addArchimateRelation(rel: string, a: SceneNode, b: SceneNode) {
+    const id = `ar-${a.id}-${b.id}-${rel}`;
+    if ((this.model?.archimateRelations ?? []).some((r) => r.id === id)) return;
+    this.emit('modux-command', { command: { kind: 'add-archimate-relation', id, sourceId: a.id, targetId: b.id, type: rel } });
+    this.flash(t('archi.toast.connected', { action: relLabel(rel), source: a.label, target: b.label }));
+  }
+  /** Every ArchiMate relation drawable between two nodes, as connect-menu options. */
+  private archimateConnectOptions(src: SceneNode, tgt: SceneNode): ConnectOption[] {
+    return REL_TYPES.flatMap((rel) => {
+      const dir = archiDirection(rel, src.kind, tgt.kind);
+      if (!dir) return [];
+      const [a, b] = dir === 'forward' ? [src, tgt] : [tgt, src];
+      const label = `${relLabel(rel)} — ${a.label} → ${b.label}`;
+      return [{ id: `archimate:${rel}`, label, hint: label, apply: () => this.addArchimateRelation(rel, a, b) }];
+    });
+  }
   /**
    * The slice of the classic editor's host the connection vocabulary needs: the model and a way
    * to issue commands. The pickers and view plumbing it can also ask for have no counterpart in
