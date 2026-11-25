@@ -77,6 +77,7 @@ function relationTypes(): { id: string; label: string; hint: string }[] {
     { id: 'ui-assignment', label: t('gestures.relation.uiAssignment.label'), hint: t('gestures.relation.uiAssignment.hint') },
     { id: 'ui-composition', label: t('gestures.relation.uiComposition.label'), hint: t('gestures.relation.uiComposition.hint') },
     { id: 'ui-serving', label: t('gestures.relation.uiServing.label'), hint: t('gestures.relation.uiServing.hint') },
+    { id: 'actor-app', label: t('gestures.relation.actorApp.label'), hint: t('gestures.relation.actorApp.hint') },
     { id: 'aggregate-composition', label: t('gestures.relation.aggregateComposition.label'), hint: t('gestures.relation.aggregateComposition.hint') },
     { id: 'system-composition', label: t('gestures.relation.systemComposition.label'), hint: t('gestures.relation.systemComposition.hint') },
     { id: 'projection', label: t('gestures.relation.projection.label'), hint: t('gestures.relation.projection.hint') },
@@ -182,6 +183,18 @@ export function connectionOptions(
     if (ui && (appIds.has(other) || pageIds.has(other))) {
       offer('ui-assignment', () => {
         host.command({ kind: 'add-ui-assignment', id: ui, targetId: other });
+      });
+    }
+  }
+  {
+    // actor ⇆ UI app (either direction): the app serves the actor — the actor opens it.
+    const app = appIds.has(sourceId) ? sourceId : appIds.has(targetId) ? targetId : null;
+    const other = app === sourceId ? targetId : sourceId;
+    if (app && isActor(other)) {
+      offer('actor-app', () => {
+        if (!(m.actorAppUses ?? []).some((u) => u.actorId === other && u.appId === app)) {
+          host.command({ kind: 'add-actor-app', actorId: other, appId: app });
+        }
       });
     }
   }
@@ -1484,9 +1497,9 @@ export function applyConnectionGesture(
       }
       return;
     }
-    // Agents as target: legal from an actor (talks to it) or from an event (triggers
-    // it — reactive agents); the event branch lives further down, past the emission
-    // sets it reuses. Anything else pointing at an agent is not a gesture.
+    // Agents as target: legal only from an event (triggers it — a reactive agent). An actor is
+    // only ever served (see below), so it does not «talk to» an agent either. Anything else
+    // pointing at an agent is not a gesture.
     const actorIds = new Set((host.model.actors ?? []).map((a) => a.id));
     if (agentIds.has(targetId)) {
       const eventSourceIds = new Set([
@@ -1498,9 +1511,8 @@ export function applyConnectionGesture(
           (t) => t.eventId === sourceId && t.agentId === targetId,
         );
         if (!already) host.command({ kind: 'add-agent-trigger', sourceId, targetId });
-        return;
       }
-      if (!actorIds.has(sourceId)) return;
+      return;
     }
     // An actor never serves nor initiates — it is only ever served (see connectionOptions). So an
     // edge dragged FROM an actor creates nothing; the only actor edge is one pointing into it (a UI

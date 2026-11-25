@@ -67,21 +67,37 @@ function perpDist(a: Point, b: Point, c: Point): number {
   return Math.abs((b.x - a.x) * dy - (b.y - a.y) * dx) / len;
 }
 
-/** Orthogonal polyline with rounded corners (ArchiMate mode) — quadratic fillet per vertex. */
-function roundedOrthoPath(pts: Point[], radius = 10): string {
+/**
+ * A connection as Archi draws it: a small curve at each bend and a line jump (a little hop) where it
+ * crosses a connection drawn before it.
+ */
+export function archiPath(pts: Point[], priorSegments: [Point, Point][], bend = 4, hop = 5): string {
   if (pts.length < 2) return '';
+  const len = (i: number) => Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y) || 1;
+  // corner radius at each interior vertex (0 at the ends)
+  const r = pts.map((_, i) => (i === 0 || i === pts.length - 1 ? 0 : Math.min(bend, len(i - 1) / 2, len(i) / 2)));
   let d = `M ${pts[0].x} ${pts[0].y}`;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1], p1 = pts[i], p2 = pts[i + 1];
-    const l1 = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1;
-    const l2 = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
-    const rr = Math.min(radius, l1 / 2, l2 / 2);
-    const a = { x: p1.x - ((p1.x - p0.x) / l1) * rr, y: p1.y - ((p1.y - p0.y) / l1) * rr };
-    const b = { x: p1.x + ((p2.x - p1.x) / l2) * rr, y: p1.y + ((p2.y - p1.y) / l2) * rr };
-    d += ` L ${a.x} ${a.y} Q ${p1.x} ${p1.y} ${b.x} ${b.y}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], l = len(i);
+    const ux = (b.x - a.x) / l, uy = (b.y - a.y) / l;
+    const crossings = priorSegments
+      .map(([c, e]) => segIntersect(a, b, c, e))
+      .filter((p): p is Point & { t: number } => p !== null)
+      .filter((p) => p.t * l > r[i] + hop + 1 && (1 - p.t) * l > r[i + 1] + hop + 1)
+      .sort((p, q) => p.t - q.t);
+    let lastEnd = -Infinity;
+    for (const p of crossings) {
+      if (p.t * l - hop <= lastEnd + 2) continue; // merged with the previous hop
+      d += ` L ${p.x - ux * hop} ${p.y - uy * hop}`;
+      d += ` A ${hop} ${hop} 0 0 1 ${p.x + ux * hop} ${p.y + uy * hop}`;
+      lastEnd = p.t * l + hop;
+    }
+    d += ` L ${b.x - ux * r[i + 1]} ${b.y - uy * r[i + 1]}`;
+    if (i + 1 < pts.length - 1) {
+      const c = pts[i + 2], l2 = len(i + 1);
+      d += ` Q ${b.x} ${b.y} ${b.x + ((c.x - b.x) / l2) * r[i + 1]} ${b.y + ((c.y - b.y) / l2) * r[i + 1]}`;
+    }
   }
-  const last = pts[pts.length - 1];
-  d += ` L ${last.x} ${last.y}`;
   return d;
 }
 
@@ -218,6 +234,29 @@ export type CanvasTool =
   | { kind: 'select' }
   | { kind: 'place'; nodeKind: string; w: number; h: number }
   | { kind: 'connect'; rel: string | null };
+
+/**
+ * ArchiMate notation as Archi draws it: structure elements are square-cornered; behaviour elements
+ * (functions, processes, events, services…) are rounded rectangles of the same corner radius.
+ */
+const ARCHIMATE_BEHAVIOUR_KINDS = new Set([
+  'usecase', 'policy', 'workflow', 'workflow-step', 'etl-flow', 'process', 'saga',
+  'event', 'integration-event', 'notification', 'api-operation',
+]);
+const ARCHIMATE_SERVICE_KINDS = new Set(['service', 'query-service']);
+function archimateCornerRadius(kind: string, halfHeight: number): number {
+  return ARCHIMATE_SERVICE_KINDS.has(kind) || ARCHIMATE_BEHAVIOUR_KINDS.has(kind) ? Math.min(9, halfHeight) : 0;
+}
+/** Archi's default colours: connections black; an element's border is its fill darkened ×0.7. */
+const ARCHI_LINE = '#5C5C5C';
+const ARCHI_CONNECTION = '#000000';
+function archiLineColour(fill: string): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(fill.trim());
+  if (!m) return ARCHI_LINE;
+  const n = parseInt(m[1], 16);
+  const ch = (shift: number) => Math.floor(((n >> shift) & 0xff) * 0.7).toString(16).padStart(2, '0');
+  return `#${ch(16)}${ch(8)}${ch(0)}`;
+}
 
 @customElement('modux-canvas')
 export class ModuxCanvas extends LitElement {
@@ -577,6 +616,9 @@ export class ModuxCanvas extends LitElement {
         // Drop the layer so the vectors re-rasterize crisp at the final scale. No requestUpdate here:
         // re-rendering the whole scene on every pause in scrolling was a visible hitch. The minimap
         // is kept in sync imperatively (applyViewportTransform), so nothing else needs a re-render.
+        // A minimap drag fires start/zoom/end on every move: keep the cached layer until it ends,
+        // or the whole scene re-rasterizes on every pointer event.
+        if (this._minimapDrag) return;
         this._viewportEl?.classList.remove('zooming');
         this._zoomingActive = false;
       });
@@ -1705,11 +1747,12 @@ export class ModuxCanvas extends LitElement {
     const faded = this.spotlighting && !this._focusEdges.has(edge.id);
     return svg`
       <g data-edge-ink=${edge.id} pointer-events="none" opacity=${edge.dim ? 0.18 : faded ? 0.1 : edge.faint ? 0.4 : 1}>
-        <path d=${this.archimate ? roundedOrthoPath(pts) : pathWithBridges(pts, priorSegments)}
+        <path d=${this.archimate ? archiPath(pts, priorSegments) : pathWithBridges(pts, priorSegments)}
               fill="none"
-              stroke=${color} stroke-width=${highlighted ? 3 : 1.6}
+              stroke=${color} stroke-width=${this.archimate ? (highlighted ? 2 : 1) : highlighted ? 3 : 1.6}
               stroke-dasharray=${edge.dashArray ?? (edge.dashed ? '6 4' : '')}
-              opacity="0.92"
+              vector-effect=${this.archimate ? 'non-scaling-stroke' : 'none'}
+              opacity=${this.archimate ? 1 : 0.92}
               marker-start=${edge.markerStart
                 ? `url(#${edge.markerStart}-${this.markerId(color)})`
                 : edge.kind === 'contains' ? `url(#diamond-${this.markerId(color)})` : ''}
@@ -1794,7 +1837,8 @@ export class ModuxCanvas extends LitElement {
    */
   private edgeColor(edge: SceneEdge): string {
     return (
-      edge.color ?? (getComputedStyle(this).getPropertyValue('--modux-edge').trim() || '#64748b')
+      edge.color ?? (this.archimate ? ARCHI_CONNECTION
+        : getComputedStyle(this).getPropertyValue('--modux-edge').trim() || '#64748b')
     );
   }
 
@@ -1852,6 +1896,38 @@ export class ModuxCanvas extends LitElement {
     return lo > 0 ? `${label.slice(0, lo)}…` : '…';
   }
 
+  /**
+   * Archi wraps an element's name over as many lines as fit (centred, top-down) and only cuts the
+   * last one. Words longer than a line are split where they overflow.
+   */
+  private wrapLabel(label: string, maxW: number, maxH: number, font = '400 12px ui-sans-serif, system-ui'): string[] {
+    const maxLines = Math.max(1, Math.floor((maxH - 4) / 15));
+    if (maxW <= 0) return [label];
+    const lines: string[] = [];
+    let cur = '';
+    const push = (word: string) => {
+      const next = cur ? `${cur} ${word}` : word;
+      if (this.measureLabel(next, font) <= maxW) { cur = next; return; }
+      if (cur) lines.push(cur);
+      cur = '';
+      // a word wider than the line breaks where it overflows
+      let rest = word;
+      while (this.measureLabel(rest, font) > maxW && rest.length > 1) {
+        let k = rest.length - 1;
+        while (k > 1 && this.measureLabel(rest.slice(0, k), font) > maxW) k--;
+        lines.push(rest.slice(0, k));
+        rest = rest.slice(k);
+      }
+      cur = rest;
+    };
+    for (const w of label.split(/\s+/).filter(Boolean)) push(w);
+    if (cur) lines.push(cur);
+    if (lines.length <= maxLines) return lines;
+    const kept = lines.slice(0, maxLines);
+    kept[maxLines - 1] = this.fitLabel(`${kept[maxLines - 1]} ${lines.slice(maxLines).join(' ')}`, maxW, font);
+    return kept;
+  }
+
   private renderNode(node: SceneNode): TemplateResult | typeof svg.prototype {
     const { x, y } = this.nodePos(node);
     const selected = this.selectedId === node.id || this.selectedIds.includes(node.id);
@@ -1887,9 +1963,11 @@ export class ModuxCanvas extends LitElement {
     // Archi's "boxed" notation: EVERY element is a plain rectangle with its type icon
     // in the top-right corner and the name at the top — no distinctive silhouettes.
     const nodeFill = node.fill ?? (node.kind === 'note' ? 'var(--modux-note-fill, #fef9c3)' : 'var(--modux-node-fill, #ffffff)');
-    const nodeStroke = toolStroke ?? (hovered || selected ? hl : this.archimate ? '#5C5C5C' : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)'));
-    const nodeStrokeW = toolStroke ? 2 : selected || hovered ? 2 : this.archimate ? 1 : 1.4;
-    const amRx = this.archimate ? 2 : isChild ? 6 : 10;
+    // Archi: a 1px border (the fill darkened) that neither hover nor selection recolours — selection shows only
+    // the resize handles. The connect tool's valid-target feedback is the one exception.
+    const nodeStroke = toolStroke ?? (this.archimate ? archiLineColour(nodeFill) : hovered || selected ? hl : (node.stroke ?? 'var(--modux-node-stroke, #94a3b8)'));
+    const nodeStrokeW = toolStroke ? 2 : this.archimate ? 1 : selected || hovered ? 2 : 1.4;
+    const amRx = this.archimate ? archimateCornerRadius(node.kind, hh) : isChild ? 6 : 10;
     const amLabelY = -hh + 17;
     // ArchiMate Junction: a small filled dot (AND) or hollow dot (OR) — no label/icon.
     if (this.archimate && node.kind === 'junction') {
@@ -1907,7 +1985,7 @@ export class ModuxCanvas extends LitElement {
     return svg`
       <g data-node-id=${node.id}
          opacity=${node.dim ? 0.25 : faded ? 0.16 : 1}
-         transform="translate(${x}, ${y})${hovered ? ' scale(1.06)' : ''}"
+         transform="translate(${x}, ${y})${hovered && !this.archimate ? ' scale(1.06)' : ''}"
          pointer-events=${(this._dragPos && this._dragPos.id === node.id) ||
            this._dragGroup?.has(node.id)
              ? 'none'
@@ -1931,7 +2009,8 @@ export class ModuxCanvas extends LitElement {
           : ''}
         <rect x=${-hw} y=${-hh} width=${rw} height=${rh} rx=${amRx}
               style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`}
-              stroke-width=${nodeStrokeW} stroke-dasharray=${node.dashed ? '6 4' : ''}>
+              stroke-width=${nodeStrokeW} stroke-dasharray=${node.dashed ? '6 4' : ''}
+              vector-effect=${this.archimate ? 'non-scaling-stroke' : 'none'}>
           ${tooltip ? svg`<title>${tooltip}</title>` : ''}</rect>
         ${node.derived
           ? svg`<text x=${-hw + 5} y=${-hh + 13} font-size="10" style="fill: var(--modux-derive, #a855f7)"
@@ -1960,7 +2039,7 @@ export class ModuxCanvas extends LitElement {
           : ''}
         ${node.symbol && SYMBOLS[node.symbol] && (!isChild || isContainer || this.archimate)
           ? svg`<g transform="translate(${hw - (node.collapsible ? 40 : 22)}, ${-hh + 5}) scale(${this.archimate ? 1.45 : 1})" fill="none"
-                  style=${'stroke: ' + (this.archimate ? '#475569' : (node.stroke ?? 'var(--modux-node-stroke, #64748b)'))}
+                  style=${'stroke: ' + (this.archimate ? '#000000' : (node.stroke ?? 'var(--modux-node-stroke, #64748b)'))}
                   stroke-width=${this.archimate ? 1 : 1.1} stroke-linejoin="round"
                   stroke-linecap="round" pointer-events="none">
                 ${SYMBOLS[node.symbol]}
@@ -1993,17 +2072,23 @@ export class ModuxCanvas extends LitElement {
           : isChild && !isContainer && !this.archimate
             ? svg`<text x=${-hw + 24} y="4" text-anchor="start" font-size="12" font-weight="600"
                 font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)" pointer-events="none">${childLabel}</text>`
+            : isContainer && this.archimate
+              ? svg`<text x="0" y=${amLabelY} text-anchor="middle" font-size="12" font-weight="400"
+                  font-family="ui-sans-serif, system-ui" style="fill: #000000">${this.fitLabel(node.label, rw - 40, '400 12px ui-sans-serif, system-ui')}</text>`
             : isContainer
               ? svg`<text x=${-hw + 12} y=${-hh + 21} text-anchor="start" font-size="13"
                   font-weight="700" font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${node.label}</text>`
               : node.kind === 'area'
                 ? '' // a bare rectangle: its name only shows as tooltip (F2 still edits it)
-                : svg`<text x="0" y=${this.archimate ? amLabelY : 4} text-anchor="middle"
-                  font-size=${this.archimate ? 12 : 13} font-weight=${this.archimate ? '400' : '600'}
-                  font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 22)}</text>`}
-        ${isContainer
+                : this.archimate
+                  ? svg`<text text-anchor="middle" font-size="12" font-weight="400"
+                      font-family="ui-sans-serif, system-ui" style="fill: #000000">${this.wrapLabel(node.label, rw - 40, rh - 8).map(
+                        (line, i) => svg`<tspan x="0" y=${amLabelY + i * 15}>${line}</tspan>`)}</text>`
+                  : svg`<text x="0" y="4" text-anchor="middle" font-size="13" font-weight="600"
+                      font-family="ui-sans-serif, system-ui" style="fill: var(--modux-text, #1e293b)">${this.fitLabel(node.label, rw - 22)}</text>`}
+        ${isContainer && !this.archimate
           ? svg`<line x1=${-hw + 8} y1=${-hh + 28} x2=${hw - 8} y2=${-hh + 28}
-                style=${`stroke: ${this.archimate ? nodeStroke : 'var(--modux-border, #e2e8f0)'}`} stroke-width="1" pointer-events="none"></line>`
+                style="stroke: var(--modux-border, #e2e8f0)" stroke-width="1" pointer-events="none"></line>`
           : ''}
         ${this.archimate && isContainer && node.kind === 'component'
           ? svg`<g pointer-events="none" style=${`fill: ${nodeFill}; stroke: ${nodeStroke}`} stroke-width="1">
@@ -2156,20 +2241,75 @@ export class ModuxCanvas extends LitElement {
     return { minX, minY, w: maxX - minX, h: maxY - minY };
   }
 
-  private centerViewportOn(sceneX: number, sceneY: number): void {
+  private centerViewportOn(sceneX: number, sceneY: number, rect: DOMRect = this.getBoundingClientRect()): void {
     const svgEl = this.renderRoot.querySelector('svg.main') as SVGSVGElement | null;
     if (!svgEl || !this._zoomBehavior) return;
-    const rect = this.getBoundingClientRect();
     const k = this._t.k;
     const t = zoomIdentity.translate(rect.width / 2 - k * sceneX, rect.height / 2 - k * sceneY).scale(k);
     select(svgEl).call(this._zoomBehavior.transform, t);
   }
 
-  private onMinimapPointer(e: PointerEvent, bounds: NonNullable<ReturnType<typeof this.sceneBounds>>, scale: number): void {
-    const box = (e.currentTarget as Element).getBoundingClientRect();
-    const sceneX = bounds.minX + (e.clientX - box.left) / scale;
-    const sceneY = bounds.minY + (e.clientY - box.top) / scale;
-    this.centerViewportOn(sceneX, sceneY);
+  /**
+   * An ongoing drag on the minimap. The viewport box is GRABBED where it was pressed (offset kept),
+   * so it moves with the pointer instead of jumping to centre under it; a press outside the box
+   * centres the view there first. Rects are measured once, and moves are applied once per frame.
+   */
+  private _minimapDrag: {
+    box: DOMRect; canvas: DOMRect; bounds: { minX: number; minY: number }; scale: number;
+    offX: number; offY: number; clientX: number; clientY: number; raf: number;
+  } | null = null;
+
+  private minimapToScene(clientX: number, clientY: number): { x: number; y: number } {
+    const d = this._minimapDrag!;
+    return { x: d.bounds.minX + (clientX - d.box.left) / d.scale, y: d.bounds.minY + (clientY - d.box.top) / d.scale };
+  }
+
+  private onMinimapDown(e: PointerEvent, bounds: NonNullable<ReturnType<typeof this.sceneBounds>>, scale: number): void {
+    const el = e.currentTarget as Element;
+    const box = (el.querySelector('svg') ?? el).getBoundingClientRect();
+    const canvas = this.getBoundingClientRect();
+    this._minimapDrag = { box, canvas, bounds, scale, offX: 0, offY: 0, clientX: e.clientX, clientY: e.clientY, raf: 0 };
+    const p = this.minimapToScene(e.clientX, e.clientY);
+    const k = this._t.k;
+    const cx = (canvas.width / 2 - this._t.x) / k;
+    const cy = (canvas.height / 2 - this._t.y) / k;
+    const inside = Math.abs(p.x - cx) <= canvas.width / k / 2 && Math.abs(p.y - cy) <= canvas.height / k / 2;
+    if (inside) {
+      // grab the box where it was pressed
+      this._minimapDrag.offX = cx - p.x;
+      this._minimapDrag.offY = cy - p.y;
+    } else {
+      this.centerViewportOn(p.x, p.y, canvas);
+    }
+    this._viewportEl?.classList.add('zooming');
+    this._zoomingActive = true;
+  }
+
+  private onMinimapMove(e: PointerEvent): void {
+    const d = this._minimapDrag;
+    if (!d) return;
+    d.clientX = e.clientX;
+    d.clientY = e.clientY;
+    if (d.raf) return;
+    d.raf = requestAnimationFrame(() => {
+      d.raf = 0;
+      if (this._minimapDrag !== d) return;
+      const p = this.minimapToScene(d.clientX, d.clientY);
+      this.centerViewportOn(p.x + d.offX, p.y + d.offY, d.canvas);
+    });
+  }
+
+  private onMinimapUp(): void {
+    const d = this._minimapDrag;
+    if (!d) return;
+    if (d.raf) {
+      cancelAnimationFrame(d.raf);
+      const p = this.minimapToScene(d.clientX, d.clientY);
+      this.centerViewportOn(p.x + d.offX, p.y + d.offY, d.canvas);
+    }
+    this._minimapDrag = null;
+    this._viewportEl?.classList.remove('zooming');
+    this._zoomingActive = false;
   }
 
   private renderMinimap(): TemplateResult | typeof svg.prototype {
@@ -2197,13 +2337,12 @@ export class ModuxCanvas extends LitElement {
           } catch {
             /* synthetic or stale pointer id — dragging just won't track */
           }
-          this.onMinimapPointer(e, bounds, scale);
+          this.onMinimapDown(e, bounds, scale);
         }}
-        @pointermove=${(e: PointerEvent) => {
-          if ((e.currentTarget as Element).hasPointerCapture?.(e.pointerId)) {
-            this.onMinimapPointer(e, bounds, scale);
-          }
-        }}
+        @pointermove=${(e: PointerEvent) => this.onMinimapMove(e)}
+        @pointerup=${() => this.onMinimapUp()}
+        @pointercancel=${() => this.onMinimapUp()}
+        @lostpointercapture=${() => this.onMinimapUp()}
       >
         <svg viewBox="0 0 ${MW} ${MH}">
           ${this.scene.nodes.map((n) => {

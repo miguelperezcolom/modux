@@ -40,49 +40,55 @@ const PALETTE_GROUP_KEY: Record<PaletteGroup, MessageKey> = {
   ai: 'archi.group.ai', ui: 'archi.group.ui', deployment: 'archi.group.deployment', modules: 'archi.group.modules',
   other: 'archi.group.other', extras: 'archi.group.extras',
 };
+/**
+ * Like Archi: every element is dropped at the same default size — its shape and icon say what it is.
+ * Only containers (contexts, apps, deployments, groups…) start bigger, to have room for what they hold.
+ */
+const ARCHI_W = 120;
+const ARCHI_H = 55;
 const ELEMENT_TOOLS: ElementTool[] = [
   { kind: 'component', defaultName: 'Contexto', layer: 'context', w: 240, h: 130, container: true, group: 'strategic' },
-  { kind: 'aggregate', defaultName: 'Agregado', layer: 'domain', w: 160, h: 66, group: 'domain' },
-  { kind: 'entity', defaultName: 'Entidad', layer: 'domain', w: 160, h: 66, group: 'domain' },
-  { kind: 'value-object', defaultName: 'Value object', layer: 'domain', w: 150, h: 56, group: 'domain' },
-  { kind: 'invariant', defaultName: 'Invariante', layer: 'domain', w: 150, h: 56, group: 'domain' },
-  { kind: 'read-model', defaultName: 'Read model', layer: 'domain', w: 160, h: 56, group: 'domain' },
-  { kind: 'policy', defaultName: 'Policy', layer: 'domain', w: 150, h: 56, group: 'domain' },
-  { kind: 'event', defaultName: 'Evento', layer: 'event', w: 200, h: 62, group: 'domain' },
-  { kind: 'usecase', defaultName: 'Caso de uso', layer: 'behavior', w: 160, h: 62, group: 'behavior' },
-  { kind: 'service', defaultName: 'Servicio', layer: 'behavior', w: 170, h: 50, group: 'behavior' },
-  { kind: 'person', defaultName: 'Actor', layer: 'behavior', w: 130, h: 74, group: 'behavior' },
+  { kind: 'aggregate', defaultName: 'Agregado', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
+  { kind: 'entity', defaultName: 'Entidad', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
+  { kind: 'value-object', defaultName: 'Value object', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
+  { kind: 'invariant', defaultName: 'Invariante', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
+  { kind: 'read-model', defaultName: 'Read model', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
+  { kind: 'policy', defaultName: 'Policy', layer: 'domain', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
+  { kind: 'event', defaultName: 'Evento', layer: 'event', w: ARCHI_W, h: ARCHI_H, group: 'domain' },
+  { kind: 'usecase', defaultName: 'Caso de uso', layer: 'behavior', w: ARCHI_W, h: ARCHI_H, group: 'behavior' },
+  { kind: 'service', defaultName: 'Servicio', layer: 'behavior', w: ARCHI_W, h: ARCHI_H, group: 'behavior' },
+  { kind: 'person', defaultName: 'Actor', layer: 'behavior', w: ARCHI_W, h: ARCHI_H, group: 'behavior' },
   { kind: 'workflow', defaultName: 'Workflow', layer: 'orchestration', w: 240, h: 130, container: true, group: 'orchestration' },
-  { kind: 'workflow-step', defaultName: 'Paso', layer: 'orchestration', w: 150, h: 56, group: 'orchestration' },
-  { kind: 'etl-flow', defaultName: 'Flujo ETL', layer: 'orchestration', w: 160, h: 56, group: 'orchestration' },
-  { kind: 'api', defaultName: 'API', layer: 'api', w: 160, h: 56, group: 'integration' },
-  { kind: 'api-operation', defaultName: 'Operación API', layer: 'api', w: 170, h: 52, group: 'integration' },
-  { kind: 'proxy-api', defaultName: 'Proxy API', layer: 'api', w: 160, h: 56, group: 'integration' },
-  { kind: 'integration-event', defaultName: 'Evento integración', layer: 'api', w: 200, h: 56, group: 'integration' },
+  { kind: 'workflow-step', defaultName: 'Paso', layer: 'orchestration', w: ARCHI_W, h: ARCHI_H, group: 'orchestration' },
+  { kind: 'etl-flow', defaultName: 'Flujo ETL', layer: 'orchestration', w: ARCHI_W, h: ARCHI_H, group: 'orchestration' },
+  { kind: 'api', defaultName: 'API', layer: 'api', w: ARCHI_W, h: ARCHI_H, group: 'integration' },
+  { kind: 'api-operation', defaultName: 'Operación API', layer: 'api', w: ARCHI_W, h: ARCHI_H, group: 'integration' },
+  { kind: 'proxy-api', defaultName: 'Proxy API', layer: 'api', w: ARCHI_W, h: ARCHI_H, group: 'integration' },
+  { kind: 'integration-event', defaultName: 'Evento integración', layer: 'api', w: ARCHI_W, h: ARCHI_H, group: 'integration' },
   { kind: 'external-system', defaultName: 'Sistema externo', layer: 'external', w: 220, h: 120, container: true, group: 'external' },
-  { kind: 'identity-provider', defaultName: 'IdP', layer: 'external', w: 150, h: 56, group: 'external' },
-  { kind: 'ai-agent', defaultName: 'Agente IA', layer: 'ai', w: 160, h: 60, group: 'ai' },
-  { kind: 'mcp-gateway', defaultName: 'Gateway MCP', layer: 'ai', w: 170, h: 56, group: 'ai' },
-  { kind: 'rag', defaultName: 'RAG', layer: 'ai', w: 140, h: 56, group: 'ai' },
+  { kind: 'identity-provider', defaultName: 'IdP', layer: 'external', w: ARCHI_W, h: ARCHI_H, group: 'external' },
+  { kind: 'ai-agent', defaultName: 'Agente IA', layer: 'ai', w: ARCHI_W, h: ARCHI_H, group: 'ai' },
+  { kind: 'mcp-gateway', defaultName: 'Gateway MCP', layer: 'ai', w: ARCHI_W, h: ARCHI_H, group: 'ai' },
+  { kind: 'rag', defaultName: 'RAG', layer: 'ai', w: ARCHI_W, h: ARCHI_H, group: 'ai' },
   { kind: 'ui-app', defaultName: 'App UI', layer: 'ui', w: 240, h: 130, container: true, group: 'ui' },
-  { kind: 'page', defaultName: 'Página', layer: 'ui', w: 150, h: 60, group: 'ui' },
-  { kind: 'menu-item', defaultName: 'Menú', layer: 'ui', w: 140, h: 48, group: 'ui' },
+  { kind: 'page', defaultName: 'Página', layer: 'ui', w: ARCHI_W, h: ARCHI_H, group: 'ui' },
+  { kind: 'menu-item', defaultName: 'Menú', layer: 'ui', w: ARCHI_W, h: ARCHI_H, group: 'ui' },
   { kind: 'deployment', defaultName: 'Servicio (despliegue)', layer: 'tech', w: 280, h: 170, container: true, group: 'deployment' },
-  { kind: 'module', defaultName: 'Módulo', layer: 'tech', w: 160, h: 60, group: 'modules' },
-  { kind: 'bff', defaultName: 'BFF', layer: 'tech', w: 160, h: 56, group: 'modules' },
-  { kind: 'acl', defaultName: 'ACL', layer: 'tech', w: 150, h: 56, group: 'modules' },
-  { kind: 'api-gateway', defaultName: 'API Gateway', layer: 'tech', w: 170, h: 56, group: 'modules' },
-  { kind: 'adapter', defaultName: 'Adaptador', layer: 'tech', w: 160, h: 56, group: 'modules' },
-  { kind: 'saga', defaultName: 'Saga', layer: 'tech', w: 160, h: 56, group: 'modules' },
-  { kind: 'projector', defaultName: 'Projector', layer: 'tech', w: 160, h: 56, group: 'modules' },
-  { kind: 'scheduler', defaultName: 'Scheduler', layer: 'tech', w: 150, h: 56, group: 'modules' },
+  { kind: 'module', defaultName: 'Módulo', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
+  { kind: 'bff', defaultName: 'BFF', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
+  { kind: 'acl', defaultName: 'ACL', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
+  { kind: 'api-gateway', defaultName: 'API Gateway', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
+  { kind: 'adapter', defaultName: 'Adaptador', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
+  { kind: 'saga', defaultName: 'Saga', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
+  { kind: 'projector', defaultName: 'Projector', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
+  { kind: 'scheduler', defaultName: 'Scheduler', layer: 'tech', w: ARCHI_W, h: ARCHI_H, group: 'modules' },
   { kind: 'junction', defaultName: 'Junction', layer: 'behavior', w: 16, h: 16, group: 'other' },
 ];
 
 /** Non-ArchiMate extras (Archi's Note/Group section of the palette). */
 const EXTRA_TOOLS: ElementTool[] = [
   { kind: 'group', defaultName: 'Grupo', layer: 'context', w: 240, h: 150, container: true, group: 'extras' },
-  { kind: 'note', defaultName: 'Nota', layer: 'event', w: 160, h: 64, group: 'extras' },
+  { kind: 'note', defaultName: 'Nota', layer: 'event', w: ARCHI_W, h: ARCHI_H, group: 'extras' },
 ];
 
 /** Palette kind → the message key of its palette label. */
@@ -189,7 +195,7 @@ const FIELD_TYPES = ['string', 'integer', 'number', 'money', 'bool', 'date', 'ti
 /** The size a kind is placed at: its palette tool's, or a plain box for catalog-only kinds. */
 function defaultSize(kind: string): { w: number; h: number } {
   const tool = ELEMENT_TOOLS.find((t) => t.kind === kind);
-  return tool ? { w: tool.w, h: tool.h } : { w: 170, h: 56 };
+  return tool ? { w: tool.w, h: tool.h } : { w: ARCHI_W, h: ARCHI_H };
 }
 
 /** Node kind → the `type` the rename-element command expects (rename.ts). Absent ⇒ rename unsupported. */
@@ -297,6 +303,9 @@ export class ArchiShell extends LitElement {
     // What else a context nests (use cases, events, read models, query services…): composed by it too.
     for (const e of catalogEntries(m)) if (e.ownerId && e.kind !== 'aggregate' && ids.has(e.id) && ids.has(e.ownerId) && !nestedIn(e.id, e.ownerId))
       edges.push({ id: `nest-ctx:${e.id}`, sourceId: e.ownerId, targetId: e.id, kind: 'composition', markerStart: 'diamond' });
+    // A UI app serves the actors that open it.
+    for (const u of m.actorAppUses ?? []) if (ids.has(u.appId) && ids.has(u.actorId))
+      edges.push({ id: `actor-app:${u.actorId}->${u.appId}`, sourceId: u.appId, targetId: u.actorId, kind: 'serving', markerEnd: 'open-arrow' });
     // A projection writes its read model.
     for (const p of m.projections ?? []) if (p.readModelId && ids.has(p.id) && ids.has(p.readModelId))
       edges.push({ id: `proj-rm:${p.id}`, sourceId: p.id, targetId: p.readModelId, kind: 'access', markerEnd: 'open-arrow', dashed: true, dashArray: '2 3' });

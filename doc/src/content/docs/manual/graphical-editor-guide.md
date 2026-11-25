@@ -32,7 +32,8 @@ to a canvas with the **view selector** at the top-left (see [Pick a view](#pick-
 - **Zoom** with the mouse wheel; **pan** by holding **space** and dragging (or drag
   the background where a view allows it).
 - **⌖ Fit** fits the whole diagram to the window.
-- The **minimap** (bottom-right) shows the entire scene — click or drag it to recenter.
+- The **minimap** (bottom-right) shows the entire scene — click it to recenter there,
+  or grab the visible-area box and drag it to pan.
 - **⛶ (or `F`)** takes the diagram fullscreen; **Esc** (or `F` again) leaves.
 - **Hover a node** to spotlight its neighbourhood: the node, everything one edge away
   and their connecting lines stay lit while the rest fades — the fastest way to read

@@ -138,12 +138,11 @@ person / gear (human / automated steps), double circle (events), return arrow
   case creates a **TRIGGERS flow** (subscription + CallUseCase + mapping derive at
   generation time); the arrow anchors on the event and the use case at the detail
   level.
-- **Actors use things**: drag from an actor onto a **use case** or a **query
-  service** to allow it (`Role.allowedUseCaseIds` / `allowedQueryServiceIds`, indigo
-  arrow) — the seed of a derived UI. Drag onto an **aggregate** and the editor
-  creates stub **CRUD use cases** (`Crear/Actualizar/Eliminar<Aggregate>`, with steps
-  anchored to the aggregate and `exposedAsUi`) and allows the actor on all three;
-  one undo reverts the whole thing.
+- **Actors are only served**: an actor never starts a relation — nothing is created by
+  dragging *from* an actor onto a use case, query service, aggregate or agent. What
+  reaches a person is an interface: connect a **UI app** and an actor (either way) and
+  the app serves the actor, who opens it (`Role.uiAdapterIds`); a **UI** serves an actor
+  the same way. Actor-use links already written in the model files still draw.
 - **Materializations drawn on the canvas**: at the detail level read models render as
   children too, and dragging a domain OR application event onto another context (or
   one of its read models) creates a **MATERIALIZES flow** — the projection/read
@@ -194,8 +193,7 @@ person / gear (human / automated steps), double circle (events), return arrow
   an **external MCP server**, an **MCP gateway** or **another agent** (delegation) —
   each arrow is one entry in the [connection matrix](/manual/ai-agents/#the-connection-matrix).
   Drag a **domain or application event onto an agent** and the event *triggers* it
-  (a **reactive agent**, amber dashed arrow); drag an **actor onto an agent** and
-  the person talks to it (a chat/supervision UI derives). Deleting an agent unlinks
+  (a **reactive agent**, amber dashed arrow). Deleting an agent unlinks
   it everywhere, and one undo restores the agent *with* every link.
 - **MCP gateways**: created from the palette (plug glyph, outside every context) —
   our component that aggregates external MCP servers and exposes APIs, single
@@ -386,7 +384,11 @@ shown as the server sends them. Keyboard shortcuts are the same in both language
   hosts the editor in the IDE over the repository's model: *New → Modux Model* initialises the catalog
   (`.modux/`), *New → Modux View* creates a view document (`*.modux-view.yaml`), and
   opening a view document opens the canvas on it. The plugin edits the files and nothing
-  else; generation is the [Maven plugin](/reference/maven-plugin/).
+  else; generation is the [Maven plugin](/reference/maven-plugin/). Its canvas draws in
+  Archi's ArchiMate notation: elements dropped at one size (120×55; containers bigger),
+  1px borders in the fill's darker shade, rounded corners on behaviour (use cases,
+  services, events…), names wrapped over several lines, and black connections that curve
+  slightly at bends and hop where they cross.
 - **The modux server** (see [Installation](/getting-started/installation/#the-modux-server-optional))
   serves the same component as a bundle, `/modux-editor/modux-editor.js`, which defines
   `<modux-editor-connected base="/modux/editor">` — a host that talks to the server's
